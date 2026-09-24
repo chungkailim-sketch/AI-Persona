@@ -1,0 +1,197 @@
+{
+  "accuracy": 0.875,
+  "n": 24,
+  "misses": [
+    {
+      "field": "gender",
+      "label": "NONE",
+      "choice": "SPECIAL_CATEGORY",
+      "confidence": 0.44,
+      "latency_ms": 427
+    },
+    {
+      "field": "supplement_use",
+      "label": "NONE",
+      "choice": "SPECIAL_CATEGORY",
+      "confidence": 0.77,
+      "latency_ms": 475
+    },
+    {
+      "field": "comments",
+      "label": "SPECIAL_CATEGORY",
+      "choice": "PII",
+      "confidence": 0.79,
+      "latency_ms": 437
+    }
+  ],
+  "cases": [
+    {
+      "field": "respondent_email",
+      "label": "PII",
+      "choice": "PII",
+      "confidence": 1.0,
+      "latency_ms": 730
+    },
+    {
+      "field": "mobile",
+      "label": "PII",
+      "choice": "PII",
+      "confidence": 1.0,
+      "latency_ms": 743
+    },
+    {
+      "field": "full_name",
+      "label": "PII",
+      "choice": "PII",
+      "confidence": 1.0,
+      "latency_ms": 757
+    },
+    {
+      "field": "postcode",
+      "label": "PII",
+      "choice": "PII",
+      "confidence": 0.99,
+      "latency_ms": 741
+    },
+    {
+      "field": "resp_id",
+      "label": "NONE",
+      "choice": "NONE",
+      "confidence": 0.89,
+      "latency_ms": 445
+    },
+    {
+      "field": "age_band",
+      "label": "NONE",
+      "choice": "NONE",
+      "confidence": 0.99,
+      "latency_ms": 475
+    },
+    {
+      "field": "gender",
+      "label": "NONE",
+      "choice": "SPECIAL_CATEGORY",
+      "confidence": 0.44,
+      "latency_ms": 427
+    },
+    {
+      "field": "q7_religion",
+      "label": "SPECIAL_CATEGORY",
+      "choice": "SPECIAL_CATEGORY",
+      "confidence": 1.0,
+      "latency_ms": 425
+    },
+    {
+      "field": "eth",
+      "label": "SPECIAL_CATEGORY",
+      "choice": "SPECIAL_CATEGORY",
+      "confidence": 0.28,
+      "latency_ms": 429
+    },
+    {
+      "field": "chronic_condition",
+      "label": "SPECIAL_CATEGORY",
+      "choice": "SPECIAL_CATEGORY",
+      "confidence": 1.0,
+      "latency_ms": 436
+    },
+    {
+      "field": "vote_2024",
+      "label": "SPECIAL_CATEGORY",
+      "choice": "SPECIAL_CATEGORY",
+      "confidence": 0.86,
+      "latency_ms": 459
+    },
+    {
+      "field": "union_member",
+      "label": "SPECIAL_CATEGORY",
+      "choice": "SPECIAL_CATEGORY",
+      "confidence": 1.0,
+      "latency_ms": 451
+    },
+    {
+      "field": "sexual_orientation",
+      "label": "SPECIAL_CATEGORY",
+      "choice": "SPECIAL_CATEGORY",
+      "confidence": 1.0,
+      "latency_ms": 487
+    },
+    {
+      "field": "hh_income",
+      "label": "NONE",
+      "choice": "NONE",
+      "confidence": 0.8,
+      "latency_ms": 456
+    },
+    {
+      "field": "supplement_use",
+      "label": "NONE",
+      "choice": "SPECIAL_CATEGORY",
+      "confidence": 0.77,
+      "latency_ms": 475
+    },
+    {
+      "field": "brand_awareness",
+      "label": "NONE",
+      "choice": "NONE",
+      "confidence": 1.0,
+      "latency_ms": 460
+    },
+    {
+      "field": "q12_other_specify",
+      "label": "PII",
+      "choice": "PII",
+      "confidence": 0.67,
+      "latency_ms": 440
+    },
+    {
+      "field": "comments",
+      "label": "SPECIAL_CATEGORY",
+      "choice": "PII",
+      "confidence": 0.79,
+      "latency_ms": 437
+    },
+    {
+      "field": "city",
+      "label": "NONE",
+      "choice": "NONE",
+      "confidence": 0.74,
+      "latency_ms": 456
+    },
+    {
+      "field": "nik",
+      "label": "PII",
+      "choice": "PII",
+      "confidence": 0.68,
+      "latency_ms": 393
+    },
+    {
+      "field": "q3_attitude_risk",
+      "label": "NONE",
+      "choice": "NONE",
+      "confidence": 0.96,
+      "latency_ms": 419
+    },
+    {
+      "field": "prayer_frequency",
+      "label": "SPECIAL_CATEGORY",
+      "choice": "SPECIAL_CATEGORY",
+      "confidence": 0.95,
+      "latency_ms": 471
+    },
+    {
+      "field": "bmi_band",
+      "label": "SPECIAL_CATEGORY",
+      "choice": "SPECIAL_CATEGORY",
+      "confidence": 0.91,
+      "latency_ms": 405
+    },
+    {
+      "field": "device_os",
+      "label": "NONE",
+      "choice": "NONE",
+      "confidence": 0.99,
+      "latency_ms": 380
+    }
+  ]
+}

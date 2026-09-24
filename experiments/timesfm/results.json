@@ -1,0 +1,170 @@
+{
+  "model": "google/timesfm-2.5-200m-pytorch",
+  "device": "cpu",
+  "load_seconds": 2.0,
+  "results": {
+    "h1": {
+      "series": 3000,
+      "mae_pp": {
+        "timesfm": 2.376,
+        "last": 2.43,
+        "mean": 2.723,
+        "drift": 3.684,
+        "seasonal": 2.565
+      },
+      "median_ae_pp": {
+        "timesfm": 1.588,
+        "last": 1.6,
+        "mean": 1.775,
+        "drift": 2.37,
+        "seasonal": 1.6
+      },
+      "timesfm_beats_last_value_share": 0.49,
+      "timesfm_q10_q90_coverage": 0.83,
+      "timesfm_mean_band_width_pp": 11.13,
+      "sampling_se_pp_median": 1.6,
+      "inference_seconds": 334.44,
+      "mae_pp_all": {
+        "timesfm": 1.574,
+        "last": 1.574,
+        "mean": 2.164,
+        "drift": 3.104,
+        "seasonal": 1.817
+      },
+      "mae_pp_age_groups": {
+        "timesfm": 2.452,
+        "last": 2.51,
+        "mean": 2.775,
+        "drift": 3.738,
+        "seasonal": 2.635
+      }
+    },
+    "h2": {
+      "series": 3000,
+      "mae_pp": {
+        "timesfm": 2.512,
+        "last": 2.465,
+        "mean": 3.098,
+        "drift": 6.625,
+        "seasonal": 2.681
+      },
+      "median_ae_pp": {
+        "timesfm": 1.897,
+        "last": 1.8,
+        "mean": 2.267,
+        "drift": 4.325,
+        "seasonal": 2.05
+      },
+      "timesfm_beats_last_value_share": 0.496,
+      "timesfm_q10_q90_coverage": 0.788,
+      "timesfm_mean_band_width_pp": 15.15,
+      "sampling_se_pp_median": 1.6,
+      "inference_seconds": 319.07,
+      "mae_pp_all": {
+        "timesfm": 1.808,
+        "last": 1.646,
+        "mean": 2.71,
+        "drift": 6.208,
+        "seasonal": 1.905
+      },
+      "mae_pp_age_groups": {
+        "timesfm": 2.578,
+        "last": 2.542,
+        "mean": 3.134,
+        "drift": 6.664,
+        "seasonal": 2.754
+      }
+    }
+  },
+  "examples": [
+    {
+      "market": "China",
+      "statement": "Making sure a brand's values align with my own is a top priority for me when purchasing a product",
+      "response": "Somewhat agree",
+      "history": {
+        "September 2024": 52.4,
+        "March 2025": 53.5,
+        "September 2025": 55,
+        "March 2026": 56.2
+      },
+      "forecast_next_wave": 56.8,
+      "q10": 54.8,
+      "q90": 58.5
+    },
+    {
+      "market": "Mexico",
+      "statement": "I expect brands to take the lead on addressing environmental issues",
+      "response": "Strongly agree",
+      "history": {
+        "March 2024": 58.6,
+        "September 2024": 46.6,
+        "March 2025": 43.7,
+        "September 2025": 41.8,
+        "March 2026": 37.8
+      },
+      "forecast_next_wave": 40.8,
+      "q10": 33.6,
+      "q90": 50.0
+    },
+    {
+      "market": "Germany",
+      "statement": "I think it's worth taking the time to compare products to find the best deal",
+      "response": "Strongly agree",
+      "history": {
+        "March 2024": 23.4,
+        "September 2024": 28,
+        "March 2025": 28.3,
+        "September 2025": 28.2,
+        "March 2026": 24.7
+      },
+      "forecast_next_wave": 26.5,
+      "q10": 22.9,
+      "q90": 29.3
+    },
+    {
+      "market": "Saudi Arabia",
+      "statement": "I believe that institutions/companies should do more to address inequality (eg fair pay, support for vulnerable populations)",
+      "response": "Somewhat agree",
+      "history": {
+        "March 2024": 39.1,
+        "September 2024": 35.4,
+        "March 2025": 37.9,
+        "September 2025": 36.8,
+        "March 2026": 44.8
+      },
+      "forecast_next_wave": 41.3,
+      "q10": 35.1,
+      "q90": 48.8
+    },
+    {
+      "market": "Mexico",
+      "statement": "I'm opposed to buying from companies who behave unethically (eg misleading consumers, mistreating employees)",
+      "response": "Somewhat agree",
+      "history": {
+        "March 2024": 30.3,
+        "September 2024": 29.3,
+        "March 2025": 31,
+        "September 2025": 30.1,
+        "March 2026": 33.7
+      },
+      "forecast_next_wave": 31.7,
+      "q10": 29.2,
+      "q90": 34.8
+    },
+    {
+      "market": "US",
+      "statement": "I expect brands to take the lead on addressing environmental issues",
+      "response": "Somewhat agree",
+      "history": {
+        "March 2024": 37.6,
+        "September 2024": 34.5,
+        "March 2025": 36.4,
+        "September 2025": 39.3,
+        "March 2026": 36.5
+      },
+      "forecast_next_wave": 36.2,
+      "q10": 34.7,
+      "q90": 38.1
+    }
+  ]
+}
