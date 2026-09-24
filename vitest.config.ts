@@ -11,5 +11,7 @@ export default defineConfig({
     setupFiles: ['./tests/setup.ts'],
     include: ['tests/unit/**/*.test.ts', 'tests/component/**/*.test.tsx', 'tests/integration/**/*.test.ts'],
     exclude: ['tests/e2e/**'],
+    // Integration files share one test database and truncate it in their setup; run files one at a time.
+    fileParallelism: false,
   },
 });
