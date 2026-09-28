@@ -4,6 +4,7 @@ import { authContextFor } from '@/auth/session';
 import { can } from '@/auth/permissions';
 import { prisma } from '@/lib/prisma';
 import { queueDepth, QUEUE_CONFIG } from '@/queue/queue';
+import { fmtDateTime } from '@/lib/time';
 
 export const metadata = { title: 'Jobs · Administration' };
 export const dynamic = 'force-dynamic';
@@ -103,7 +104,7 @@ export default async function AdminJobsPage() {
                 {recent.map((j) => (
                   <tr key={j.id} className="border-b border-line/60 align-top">
                     <td className="whitespace-nowrap py-2 pr-4 font-mono text-xs text-ink-subtle">
-                      {j.createdAt.toISOString().replace('T', ' ').slice(0, 19)}
+                      {fmtDateTime(j.createdAt, { seconds: true })}
                     </td>
                     <td className="py-2 pr-4 font-mono text-xs text-ink">{j.kind}</td>
                     <td className="py-2 pr-4">

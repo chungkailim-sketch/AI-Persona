@@ -4,6 +4,7 @@ import type { Route } from 'next';
 import { useEffect, useState } from 'react';
 import type { ActivitySummary } from '@/server/activity';
 import { LiveIndicator } from '../components/LiveIndicator';
+import { fmtTime, TZ_LABEL } from '@/lib/time';
 
 /**
  * Runs in progress across your projects. Checks the server every 15 seconds while the tab is
@@ -45,7 +46,7 @@ export function GlobalRunIndicator({ initial }: { initial: ActivitySummary }) {
     <Link
       href={href as Route}
       className="hidden items-center rounded border border-line px-2 py-1 hover:border-line-strong lg:inline-flex"
-      title={`${label}. Checked ${data.checkedAt.slice(11, 19)}Z${stale ? ' — could not refresh' : ''}.`}
+      title={`${label}. Checked ${fmtTime(data.checkedAt)} ${TZ_LABEL}${stale ? ' — could not refresh' : ''}.`}
       data-global-runs={runs}
     >
       <LiveIndicator state={stale ? 'delayed' : busy ? 'live' : 'idle'} label={label} />

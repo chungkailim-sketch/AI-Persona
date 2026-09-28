@@ -233,3 +233,13 @@
   a { text-decoration: none; }
   body { font-size: 11pt; }
 }
+
+/* Chinese interface: keep the page hidden until the English wording has been swapped, so it does not
+   flash. The delayed reveal is a safety net — if script never runs, the page still appears. */
+html[data-lang='zh']:not([data-i18n-ready]) body {
+  visibility: hidden;
+  animation: i18n-reveal 0s linear 1.5s forwards;
+}
+@keyframes i18n-reveal {
+  to { visibility: visible; }
+}

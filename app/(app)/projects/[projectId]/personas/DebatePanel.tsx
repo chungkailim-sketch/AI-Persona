@@ -4,6 +4,7 @@ import { useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { startDebateAction, type FormState } from '../actions';
 import { Field, FormMessages, Select, SubmitButton, TextArea, TextInput } from '@/ui/forms';
+import { fmtDateTime, TZ_LABEL } from '@/lib/time';
 
 // ── View model ────────────────────────────────────────────────────────────────
 
@@ -349,7 +350,7 @@ export function DebateDetail({ debate }: { debate: DebateView }) {
           <span className="rounded-sm border border-line px-1.5 font-mono text-[10px] uppercase text-ink-muted">{debate.status.toLowerCase()}</span>
           {debate.isMock && <span className="rounded-sm border border-warn/40 bg-warn-soft px-1.5 font-mono text-[10px] uppercase text-warn">mock provider</span>}
           <span className="font-mono text-[10.5px] text-ink-subtle">
-            {debate.cohortName} · {debate.rounds} round(s) · seed {debate.seed} · {debate.createdAt.slice(0, 16).replace('T', ' ')} UTC
+            {debate.cohortName} · {debate.rounds} round(s) · seed {debate.seed} · {fmtDateTime(debate.createdAt)} {TZ_LABEL}
             {debate.spendUsd > 0 && ` · $${debate.spendUsd.toFixed(3)}`}
           </span>
         </div>

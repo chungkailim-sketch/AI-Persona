@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { cn } from '../cn';
 import { TONE_TEXT } from './tone';
 import type { Tone } from '@/telemetry/status';
+import { fmtTime, TZ_LABEL } from '@/lib/time';
 
 export interface MetricCardProps {
   label: string;
@@ -37,7 +38,7 @@ export function MetricCard({ label, value, unit, definition, tone, sub, updatedA
         <span className="sr-only">. {definition}</span>
         {sub && <div className="mt-0.5 text-[11px] leading-snug text-ink-subtle">{sub}</div>}
         {updatedAt && !compact && (
-          <div className="mt-0.5 font-mono text-[10px] text-ink-subtle">updated {updatedAt.slice(11, 19)}Z</div>
+          <div className="mt-0.5 font-mono text-[10px] text-ink-subtle">updated {fmtTime(updatedAt)} {TZ_LABEL}</div>
         )}
       </dd>
     </div>

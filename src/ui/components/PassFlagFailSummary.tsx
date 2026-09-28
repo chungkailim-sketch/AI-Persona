@@ -2,6 +2,7 @@ import { VERDICT_META, VERDICT_THRESHOLD_SOURCE, type EvaluationState } from '@/
 import { Icon } from './Icon';
 import { TONE_BADGE, TONE_FILL } from './tone';
 import { cn } from '../cn';
+import { fmtTime, TZ_LABEL } from '@/lib/time';
 
 /**
  * Pass / flag / fail, with the definition and threshold source beside the numbers rather than in
@@ -36,7 +37,7 @@ export function PassFlagFailSummary({
     <section className="panel" aria-labelledby="pff-title">
       <div className="panel-head">
         <h3 id="pff-title" className="font-sans text-sm font-medium text-ink">{title}</h3>
-        <span className="font-mono text-[11px] text-ink-subtle">{total} evaluated{updatedAt ? ` · ${updatedAt.slice(11, 19)}Z` : ''}</span>
+        <span className="font-mono text-[11px] text-ink-subtle">{total} evaluated{updatedAt ? ` · ${fmtTime(updatedAt)} ${TZ_LABEL}` : ''}</span>
       </div>
       <div className="p-3">
         {unavailableReason ? (

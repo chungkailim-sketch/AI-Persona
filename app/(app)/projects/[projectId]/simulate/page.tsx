@@ -10,6 +10,7 @@ import type { Route } from 'next';
 import { ConfirmRunPanel, PlanRunForm, RerunButton } from './SimulateStep';
 import { SimulationControlRoom } from './SimulationControlRoom';
 import { countEvents, readRecentEvents, readSnapshot } from '@/telemetry/read';
+import { fmtDateTime } from '@/lib/time';
 
 export const metadata = { title: 'Simulation · Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -119,7 +120,7 @@ export default async function SimulateStepPage(props: PageProps<'/projects/[proj
                   : 'rounded border border-line bg-surface px-2.5 py-1 font-mono text-[11px] text-ink-muted hover:text-ink'
               }
             >
-              {r.createdAt.toISOString().slice(5, 16).replace('T', ' ')} · {r.status.toLowerCase().replace(/_/g, ' ')}
+              {fmtDateTime(r.createdAt).slice(5)} · {r.status.toLowerCase().replace(/_/g, ' ')}
             </Link>
           ))}
         </nav>
@@ -131,7 +132,7 @@ export default async function SimulateStepPage(props: PageProps<'/projects/[proj
           projectId={projectId}
           info={{
             runId: selected.id,
-            name: `Run ${selected.createdAt.toISOString().slice(0, 16).replace('T', ' ')}`,
+            name: `Run ${fmtDateTime(selected.createdAt)}`,
             mode: selected.mode,
             projectName: project.name,
             cohortName: room.config?.cohort?.name ?? 'Cohort',

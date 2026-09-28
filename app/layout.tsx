@@ -5,6 +5,8 @@ import { HydrationMarker } from '@/ui/HydrationMarker';
 import { currentSession } from '@/auth/session';
 import { prisma } from '@/lib/prisma';
 import { THEME_COOKIE, htmlThemeAttribute, parseThemePreference } from '@/ui/theme/theme';
+import { LANG_COOKIE, parseLang } from '@/ui/i18n/translate';
+import { LanguageRuntime } from '@/ui/i18n/LanguageRuntime';
 
 export const metadata: Metadata = {
   title: 'Persona Intelligence',
@@ -17,7 +19,10 @@ export const metadata: Metadata = {
  * no attribute and the stylesheet's `prefers-color-scheme` query applies before first paint.
  */
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const cookie = (await cookies()).get(THEME_COOKIE)?.value;
+  const jar = await cookies();
+  const cookie = jar.get(THEME_COOKIE)?.value;
+  // The language is also decided here, so the page is marked for translation from the first byte.
+  const lang = parseLang(jar.get(LANG_COOKIE)?.value);
   // No cookie on this device yet: a signed-in user's stored preference still decides the first paint.
   let stored: string | undefined;
   if (!cookie) {
@@ -28,11 +33,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
   const pref = parseThemePreference(cookie ?? stored);
   return (
-    <html lang="en" data-theme={htmlThemeAttribute(pref)} data-theme-preference={pref} suppressHydrationWarning>
+    <html lang={lang === 'zh' ? 'zh-CN' : 'en'} data-lang={lang} data-theme={htmlThemeAttribute(pref)} data-theme-preference={pref} suppressHydrationWarning>
       <body>
         <a href="#main" className="skip-link">Skip to main content</a>
         {children}
         <HydrationMarker />
+        <LanguageRuntime initial={lang} />
       </body>
     </html>
   );

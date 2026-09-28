@@ -27,6 +27,7 @@ import {
   UploadForm,
   type FieldRow,
 } from './DataStep';
+import { fmtDateTime, TZ_LABEL } from '@/lib/time';
 
 export const metadata = { title: 'Source data · Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -348,7 +349,7 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
               )}
               {trendView && (
                 <p className="mt-3 font-mono text-[10.5px] text-ink-subtle">
-                  Last analysis {trendView.completedAt ? new Date(trendView.completedAt).toISOString().slice(0, 16).replace('T', ' ') : 'pending'} UTC · groups {trendView.groups.join(', ')}
+                  Last analysis {trendView.completedAt ? fmtDateTime(trendView.completedAt) : 'pending'} {TZ_LABEL} · groups {trendView.groups.join(', ')}
                 </p>
               )}
             </div>

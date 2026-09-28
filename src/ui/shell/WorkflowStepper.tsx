@@ -4,6 +4,7 @@ import { WORKFLOW_STEPS, type StepKey } from './steps';
 import type { WorkflowState, WorkflowStatus } from '@/server/workflow';
 import { Icon } from '../components/Icon';
 import { cn } from '../cn';
+import { fmtDateTime, TZ_LABEL } from '@/lib/time';
 
 const META: Record<WorkflowStatus, { label: string; icon: string; cls: string; ring: string }> = {
   complete: { label: 'Complete', icon: 'check', cls: 'border-ok/40 bg-ok-soft text-ok', ring: 'border-ok/40' },
@@ -16,7 +17,7 @@ const META: Record<WorkflowStatus, { label: string; icon: string; cls: string; r
 
 function savedLabel(iso: string | null): string {
   if (!iso) return 'not saved yet';
-  return `saved ${iso.slice(0, 10)} ${iso.slice(11, 16)}Z`;
+  return `saved ${fmtDateTime(iso)} ${TZ_LABEL}`;
 }
 
 /**
@@ -55,7 +56,7 @@ export function WorkflowStepper({ projectId, current, state }: { projectId: stri
                   )}
                 </span>
                 <span className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-wide text-ink-subtle">
-                  {meta.label}
+                  <span className="shrink-0 whitespace-nowrap">{meta.label}</span>
                   <span aria-hidden>·</span>
                   <span className="normal-case tracking-normal">{savedLabel(st.lastSavedAt)}</span>
                 </span>

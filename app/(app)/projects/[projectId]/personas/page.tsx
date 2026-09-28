@@ -22,6 +22,7 @@ import {
   PersonaCard,
   type PersonaRow,
 } from './PersonaStep';
+import { fmtDate, fmtDateTime, TZ_LABEL } from '@/lib/time';
 
 export const metadata = { title: 'Personas · Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -84,7 +85,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
     if (!a) return null;
     return {
       verdict: a.verdict,
-      when: a.createdAt.toISOString().slice(0, 16).replace('T', ' '),
+      when: fmtDateTime(a.createdAt),
       model: a.model,
       statement: a.detail.statement,
       reason: a.detail.reason,
@@ -227,7 +228,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
                 </h2>
                 <p className="font-mono text-xs text-ink-subtle">
                   {personas.length} personas · generated{' '}
-                  {cohort.generatedAt.toISOString().slice(0, 10)}
+                  {fmtDate(cohort.generatedAt)}
                 </p>
               </div>
 
@@ -284,7 +285,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
                 <DebateForm
                   projectId={projectId}
                   cohorts={debateCohorts}
-                  runs={completedRuns.map((r) => ({ id: r.id, label: `Run ${r.id.slice(-8)} · ${r.completedAt?.toISOString().slice(0, 10) ?? ''}${r.isMock ? ' · mock' : ''}` }))}
+                  runs={completedRuns.map((r) => ({ id: r.id, label: `Run ${r.id.slice(-8)} · ${r.completedAt ? fmtDate(r.completedAt) : ''}${r.isMock ? ' · mock' : ''}` }))}
                   hypotheses={hypotheses.map((h) => h.statement)}
                 />
               )}
@@ -302,7 +303,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
                       >
                         <span className="line-clamp-2 text-xs text-ink">{d.topic}</span>
                         <span className="mt-0.5 block font-mono text-[10px] text-ink-subtle">
-                          {d.status.toLowerCase()} · {d.cohort.name} · {d.createdAt.toISOString().slice(0, 16).replace('T', ' ')}{d.isMock ? ' · mock' : ''}
+                          {d.status.toLowerCase()} · {d.cohort.name} · {fmtDateTime(d.createdAt)}{d.isMock ? ' · mock' : ''}
                         </span>
                       </Link>
                     </li>
@@ -337,7 +338,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
             {population && popSpec ? (
               <div className="flex flex-col gap-4">
                 <p className="font-mono text-[11px] text-ink-subtle">
-                  {popSources.find((x) => x.id === population.datasetVersionId)?.label ?? 'Dataset'} · {population.size.toLocaleString()} members · seed {population.seed} · {population.primaryGroup}{population.secondaryGroup ? ` × ${population.secondaryGroup}` : ''} · {popSpec.wave} · built {population.createdAt.toISOString().slice(0, 16).replace('T', ' ')} UTC · {popSpec.rejectedDraws ?? 0} redraws
+                  {popSources.find((x) => x.id === population.datasetVersionId)?.label ?? 'Dataset'} · {population.size.toLocaleString()} members · seed {population.seed} · {population.primaryGroup}{population.secondaryGroup ? ` × ${population.secondaryGroup}` : ''} · {popSpec.wave} · built {fmtDateTime(population.createdAt)} {TZ_LABEL} · {popSpec.rejectedDraws ?? 0} redraws
                 </p>
                 {canCreate && (
                   <CohortFromPopulationForm projectId={projectId} sampleId={population.id} cells={popQuotas.filter((q) => q.members > 0).length} defaultCount={Math.min(12, popQuotas.filter((q) => q.members > 0).length)} />

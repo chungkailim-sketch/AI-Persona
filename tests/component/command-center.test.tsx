@@ -151,7 +151,8 @@ describe('WorkflowStepper', () => {
     const links = within(nav).getAllByRole('link');
     expect(links).toHaveLength(5);
     expect(links[2]).toHaveAttribute('aria-current', 'step');
-    expect(links[0]).toHaveTextContent(/Complete.*saved 2026-09-21 08:00Z/);
+    // 08:00 UTC is 16:00 in GMT+8, the zone the interface shows.
+    expect(links[0]).toHaveTextContent(/Complete.*saved 2026-09-21 16:00 GMT\+8/);
     expect(links[1]).toHaveTextContent(/2 unresolved item/);
     expect(links[3]).toHaveTextContent(/Blocked.*Needs an approved cohort/);
     expect(links[4]).toHaveTextContent(/Error/);

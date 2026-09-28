@@ -19,6 +19,7 @@ import {
   LimitationsBlock,
   type FindingRow,
 } from './ResultsStep';
+import { fmtDateTime } from '@/lib/time';
 
 export const metadata = { title: 'Results · Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -105,7 +106,7 @@ export default async function ResultsStepPage(props: PageProps<'/projects/[proje
                   : 'rounded bg-surface px-3 py-1 text-xs text-ink-muted hover:text-ink'
               }
             >
-              {r.completedAt?.toISOString().slice(0, 16).replace('T', ' ') ?? 'run'}
+              {r.completedAt ? fmtDateTime(r.completedAt) : 'run'}
               {r.isMock && ' · mock'}
             </Link>
           ))}
@@ -317,7 +318,7 @@ export default async function ResultsStepPage(props: PageProps<'/projects/[proje
             {exports.map((e) => (
               <li key={e.id} className="flex flex-wrap items-baseline gap-2 text-xs">
                 <span className="font-mono text-[10px] text-ink-subtle">
-                  {e.createdAt.toISOString().slice(0, 16).replace('T', ' ')}
+                  {fmtDateTime(e.createdAt)}
                 </span>
                 <span className="font-mono text-ink-muted">{e.format}</span>
                 {e.blocked ? (

@@ -5,6 +5,7 @@ import { Icon } from '../components/Icon';
 import { GlobalRunIndicator } from './GlobalRunIndicator';
 import { ProjectSelector, type ProjectOption } from './ProjectSelector';
 import { ThemeSwitcher } from './ThemeSwitcher';
+import { LanguageSwitcher } from '../i18n/LanguageSwitcher';
 import { UserMenu } from './UserMenu';
 import type { ThemePreference } from '../theme/theme';
 
@@ -56,6 +57,7 @@ export function TopNavigation({ userEmail, userRole, isAdmin, projects, environm
           <Link href="/methodology" className="hidden h-8 w-8 items-center justify-center rounded border border-line text-ink-muted hover:border-line-strong hover:text-ink sm:inline-flex" aria-label="Methodology and help" title="Methodology and help">
             <Icon name="help" size={16} />
           </Link>
+          <LanguageSwitcher />
           <ThemeSwitcher initialPreference={themePreference} />
           {isAdmin && (
             <Link href="/admin" className="hidden h-8 items-center rounded border border-line px-2 text-xs text-ink-muted hover:border-line-strong hover:text-ink lg:inline-flex">
