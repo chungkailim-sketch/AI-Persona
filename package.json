@@ -15,6 +15,7 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
+    "release": "prisma migrate deploy && tsx prisma/seed.ts",
     "db:seed": "tsx prisma/seed.ts",
     "db:reset": "prisma migrate reset --force",
     "traceability": "tsx src/traceability/generate.ts",
