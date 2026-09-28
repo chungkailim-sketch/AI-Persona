@@ -1,0 +1,235 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * DESIGN TOKENS — semantic layer.
+ *
+ * ⚠ Brand owner validation required for every token in the "brand" group. The approved Ruder Finn
+ * brand kit was not available (PRD U5); the public site shows a green primary logo and nothing
+ * more could be verified. To apply the real brand, replace values here — nothing else in the
+ * codebase contains a literal colour, font name or duration.
+ *
+ * Tokens are named by job, not by component: a panel background, a strong border, a pending state.
+ * Both themes define every token. Dark is its own set of steps, chosen and contrast-checked against
+ * its own surfaces (tests/unit/contrast.test.ts) — never an inversion of light.
+ */
+:root {
+  color-scheme: light;
+
+  /* ── brand — Brand owner validation required ─────────────────────────── */
+  --color-brand: #0d6b4f;
+  --color-brand-ink: #ffffff;
+  --color-brand-soft: #e3f1eb;
+  --font-display: 'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', 'Cascadia Mono', monospace;
+
+  /* ── surfaces ─────────────────────────────────────────────────────────── */
+  --color-bg: #f4f4f1;              /* page background */
+  --color-elevated: #fafaf8;        /* sticky bars, drawers */
+  --color-surface: #ffffff;         /* panels */
+  --color-surface-raised: #ffffff;  /* popovers, menus */
+  --color-input: #ffffff;
+  --color-telemetry: #eef1ee;       /* activity feed well */
+  --color-overlay: rgb(10 14 16 / 45%);
+
+  /* ── text ─────────────────────────────────────────────────────────────── */
+  --color-ink: #15181b;             /* primary */
+  --color-ink-muted: #434a50;       /* secondary */
+  --color-ink-subtle: #5d646b;      /* muted — ≥4.5:1 on every light surface */
+  --color-telemetry-ink: #1c2226;
+  --color-code: #2f363c;
+  --color-link: #0a5c43;
+
+  /* ── lines ────────────────────────────────────────────────────────────── */
+  --color-line: #dcdfd9;            /* hairlines between regions */
+  --color-line-strong: #80878d;     /* input and control boundaries — ≥3:1 */
+  --color-grid: rgb(21 24 27 / 4.5%);
+
+  /* ── semantic status (never colour-only; always paired with icon + text) ─ */
+  --color-ok: #1b6630;        --color-ok-soft: #e2f2e6;
+  --color-warn: #7f4b00;      --color-warn-soft: #faedd8;
+  --color-danger: #9a1f1c;    --color-danger-soft: #fbe5e4;
+  --color-info: #0c5886;      --color-info-soft: #e0eef7;
+  --color-pending: #535b63;   --color-pending-soft: #eceeee;
+
+  /* ── evidence provenance — the product's core visual language ──────────── */
+  --color-observed: #1b6630;
+  --color-derived: #0c5886;
+  --color-inferred: #7f4b00;
+  --color-simulated: #6b3fa0;
+
+  /* ── chart series (fixed order, validated for CVD separation) ──────────── */
+  --chart-1: #2a78d6; --chart-2: #eb6834; --chart-3: #1baf7a; --chart-4: #eda100;
+  --chart-5: #e87ba4; --chart-6: #008300; --chart-7: #4a3aa7; --chart-8: #e34948;
+  --chart-track: #e7e9e5;
+
+  /* ── scale ─────────────────────────────────────────────────────────────── */
+  --space-unit: 4px;
+  --radius-sm: 3px; --radius: 6px; --radius-lg: 10px;
+  --shadow-card: 0 1px 2px rgb(16 25 28 / 6%);
+  --shadow-pop: 0 8px 24px rgb(16 25 28 / 14%);
+  --width-content: 1240px; --width-wide: 1600px; --width-prose: 72ch;
+  --focus-ring: 2px solid var(--color-brand);
+  --focus-offset: 2px;
+
+  /* ── motion ────────────────────────────────────────────────────────────── */
+  --motion-instant: 0ms;
+  --motion-fast: 120ms;
+  --motion-standard: 200ms;
+  --motion-base: var(--motion-standard); /* legacy alias */
+  --motion-deliberate: 320ms;
+  --motion-pulse: 1800ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-enter: cubic-bezier(0, 0, 0.2, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* Dark: explicit choice, or the OS when no choice is stored. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-brand: #52c096; --color-brand-ink: #04211a; --color-brand-soft: #12302a;
+    --color-bg: #0e1012; --color-elevated: #14171a; --color-surface: #191c20; --color-surface-raised: #22262b;
+    --color-input: #111417; --color-telemetry: #0b0d0f; --color-overlay: rgb(0 0 0 / 62%);
+    --color-ink: #e9ebe7; --color-ink-muted: #bcc2c7; --color-ink-subtle: #939aa1;
+    --color-telemetry-ink: #d6dbd5; --color-code: #cdd4cd; --color-link: #74d3ac;
+    --color-line: #2b3035; --color-line-strong: #6b737a; --color-grid: rgb(233 235 231 / 3.5%);
+    --color-ok: #8fd6a5; --color-ok-soft: #14301e;
+    --color-warn: #ebc07f; --color-warn-soft: #33250f;
+    --color-danger: #f3a5a0; --color-danger-soft: #3a1918;
+    --color-info: #8ac7ec; --color-info-soft: #112a3a;
+    --color-pending: #a7afb6; --color-pending-soft: #23282d;
+    --color-observed: #8fd6a5; --color-derived: #8ac7ec; --color-inferred: #ebc07f; --color-simulated: #c9a8f0;
+    --chart-1: #3987e5; --chart-2: #d95926; --chart-3: #199e70; --chart-4: #c98500;
+    --chart-5: #d55181; --chart-6: #1f9a1f; --chart-7: #9085e9; --chart-8: #e66767;
+    --chart-track: #2a2f34;
+    --shadow-card: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-pop: 0 10px 28px rgb(0 0 0 / 55%);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-brand: #52c096; --color-brand-ink: #04211a; --color-brand-soft: #12302a;
+  --color-bg: #0e1012; --color-elevated: #14171a; --color-surface: #191c20; --color-surface-raised: #22262b;
+  --color-input: #111417; --color-telemetry: #0b0d0f; --color-overlay: rgb(0 0 0 / 62%);
+  --color-ink: #e9ebe7; --color-ink-muted: #bcc2c7; --color-ink-subtle: #939aa1;
+  --color-telemetry-ink: #d6dbd5; --color-code: #cdd4cd; --color-link: #74d3ac;
+  --color-line: #2b3035; --color-line-strong: #6b737a; --color-grid: rgb(233 235 231 / 3.5%);
+  --color-ok: #8fd6a5; --color-ok-soft: #14301e;
+  --color-warn: #ebc07f; --color-warn-soft: #33250f;
+  --color-danger: #f3a5a0; --color-danger-soft: #3a1918;
+  --color-info: #8ac7ec; --color-info-soft: #112a3a;
+  --color-pending: #a7afb6; --color-pending-soft: #23282d;
+  --color-observed: #8fd6a5; --color-derived: #8ac7ec; --color-inferred: #ebc07f; --color-simulated: #c9a8f0;
+  --chart-1: #3987e5; --chart-2: #d95926; --chart-3: #199e70; --chart-4: #c98500;
+  --chart-5: #d55181; --chart-6: #1f9a1f; --chart-7: #9085e9; --chart-8: #e66767;
+  --chart-track: #2a2f34;
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-pop: 0 10px 28px rgb(0 0 0 / 55%);
+}
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 600; text-wrap: balance; }
+  a { color: inherit; }
+  /* Focus is always visible — never removed, only restyled (UX-04). */
+  :focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); border-radius: 2px; }
+  [hidden] { display: none !important; }
+  ::selection { background: var(--color-brand-soft); color: var(--color-ink); }
+}
+
+@layer components {
+  /* Skip link: first focusable element on every page. */
+  .skip-link {
+    position: absolute; left: -9999px; top: 0; z-index: 100;
+    background: var(--color-brand); color: var(--color-brand-ink);
+    padding: 10px 16px; border-radius: 0 0 var(--radius) 0;
+  }
+  .skip-link:focus { left: 0; }
+
+  /* A faint technical grid behind the workspace. Decorative; carries no information. */
+  .bg-grid {
+    background-image:
+      linear-gradient(var(--color-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Panel: the unit of the command-center layout. */
+  .panel { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius); }
+  .panel-head {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    padding: 10px 14px; border-bottom: 1px solid var(--color-line);
+  }
+  .eyebrow {
+    font-family: var(--font-mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase;
+    color: var(--color-ink-subtle);
+  }
+
+  /* Rows in a long feed skip rendering while off-screen — the browser's own windowing. */
+  .feed-row { content-visibility: auto; contain-intrinsic-size: auto 56px; }
+
+  /* Motion: each class is a meaning, not a decoration, and each has a static equivalent. */
+  .motion-enter { animation: rf-fade-slide var(--motion-standard) var(--ease-enter) both; }
+  .motion-live { animation: rf-pulse var(--motion-pulse) ease-in-out infinite; }
+  .motion-flow { stroke-dasharray: 4 6; animation: rf-flow 900ms linear infinite; }
+  .motion-progress { transition: width var(--motion-deliberate) var(--ease-standard); }
+  .motion-color { transition: background-color var(--motion-fast) var(--ease-standard), border-color var(--motion-fast) var(--ease-standard), color var(--motion-fast) var(--ease-standard); }
+}
+
+@keyframes rf-fade-slide {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes rf-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+@keyframes rf-flow {
+  to { stroke-dashoffset: -20; }
+}
+
+/* Reduced motion: every animation stops; state is carried by the icon and the words (UX-06). */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .motion-live { animation: none !important; opacity: 1 !important; }
+  .motion-flow { animation: none !important; }
+}
+:root[data-motion='reduce'] *, :root[data-motion='reduce'] *::before, :root[data-motion='reduce'] *::after {
+  animation: none !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Print: always the light palette, no chrome, nothing interactive. */
+@media print {
+  :root, :root[data-theme='dark'] {
+    color-scheme: light;
+    --color-bg: #ffffff; --color-surface: #ffffff; --color-elevated: #ffffff; --color-telemetry: #ffffff;
+    --color-ink: #000000; --color-ink-muted: #2b2f33; --color-ink-subtle: #4a5056;
+    --color-line: #c9ccc6; --color-line-strong: #80878d;
+    --color-brand: #0d6b4f; --color-brand-ink: #ffffff; --color-brand-soft: #e3f1eb;
+    --color-ok: #1b6630; --color-ok-soft: #e2f2e6; --color-warn: #7f4b00; --color-warn-soft: #faedd8;
+    --color-danger: #9a1f1c; --color-danger-soft: #fbe5e4; --color-info: #0c5886; --color-info-soft: #e0eef7;
+    --color-pending: #535b63; --color-pending-soft: #eceeee; --chart-track: #e7e9e5;
+  }
+  .no-print { display: none !important; }
+  .bg-grid { background: none !important; }
+  .panel { break-inside: avoid; box-shadow: none; }
+  a { text-decoration: none; }
+  body { font-size: 11pt; }
+}

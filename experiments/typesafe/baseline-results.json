@@ -1,0 +1,36 @@
+{
+  "n": 24,
+  "accuracy": 0.75,
+  "misses": [
+    {
+      "field": "eth",
+      "label": "SPECIAL_CATEGORY",
+      "got": "NONE"
+    },
+    {
+      "field": "vote_2024",
+      "label": "SPECIAL_CATEGORY",
+      "got": "NONE"
+    },
+    {
+      "field": "q12_other_specify",
+      "label": "PII",
+      "got": "NONE"
+    },
+    {
+      "field": "comments",
+      "label": "SPECIAL_CATEGORY",
+      "got": "NONE"
+    },
+    {
+      "field": "prayer_frequency",
+      "label": "SPECIAL_CATEGORY",
+      "got": "NONE"
+    },
+    {
+      "field": "bmi_band",
+      "label": "SPECIAL_CATEGORY",
+      "got": "PII"
+    }
+  ]
+}

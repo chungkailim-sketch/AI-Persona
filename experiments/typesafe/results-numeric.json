@@ -1,0 +1,14 @@
+{
+  "n": 30,
+  "raw": {
+    "accuracy": 1.0,
+    "mean_confidence_when_wrong": 0.0,
+    "wrong": []
+  },
+  "code_first": {
+    "accuracy": 1.0,
+    "mean_confidence_when_wrong": 0.0,
+    "wrong": []
+  },
+  "pure_code_rule_accuracy": 1.0
+}

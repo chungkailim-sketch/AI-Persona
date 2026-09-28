@@ -1,0 +1,1296 @@
+// RF Persona Intelligence — data model
+// Every entity that carries a claim, a permission or a version is modelled explicitly.
+// Immutability rule: DatasetVersion, PersonaVersion, RunConfig, ModelCall, Finding and AuditEvent
+// are append-only. Corrections create a new version; they never mutate history.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────── Identity & access ───────────────────────────────
+
+enum SystemRole {
+  SUPER_ADMIN
+  PLATFORM_ADMIN
+  RESEARCH_ADMIN
+  PRESET_MANAGER
+  AUDITOR
+  SUPPORT
+  STANDARD_USER
+}
+
+enum ProjectRole {
+  OWNER
+  COLLABORATOR
+  VIEWER
+}
+
+enum UserStatus {
+  INVITED
+  ACTIVE
+  DEACTIVATED
+}
+
+model ApprovedDomain {
+  id        String   @id @default(cuid())
+  domain    String   @unique // exact-match, lowercase
+  note      String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  createdBy String?
+
+  @@index([active])
+}
+
+model User {
+  id           String     @id @default(cuid())
+  email        String     @unique
+  displayName  String?
+  systemRole   SystemRole @default(STANDARD_USER)
+  status       UserStatus @default(INVITED)
+  lastLoginAt  DateTime?
+  /// light | dark | system. Mirrored to a cookie so the first paint is already correct.
+  themePreference String  @default("system")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  deactivatedAt DateTime?
+
+  sessions      Session[]
+  otpChallenges OtpChallenge[]
+  memberships   ProjectMember[]
+  auditEvents   AuditEvent[]
+
+  @@index([status])
+  @@index([systemRole])
+}
+
+/// OTP codes are stored only as a salted hash (scrypt). `codeHash` is never reversible
+/// and the plaintext code never touches the database or the logs (SEC-02).
+model OtpChallenge {
+  id           String    @id @default(cuid())
+  email        String
+  userId       String?
+  user         User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  codeHash     String
+  salt         String
+  expiresAt    DateTime
+  consumedAt   DateTime?
+  attempts     Int       @default(0)
+  maxAttempts  Int       @default(5)
+  requestIpHash String?
+  createdAt    DateTime  @default(now())
+
+  @@index([email, createdAt])
+  @@index([expiresAt])
+}
+
+model Session {
+  id           String    @id @default(cuid())
+  userId       String
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash    String    @unique
+  issuedAt     DateTime  @default(now())
+  lastSeenAt   DateTime  @default(now())
+  idleExpiresAt DateTime
+  absoluteExpiresAt DateTime
+  revokedAt    DateTime?
+  revokedReason String?
+  userAgentHash String?
+
+  @@index([userId, revokedAt])
+}
+
+// ─────────────────────────────── Workspace & projects ───────────────────────────────
+
+model Workspace {
+  id        String    @id @default(cuid())
+  name      String
+  createdAt DateTime  @default(now())
+  projects  Project[]
+}
+
+enum ProjectStatus {
+  DRAFT
+  ACTIVE
+  ARCHIVED
+}
+
+enum WorkflowStep {
+  DATA
+  BRIEF
+  PERSONAS
+  SIMULATION
+  RESULTS
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  status      ProjectStatus @default(DRAFT)
+  currentStep WorkflowStep  @default(DATA)
+  isDemo      Boolean       @default(false) // drives the "Demonstration data" label
+  createdById String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  archivedAt  DateTime?
+
+  members      ProjectMember[]
+  datasetLinks ProjectDataset[]
+  briefs       Brief[]
+  cohorts      Cohort[]
+  runs         Run[]
+  debates      Debate[]
+
+  @@index([workspaceId, status])
+  @@index([createdById])
+}
+
+model ProjectMember {
+  id        String      @id @default(cuid())
+  projectId String
+  project   Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      ProjectRole @default(VIEWER)
+  addedAt   DateTime    @default(now())
+  addedBy   String?
+
+  @@unique([projectId, userId])
+  @@index([userId])
+}
+
+// ─────────────────────────────── Datasets & governance ───────────────────────────────
+
+enum DatasetStatus {
+  AWAITING_UPLOAD
+  UPLOADING
+  SCANNING
+  PARSING
+  PROFILING
+  MAPPING
+  VALIDATING
+  DETECTING_SENSITIVE
+  READY_FOR_REVIEW
+  IMPORTED
+  PARTIALLY_IMPORTED
+  FAILED
+}
+
+enum LawfulBasis {
+  CONSENT
+  CONTRACT
+  LEGITIMATE_INTEREST
+  PUBLIC_TASK
+  LEGAL_OBLIGATION
+  NOT_APPLICABLE_AGGREGATE
+}
+
+enum DataClassification {
+  PUBLIC
+  INTERNAL
+  CLIENT_CONFIDENTIAL
+  RESTRICTED
+}
+
+model Dataset {
+  id          String    @id @default(cuid())
+  workspaceId String
+  name        String
+  isDemo      Boolean   @default(false)
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  versions  DatasetVersion[]
+  projects  ProjectDataset[]
+
+  @@index([workspaceId, deletedAt])
+}
+
+/// Immutable snapshot. Exclusion, redaction or re-mapping creates the next version (DATA-11, DATA-12).
+model DatasetVersion {
+  id          String        @id @default(cuid())
+  datasetId   String
+  dataset     Dataset       @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  versionNo   Int
+  status      DatasetStatus @default(AWAITING_UPLOAD)
+  checksum    String?
+  rowCount    Int?
+  cellCount   Int?
+  parseReport Json?
+  qualityScore Int?         // 0-100, components stored in QualityComponent
+  derivedFromId String?
+  changeNote  String?
+  createdById String
+  createdAt   DateTime      @default(now())
+
+  files       SourceFile[]
+  fields      DatasetField[]
+  chunks      EvidenceChunk[]
+  quality     QualityComponent[]
+  governance  GovernanceRecord?
+  integrity   IntegrityFinding[]
+  runConfigs  RunConfigDataset[]
+  structured  StructuredTable[]
+
+  @@unique([datasetId, versionNo])
+  @@index([status])
+}
+
+model SourceFile {
+  id               String   @id @default(cuid())
+  datasetVersionId String
+  datasetVersion   DatasetVersion @relation(fields: [datasetVersionId], references: [id], onDelete: Cascade)
+  originalName     String
+  storageKey       String   // object-storage adapter key; never a DB blob (prompt §18)
+  mimeType         String
+  byteSize         Int
+  sheetName        String?
+  scanStatus       String   @default("NOT_SCANNED") // records honestly that no real AV ran
+  scanProvider     String   @default("none")
+  extractionStatus String   @default("PENDING")
+  parseError       String?
+  createdAt        DateTime @default(now())
+
+  @@index([datasetVersionId])
+}
+
+enum FieldType {
+  TEXT
+  NUMERIC
+  ORDINAL
+  CATEGORICAL
+  BOOLEAN
+  DATE
+  IDENTIFIER
+  UNKNOWN
+}
+
+enum SensitivityClass {
+  NONE
+  PII
+  SPECIAL_CATEGORY
+}
+
+model DatasetField {
+  id               String   @id @default(cuid())
+  datasetVersionId String
+  datasetVersion   DatasetVersion @relation(fields: [datasetVersionId], references: [id], onDelete: Cascade)
+  name             String
+  sourceName       String
+  type             FieldType @default(UNKNOWN)
+  typeConfidence   Float     @default(0)
+  scalePoints      Int?
+  missingCount     Int       @default(0)
+  missingPct       Float     @default(0)
+  outlierCount     Int       @default(0)
+  distinctCount    Int       @default(0)
+  sensitivity      SensitivityClass @default(NONE)
+  sensitivityReason String?
+  /// Excluded by default when sensitivity != NONE (DATA-09, DATA-10)
+  excluded         Boolean   @default(false)
+  redacted         Boolean   @default(false)
+  inclusionJustification String?
+  constructMappingGrade String? // direct | partial | weak (DATA-20)
+  profile          Json?
+
+  @@index([datasetVersionId])
+  @@index([sensitivity])
+}
+
+model QualityComponent {
+  id               String   @id @default(cuid())
+  datasetVersionId String
+  datasetVersion   DatasetVersion @relation(fields: [datasetVersionId], references: [id], onDelete: Cascade)
+  key              String   // completeness | sample_adequacy | recency | documentation | structural_integrity
+  label            String
+  score            Int
+  weight           Float
+  explanation      String
+
+  @@index([datasetVersionId])
+}
+
+/// Integrity checks that caught real defects in the CBGA source data (DATA-14).
+model IntegrityFinding {
+  id               String   @id @default(cuid())
+  datasetVersionId String
+  datasetVersion   DatasetVersion @relation(fields: [datasetVersionId], references: [id], onDelete: Cascade)
+  check            String   // filename_vs_internal_label | period_gap | uniform_drift | suppression | encoding
+  severity         String   // blocking | warning | info
+  message          String
+  detail           Json?
+  acknowledgedAt   DateTime?
+  acknowledgedBy   String?
+
+  @@index([datasetVersionId, severity])
+}
+
+/// Blocking gate. A dataset without a complete, cleared record cannot be used downstream (DATA-06).
+model GovernanceRecord {
+  id               String   @id @default(cuid())
+  datasetVersionId String   @unique
+  datasetVersion   DatasetVersion @relation(fields: [datasetVersionId], references: [id], onDelete: Cascade)
+  dataOwner        String
+  sourceName       String
+  collectionStart  DateTime?
+  collectionEnd    DateTime?
+  geography        String[]
+  language         String[]
+  methodology      String
+  sampleSize       Int?
+  lawfulBasis      LawfulBasis
+  classification   DataClassification @default(INTERNAL)
+  permittedUses    String[]  // e.g. internal_analysis, client_reporting
+  /// The flag that decides whether this data may ever enter a model prompt.
+  allowModelProcessing Boolean @default(false)
+  restrictions     String?
+  retentionDays    Int       @default(90)
+  expiresAt        DateTime?
+  sensitiveConfirmed Boolean @default(false)
+  confirmedById    String?
+  confirmedAt      DateTime?
+
+  @@index([expiresAt])
+}
+
+model ProjectDataset {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  datasetId  String
+  dataset    Dataset  @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  attachedAt DateTime @default(now())
+
+  @@unique([projectId, datasetId])
+}
+
+/// The atom of evidence lineage. Every citation resolves to one of these (FR-62).
+model EvidenceChunk {
+  id               String   @id @default(cuid())
+  datasetVersionId String
+  datasetVersion   DatasetVersion @relation(fields: [datasetVersionId], references: [id], onDelete: Cascade)
+  locatorType      String   // field | cell | row_range | page | paragraph
+  locator          String   // human-readable, e.g. "Q6/pay_quality/Indonesia/Mar-26"
+  fieldName        String?
+  value            String?  // textual rendering of the value or passage
+  numericValue     Float?
+  baseSize         Int?
+  suppressed       Boolean  @default(false)
+  pageNumber       Int?
+  createdAt        DateTime @default(now())
+
+  evidenceRefs EvidenceRef[]
+
+  @@index([datasetVersionId, locatorType])
+  @@index([fieldName])
+}
+
+// ─────────────────────────────── Brief ───────────────────────────────
+
+enum BriefStatus {
+  DRAFT
+  COMPLETE
+  /// Set when a run has used this brief. A locked brief is never edited in place: changing it
+  /// would alter what a completed run claims to have tested. Changes create a new version.
+  LOCKED
+}
+
+model Brief {
+  id           String      @id @default(cuid())
+  projectId    String
+  project      Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  versionNo    Int         @default(1)
+  status       BriefStatus @default(DRAFT)
+
+  businessContext   String?
+  researchQuestion  String?
+  objective         String?   // drives result templating (§17.1)
+  decisionSupported String?
+  targetAudience    String?
+  markets           String[]
+  geography         String[]
+  languages         String[]
+  culturalContext   String?
+  timePeriod        String?
+  channels          String[]
+  competitors       String[]
+  /// Captured for context and deliberately withheld from evaluator context (FR-16).
+  desiredOutcome    String?
+  evaluationMetrics String[]
+  riskDimensions    String[]
+  constraints       String?
+  exclusions        String[]
+  prohibitedInferences String[]
+  personaCount      Int       @default(12)
+  personaComposition Json?
+  simulationDepth   String    @default("standard")
+  runCount          Int       @default(3)
+  confidenceRequirement String?
+  resultFormat      String?
+  reportAudience    String?
+  coverageAcknowledged Boolean @default(false)
+
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hypotheses Hypothesis[]
+  stimuli    Stimulus[]
+  runs       Run[]
+
+  @@unique([projectId, versionNo])
+}
+
+/// Hypothesis card — the minimum evidence threshold is declared before the run (FR-13).
+model Hypothesis {
+  id                    String  @id @default(cuid())
+  briefId               String
+  brief                 Brief   @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  label                 String
+  statement             String
+  operationalDefinition String?
+  nullHypothesis        String?
+  minimumEvidenceThreshold String
+  alternativeExplanations String[]
+  createdAt             DateTime @default(now())
+
+  @@index([briefId])
+}
+
+model Stimulus {
+  id        String   @id @default(cuid())
+  briefId   String
+  brief     Brief    @relation(fields: [briefId], references: [id], onDelete: Cascade)
+  label     String   // "Variant A"
+  name      String
+  content   String
+  format    String   @default("text") // text | image | file
+  storageKey String?
+  createdAt DateTime @default(now())
+
+  @@index([briefId])
+}
+
+// ─────────────────────────────── Personas ───────────────────────────────
+
+enum PersonaType {
+  CONSUMER
+  PROFESSIONAL
+  MODERATOR
+}
+
+enum PersonaMode {
+  RESPONDENT
+  CLUSTER
+  HYBRID
+  CONFIGURED
+}
+
+enum ApprovalState {
+  DRAFT
+  CANDIDATE
+  APPROVED
+  EXCLUDED
+}
+
+model Cohort {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  name       String
+  mode       PersonaMode @default(HYBRID)
+  generatedAt DateTime @default(now())
+  generationNote String?
+  /// Set when the cohort was built from a population sample; its cells are the personas.
+  populationSampleId String?
+  personas   Persona[]
+  runConfigs RunConfig[]
+  debates    Debate[]
+
+  @@index([projectId])
+}
+
+model Persona {
+  id        String      @id @default(cuid())
+  cohortId  String?
+  cohort    Cohort?     @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  type      PersonaType
+  externalKey String?   // e.g. RESEARCH_ANALYST for professional roles
+  name      String
+  createdAt DateTime    @default(now())
+
+  versions PersonaVersion[]
+
+  @@index([cohortId, type])
+}
+
+model PersonaVersion {
+  id           String        @id @default(cuid())
+  personaId    String
+  persona      Persona       @relation(fields: [personaId], references: [id], onDelete: Cascade)
+  versionNo    Int
+  approval     ApprovalState @default(DRAFT)
+  mode         PersonaMode
+  summary      String?
+  segment      String?
+  weight       Float         @default(0)
+  baseSize     Int?
+  confidence   String        @default("MEDIUM") // HIGH | MEDIUM | LOW
+  coverageNote String?
+  allowedAttributes   String[]
+  disallowedAttributes String[]
+  contradictions String[]
+  purpose      String?
+  /// Professional personas only
+  challengeQuestions String[]
+  biasGuard    String?
+  outputSchemaKey String?
+  isMandatory  Boolean       @default(false)
+  enabled      Boolean       @default(true)
+  diffFromId   String?
+  createdById  String?
+  createdAt    DateTime      @default(now())
+
+  attributes PersonaAttribute[]
+
+  @@unique([personaId, versionNo])
+  @@index([approval])
+}
+
+enum AttributeOrigin {
+  OBSERVED
+  DERIVED
+  INFERRED
+  USER_ENTERED
+  SIMULATED
+}
+
+model PersonaAttribute {
+  id               String          @id @default(cuid())
+  personaVersionId String
+  personaVersion   PersonaVersion  @relation(fields: [personaVersionId], references: [id], onDelete: Cascade)
+  group            String          // attitudes | behaviours | motivations | barriers | needs | media
+  key              String
+  label            String
+  value            String
+  origin           AttributeOrigin
+  confidence       String          @default("MEDIUM")
+  baseSize         Int?
+  locked           Boolean         @default(false) // bound directly to evidence
+
+  evidenceRefs EvidenceRef[]
+
+  @@index([personaVersionId, group])
+}
+
+// ─────────────────────────────── Runs ───────────────────────────────
+
+enum RunStatus {
+  DRAFT
+  VALIDATING
+  QUEUED
+  PREPARING_CONTEXT
+  GENERATING_PERSONAS
+  INDEPENDENT_ASSESSMENT
+  CONSUMER_REACTION
+  CROSS_EXAMINATION
+  REVISION
+  SYNTHESIS
+  REPORT
+  COMPLETED
+  COMPLETED_WITH_WARNINGS
+  CANCELLED
+  FAILED
+}
+
+enum SimulationMode {
+  SINGLE_CONCEPT
+  AB_COMPARISON
+  MULTIVARIATE
+  STRUCTURED_SURVEY
+  OPEN_ENDED
+  PERSONA_INTERVIEW
+  PROFESSIONAL_PANEL
+  RED_TEAM
+  SCENARIO_PLANNING
+  FOCUS_GROUP
+  COUNTERFACTUAL
+  SENSITIVITY
+  FORECAST
+}
+
+model Run {
+  id          String    @id @default(cuid())
+  projectId   String
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  briefId     String?
+  brief       Brief?    @relation(fields: [briefId], references: [id], onDelete: SetNull)
+  status      RunStatus @default(DRAFT)
+  mode        SimulationMode
+  startedAt   DateTime?
+  completedAt DateTime?
+  cancelledAt DateTime?
+  cancelRequested Boolean @default(false)
+  failureReason String?
+  isPartial   Boolean   @default(false)
+  isMock      Boolean   @default(true) // true when the mock model provider produced it
+  createdById String
+  createdAt   DateTime  @default(now())
+
+  config      RunConfig?
+  steps       RunStep[]
+  jobs        Job[]
+  modelCalls  ModelCall[]
+  responses   SimulatedResponse[]
+  findings    Finding[]
+  metrics     AntiHerdMetric[]
+  synthesis   Synthesis?
+  exports     ReportExport[]
+
+  @@index([projectId, status])
+  @@index([status, createdAt])
+}
+
+/// Frozen configuration — the basis of reproducibility (FR-50).
+model RunConfig {
+  id          String   @id @default(cuid())
+  runId       String   @unique
+  run         Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  cohortId    String?
+  cohort      Cohort?  @relation(fields: [cohortId], references: [id], onDelete: SetNull)
+  planHash    String
+  seeds       Int[]
+  runCount    Int      @default(3)
+  modelId     String
+  modelProvider String // mock | anthropic
+  temperature Float    @default(0.7)
+  maxTokens   Int      @default(4000)
+  promptVersions Json   // { stageKey: templateVersion }
+  metrics     String[]
+  evaluatorKeys String[]
+  stimulusIds String[]
+  blindLabelMap Json?   // stored, never sent to the model (FR-48)
+  budgetCapUsd Float?
+  estimatedCostUsd Float?
+  safetySettings Json?
+  stopConditions Json?
+  forecastGate Json?    // gate answers when a forecast was requested (FR-51)
+  confirmedById String?
+  confirmedAt DateTime?
+
+  datasets RunConfigDataset[]
+}
+
+model RunConfigDataset {
+  id               String @id @default(cuid())
+  runConfigId      String
+  runConfig        RunConfig @relation(fields: [runConfigId], references: [id], onDelete: Cascade)
+  datasetVersionId String
+  datasetVersion   DatasetVersion @relation(fields: [datasetVersionId], references: [id], onDelete: Restrict)
+
+  @@unique([runConfigId, datasetVersionId])
+}
+
+/// One row per state-machine transition — the resume point after a worker restart.
+model RunStep {
+  id          String   @id @default(cuid())
+  runId       String
+  run         Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  stage       RunStatus
+  sequence    Int
+  status      String   // pending | running | completed | failed | skipped
+  attempt     Int      @default(1)
+  startedAt   DateTime?
+  completedAt DateTime?
+  durationMs  Int?
+  outputRef   Json?
+  errorCategory String?
+  errorMessage String?
+
+  @@unique([runId, sequence])
+  @@index([runId, stage])
+}
+
+enum JobStatus {
+  PENDING
+  CLAIMED
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELLED
+  STALLED
+}
+
+/// Postgres-backed queue (SKIP LOCKED). Survives restarts; no browser tab required.
+model Job {
+  id           String    @id @default(cuid())
+  runId        String?
+  run          Run?      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  kind         String    // ingest | simulate | export
+  status       JobStatus @default(PENDING)
+  priority     Int       @default(100)
+  attempt      Int       @default(0)
+  maxAttempts  Int       @default(3)
+  availableAt  DateTime  @default(now())
+  claimedAt    DateTime?
+  claimedBy    String?
+  heartbeatAt  DateTime?
+  completedAt  DateTime?
+  input        Json
+  output       Json?
+  errorCategory String?
+  errorMessage String?
+  idempotencyKey String?  @unique
+  createdAt    DateTime  @default(now())
+
+  @@index([status, availableAt])
+  @@index([runId])
+}
+
+/// One row per provider call. No chain-of-thought is ever stored here (AI-16).
+model ModelCall {
+  id             String   @id @default(cuid())
+  runId          String?
+  run            Run?     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  debateId       String?
+  debate         Debate?  @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  stage          String
+  personaKey     String?
+  provider       String
+  modelId        String
+  promptTemplate String
+  promptVersion  String
+  seed           Int?
+  inputTokens    Int      @default(0)
+  outputTokens   Int      @default(0)
+  costUsd        Float    @default(0)
+  latencyMs      Int      @default(0)
+  attempt        Int      @default(1)
+  outcome        String   // ok | repaired | refused | invalid | timeout | rate_limited | error
+  errorCategory  String?
+  schemaValid    Boolean  @default(true)
+  evidenceManifestHash String?
+  createdAt      DateTime @default(now())
+
+  @@index([runId, stage])
+  @@index([debateId])
+  @@index([createdAt])
+}
+
+model SimulatedResponse {
+  id          String   @id @default(cuid())
+  runId       String
+  run         Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  personaKey  String
+  stimulusId  String?
+  seed        Int
+  responseType String  // reaction | survey_item | interview_turn
+  content     String
+  sentiment   String?
+  scores      Json?
+  /// Always true for generated text; drives the "[simulated]" label (FR-65)
+  isSimulated Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([runId, personaKey])
+}
+
+enum EvidenceGrade {
+  L1_OBSERVED
+  L2_DERIVED
+  L3_PERSONA_SIMULATION
+  L4_SCENARIO_INFERENCE
+  L5_SPECULATION
+}
+
+enum FindingClassification {
+  CONFIRMED
+  PROBABLE
+  CONTESTED
+  MINORITY_RETAINED
+  DISCARDED
+}
+
+model Finding {
+  id             String   @id @default(cuid())
+  runId          String
+  run            Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  authorPersonaKey String
+  title          String
+  claim          String
+  evidenceGrade  EvidenceGrade
+  confidence     String   // HIGH | MEDIUM | LOW
+  severity       String?
+  judgementOnly  Boolean  @default(false)
+  baseSizes      Json?
+  segments       String[]
+  classification FindingClassification?
+  consensusRatio Float?
+  priorityScore  Float?
+  materiality    String?
+  limitations    String?
+  recommendation String?
+  round          Int      @default(1)
+  revisedFromId  String?
+  revisionJustification String?
+  createdAt      DateTime @default(now())
+
+  evidenceRefs EvidenceRef[]
+  votes        PersonaVote[]
+
+  @@index([runId, classification])
+}
+
+/// A pointer from any claim to a citable chunk. Personas, attributes and findings all use it.
+model EvidenceRef {
+  id                 String   @id @default(cuid())
+  evidenceChunkId    String
+  evidenceChunk      EvidenceChunk @relation(fields: [evidenceChunkId], references: [id], onDelete: Cascade)
+  findingId          String?
+  finding            Finding? @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  personaAttributeId String?
+  personaAttribute   PersonaAttribute? @relation(fields: [personaAttributeId], references: [id], onDelete: Cascade)
+  relevance          Float    @default(1)
+  note               String?
+
+  @@index([findingId])
+  @@index([personaAttributeId])
+}
+
+enum VoteType {
+  CONFIRM
+  DISPUTE
+  ABSTAIN
+}
+
+model PersonaVote {
+  id         String   @id @default(cuid())
+  findingId  String
+  finding    Finding  @relation(fields: [findingId], references: [id], onDelete: Cascade)
+  personaKey String
+  vote       VoteType
+  round      Int      @default(2)
+  challenge  String?
+  citedEvidence String?
+  createdAt  DateTime @default(now())
+
+  @@unique([findingId, personaKey, round])
+  @@index([findingId])
+}
+
+/// Computed in code from stored votes — never by a model (AI-13).
+model AntiHerdMetric {
+  id               String   @id @default(cuid())
+  runId            String
+  run              Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  flipRate         Float
+  voteEntropy      Float
+  convergenceRounds Int
+  dissentSurvival  Float
+  warningRaised    Boolean  @default(false)
+  computedAt       DateTime @default(now())
+
+  @@index([runId])
+}
+
+model Synthesis {
+  id             String   @id @default(cuid())
+  runId          String   @unique
+  run            Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  executiveSummary String
+  directAnswer   String
+  qualifiedRecommendation String
+  confidenceBasis String
+  groupthinkWarning Boolean @default(false)
+  overrideNote   String?   // when a minority finding outranked a majority interpretation
+  limitations    String
+  createdAt      DateTime @default(now())
+
+  recommendations Recommendation[]
+  dissents        Dissent[]
+}
+
+model Recommendation {
+  id          String   @id @default(cuid())
+  synthesisId String
+  synthesis   Synthesis @relation(fields: [synthesisId], references: [id], onDelete: Cascade)
+  rank        Int
+  title       String
+  detail      String
+  expectedImpact Float
+  confidenceWeight Float
+  consensusWeight Float
+  rankScore   Float
+  executionDifficulty String?
+  kind        String   @default("action") // action | revision | next_experiment | real_world_validation
+
+  @@index([synthesisId, rank])
+}
+
+model Dissent {
+  id          String   @id @default(cuid())
+  synthesisId String
+  synthesis   Synthesis @relation(fields: [synthesisId], references: [id], onDelete: Cascade)
+  personaKey  String
+  position    String
+  evidenceNote String?
+  findingId   String?
+
+  @@index([synthesisId])
+}
+
+model ReportExport {
+  id          String   @id @default(cuid())
+  runId       String
+  run         Run      @relation(fields: [runId], references: [id], onDelete: Cascade)
+  format      String   // pdf | json | csv | deck | bundle
+  storageKey  String?
+  blocked     Boolean  @default(false)
+  blockReason String?
+  reviewerAckById String?
+  reviewerAckAt DateTime?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([runId])
+}
+
+// ─────────────────────────────── Admin configuration ───────────────────────────────
+
+model PromptTemplate {
+  id          String   @id @default(cuid())
+  key         String   // brief_analysis | persona_generation | professional_assessment | ...
+  version     String
+  body        String
+  outputSchemaKey String
+  changelog   String?
+  status      String   @default("draft") // draft | approved | active | rolled_back
+  approvedById String?
+  approvedAt  DateTime?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@unique([key, version])
+  @@index([key, status])
+}
+
+model ModelSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique // default_model | fallback_model
+  provider    String
+  modelId     String
+  temperature Float    @default(0.7)
+  maxTokens   Int      @default(4000)
+  active      Boolean  @default(true)
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+model PersonaTemplate {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  name        String
+  type        PersonaType
+  purpose     String
+  focusAreas  String[]
+  challengeQuestions String[]
+  biasGuard   String
+  outputSchemaKey String
+  requiresCitation Boolean @default(true)
+  canBlockExport Boolean  @default(false)
+  isMandatory Boolean  @default(false)
+  enabledByDefault Boolean @default(true)
+  version     Int      @default(1)
+  updatedAt   DateTime @updatedAt
+}
+
+model Preset {
+  id          String   @id @default(cuid())
+  kind        String   // run | dataset | metric
+  name        String
+  config      Json
+  lockedFields String[]
+  version     Int      @default(1)
+  active      Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([kind, active])
+}
+
+model EvaluationMetric {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  label       String
+  definition  String
+  scaleMin    Int      @default(0)
+  scaleMax    Int      @default(100)
+  applicableModes SimulationMode[]
+  active      Boolean  @default(true)
+}
+
+model FeatureFlag {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  description String
+  enabled     Boolean  @default(false)
+  /// Safety controls are recorded as locked flags so the admin console shows them present and
+  /// immutable rather than absent. No role may clear this; see canDisableControl().
+  locked      Boolean  @default(false)
+  environment String   @default("all")
+  updatedById String?
+  updatedAt   DateTime @updatedAt
+}
+
+model RetentionPolicy {
+  id             String   @id @default(cuid())
+  classification DataClassification @unique
+  retentionDays  Int
+  hardDelete     Boolean  @default(true)
+  updatedById    String?
+  updatedAt      DateTime @updatedAt
+}
+
+/// Append-only. High-impact changes record before/after (ADM-14, prompt §19).
+model AuditEvent {
+  id          String   @id @default(cuid())
+  actorUserId String?
+  actor       User?    @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+  actorEmail  String?
+  action      String   // e.g. dataset.version.created
+  targetType  String
+  targetId    String?
+  projectId   String?
+  beforeValue Json?
+  afterValue  Json?
+  reason      String?
+  ipHash      String?
+  correlationId String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorUserId])
+  @@index([targetType, targetId])
+  @@index([projectId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId, readAt])
+}
+
+/// Privacy-preserving product analytics. No content, no dataset values (ANA-02).
+model AnalyticsEvent {
+  id          String   @id @default(cuid())
+  name        String
+  userId      String?
+  projectId   String?
+  runId       String?
+  sessionId   String?
+  properties  Json?
+  appVersion  String?
+  createdAt   DateTime @default(now())
+
+  @@index([name, createdAt])
+}
+
+/// Append-only operational telemetry (ANA-04). One row per real state transition in ingestion,
+/// persona generation and runs. Never carries source values, prompts or model reasoning — only
+/// operational facts and short, pre-written summaries. `seq` is the ordering and resume cursor.
+model TelemetryEvent {
+  seq              BigInt   @id @default(autoincrement())
+  eventId          String   @unique
+  eventType        String
+  sourceType       String   // dataset | cohort | run | job
+  sourceId         String
+  projectId        String
+  datasetVersionId String?
+  cohortId         String?
+  runId            String?
+  stage            String
+  status           String   // pending | active | completed | warning | failed | cancelled | retryable | skipped
+  message          String
+  progressCurrent  Int?
+  progressTotal    Int?
+  metricName       String?
+  metricValue      Float?
+  severity         String   @default("info") // info | notice | warning | error
+  retryable        Boolean  @default(false)
+  correlationId    String?
+  isMock           Boolean  @default(false)
+  safeMetadata     Json?
+  createdAt        DateTime @default(now())
+
+  @@index([projectId, seq])
+  @@index([runId, seq])
+  @@index([datasetVersionId, seq])
+  @@index([cohortId, seq])
+}
+
+/// A trend / forecast analysis of one dataset version (PRD §24.8, FR-51). The gate record is kept
+/// whether or not a forecast was produced — a refusal is a result, not a failure.
+model ForecastAnalysis {
+  id               String    @id @default(cuid())
+  projectId        String
+  datasetVersionId String
+  status           String    @default("QUEUED") // QUEUED | RUNNING | COMPLETED | FAILED
+  horizon          Int       @default(1)
+  groups           String[]
+  seriesCount      Int       @default(0)
+  droppedSeries    Int       @default(0)
+  periods          String[]
+  gatePassed       Boolean   @default(false)
+  gate             Json?
+  backtest         Json?
+  trends           Json?
+  forecasts        Json?
+  modelName        String    @default("baseline")
+  modelVersion     String?
+  failureReason    String?
+  createdById      String
+  createdAt        DateTime  @default(now())
+  completedAt      DateTime?
+
+  @@index([projectId, createdAt])
+  @@index([datasetVersionId])
+}
+
+/// A deterministic synthetic population drawn from a dataset's segment marginals (MatrAIx-style
+/// quotas and sampling). Members are regenerated from (spec, seed) rather than stored; what is
+/// stored is what a reviewer needs — quotas, calibration against the source, and examples.
+model PopulationSample {
+  id               String   @id @default(cuid())
+  projectId        String
+  datasetVersionId String
+  size             Int
+  seed             Int
+  primaryGroup     String
+  secondaryGroup   String?
+  spec             Json
+  quotas           Json
+  calibration      Json
+  examples         Json
+  assumptions      String[]
+  createdById      String
+  createdAt        DateTime @default(now())
+
+  @@index([projectId, createdAt])
+}
+
+/// A second-opinion judgement from an external judge model (TypeSafe System One). Advisory only:
+/// a judgement can add a warning or tighten a default (exclude a field), never loosen one or change
+/// a recorded stance. Only field names, stimulus text and persona rationales are ever sent.
+model JudgeCheck {
+  id         String   @id @default(cuid())
+  projectId  String
+  kind       String   // sensitive_field | stimulus_injection | stance_consistency
+  targetType String   // datasetField | stimulus | personaVote
+  targetId   String
+  provider   String   // typesafe | fixture
+  model      String
+  verdict    String
+  confidence Float?
+  flagged    Boolean  @default(false)
+  detail     Json?
+  latencyMs  Int?
+  createdAt  DateTime @default(now())
+
+  @@index([projectId, kind, createdAt])
+  @@index([targetType, targetId])
+}
+
+/// A table the structuring stage produced from an upload: tidy, typed and ready to load elsewhere.
+model StructuredTable {
+  id               String         @id @default(cuid())
+  datasetVersionId String
+  datasetVersion   DatasetVersion @relation(fields: [datasetVersionId], references: [id], onDelete: Cascade)
+  name             String // identifier, also the exported file name
+  title            String
+  kind             String // survey_long | question_index | tabular
+  isPrimary        Boolean        @default(false) // the table downstream analysis reads
+  storageKey       String
+  byteSize         Int            @default(0)
+  rowCount         Int
+  columns          Json // StructuredColumn[] — the data dictionary
+  preview          Json // first rows, for display without reading the file
+  sourceFiles      String[]
+  notes            String[]
+  createdAt        DateTime       @default(now())
+
+  @@unique([datasetVersionId, name])
+  @@index([datasetVersionId])
+}
+
+/// A persona agent-swarm debate on a motion, run against an approved cohort and cleared evidence.
+model Debate {
+  id            String    @id @default(cuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cohortId      String
+  cohort        Cohort    @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  /// A completed simulation whose synthesis is given to the swarm as context, if one was chosen.
+  contextRunId  String?
+  topic         String
+  hypothesis    String?
+  focusSegments String[]
+  rounds        Int       @default(2)
+  seed          Int
+  status        String    @default("QUEUED") // QUEUED | RUNNING | COMPLETED | FAILED
+  phase         String?
+  isMock        Boolean   @default(true)
+  agents        Json? // roster: key, name, role, goal, backstory
+  evidence      Json? // what the swarm was shown: sources, statements, manifest hashes
+  metrics       Json? // stance movement, consensus, herding checks
+  conclusion    Json?
+  spendUsd      Float     @default(0)
+  failureReason String?
+  createdById   String
+  createdAt     DateTime  @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  turns      DebateTurn[]
+  modelCalls ModelCall[]
+
+  @@index([projectId, createdAt])
+}
+
+/// One contribution to a debate, in the order it was made.
+model DebateTurn {
+  id          String   @id @default(cuid())
+  debateId    String
+  debate      Debate   @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  seq         Int
+  round       Int      @default(0)
+  phase       String // FRAMING | OPENING | EVIDENCE_REVIEW | MODERATION | REBUTTAL | CHALLENGE | CLOSING | VERDICT
+  agentKey    String
+  agentName   String
+  agentRole   String
+  stance      String? // support | oppose | undecided
+  confidence  Float?
+  addressedTo String[]
+  content     Json
+  ok          Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@unique([debateId, seq])
+}

@@ -1,0 +1,25 @@
+# Postgres for local development only.
+#
+# The password here is not a secret: this container listens on 127.0.0.1 and holds
+# demonstration data. Nothing in it is shared with any deployed environment.
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: rfpi-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: rfpi
+    ports:
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - rfpi-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  rfpi-pgdata:
