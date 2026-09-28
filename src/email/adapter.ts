@@ -5,9 +5,9 @@
  * to the caller, so the code cannot reach the browser even by accident, and `loadEnv()` refuses
  * `EMAIL_PROVIDER=dev` in production — so this path cannot be reached from a production deploy.
  *
- * No transactional provider is configured in this build. Selecting one without wiring it fails
- * loudly at send time rather than silently dropping mail: a user who never receives a code, with
- * no error anywhere, is the worst possible failure for a passwordless system.
+ * Postmark and SendGrid are wired (EMAIL_API_KEY, EMAIL_FROM). Any failure to hand a message to the
+ * provider throws, rather than silently dropping mail: a user who never receives a code, with no
+ * error anywhere, is the worst possible failure for a passwordless system.
  */
 import { env } from '@/lib/env';
 
@@ -52,12 +52,45 @@ class UnconfiguredAdapter implements EmailAdapter {
   }
 }
 
+/** Transactional email over the provider's HTTPS API. The provider's error body is never passed on. */
+class HttpEmailAdapter implements EmailAdapter {
+  constructor(readonly name: 'postmark' | 'sendgrid') {}
+
+  async send(message: EmailMessage): Promise<void> {
+    const e = env();
+    if (!e.EMAIL_API_KEY) throw new Error(`EMAIL_PROVIDER=${this.name} requires EMAIL_API_KEY.`);
+    const response =
+      this.name === 'postmark'
+        ? await fetch('https://api.postmarkapp.com/email', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', accept: 'application/json', 'X-Postmark-Server-Token': e.EMAIL_API_KEY },
+            body: JSON.stringify({ From: e.EMAIL_FROM, To: message.to, Subject: message.subject, TextBody: message.text, MessageStream: 'outbound' }),
+          })
+        : await fetch('https://api.sendgrid.com/v3/mail/send', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', authorization: `Bearer ${e.EMAIL_API_KEY}` },
+            body: JSON.stringify({
+              personalizations: [{ to: [{ email: message.to }] }],
+              from: { email: e.EMAIL_FROM },
+              subject: message.subject,
+              content: [{ type: 'text/plain', value: message.text }],
+            }),
+          });
+    if (!response.ok) throw new Error(`${this.name} refused the message (HTTP ${response.status}).`);
+  }
+}
+
 let adapter: EmailAdapter | null = null;
 
 export function emailAdapter(): EmailAdapter {
   if (adapter) return adapter;
   const provider = env().EMAIL_PROVIDER;
-  adapter = provider === 'dev' ? new DevLogAdapter() : new UnconfiguredAdapter(provider);
+  adapter =
+    provider === 'dev'
+      ? new DevLogAdapter()
+      : provider === 'postmark' || provider === 'sendgrid'
+        ? new HttpEmailAdapter(provider)
+        : new UnconfiguredAdapter(provider);
   return adapter;
 }
 

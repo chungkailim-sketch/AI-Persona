@@ -12,6 +12,7 @@
 import { mkdir, readFile, writeFile, unlink } from 'node:fs/promises';
 import { createHash, randomUUID } from 'node:crypto';
 import path from 'node:path';
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import { env } from '@/lib/env';
 
 export interface StoredObject {
@@ -81,12 +82,57 @@ class UnconfiguredAdapter implements StorageAdapter {
   async remove(): Promise<void> { this.fail(); }
 }
 
+/**
+ * S3-compatible object storage — AWS S3, or a Railway bucket, R2 or MinIO through
+ * `OBJECT_STORAGE_ENDPOINT` (path-style addressing, which those services expect).
+ */
+class S3Adapter implements StorageAdapter {
+  readonly name = 's3';
+  private readonly client: S3Client;
+  private readonly bucket: string;
+
+  constructor() {
+    const e = env();
+    if (!e.OBJECT_STORAGE_BUCKET || !e.OBJECT_STORAGE_ACCESS_KEY_ID || !e.OBJECT_STORAGE_SECRET_ACCESS_KEY) {
+      throw new Error('OBJECT_STORAGE_PROVIDER=s3 requires OBJECT_STORAGE_BUCKET, OBJECT_STORAGE_ACCESS_KEY_ID and OBJECT_STORAGE_SECRET_ACCESS_KEY.');
+    }
+    this.bucket = e.OBJECT_STORAGE_BUCKET;
+    this.client = new S3Client({
+      region: e.OBJECT_STORAGE_REGION || 'auto',
+      endpoint: e.OBJECT_STORAGE_ENDPOINT || undefined,
+      forcePathStyle: Boolean(e.OBJECT_STORAGE_ENDPOINT),
+      credentials: { accessKeyId: e.OBJECT_STORAGE_ACCESS_KEY_ID, secretAccessKey: e.OBJECT_STORAGE_SECRET_ACCESS_KEY },
+    });
+  }
+
+  async put(prefix: string, bytes: Buffer): Promise<StoredObject> {
+    const key = newKey(prefix);
+    await this.client.send(new PutObjectCommand({ Bucket: this.bucket, Key: key, Body: bytes }));
+    return { key, byteSize: bytes.byteLength, checksum: createHash('sha256').update(bytes).digest('hex') };
+  }
+
+  async get(key: string): Promise<Buffer> {
+    try {
+      const out = await this.client.send(new GetObjectCommand({ Bucket: this.bucket, Key: key }));
+      return Buffer.from(await out.Body!.transformToByteArray());
+    } catch (e) {
+      // Same shape as a missing local file, so callers treat "object gone" identically everywhere.
+      if ((e as { name?: string }).name === 'NoSuchKey') throw Object.assign(new Error(`No stored object ${key}`), { code: 'ENOENT' });
+      throw e;
+    }
+  }
+
+  async remove(key: string): Promise<void> {
+    await this.client.send(new DeleteObjectCommand({ Bucket: this.bucket, Key: key })).catch(() => undefined);
+  }
+}
+
 let adapter: StorageAdapter | null = null;
 
 export function storage(): StorageAdapter {
   if (adapter) return adapter;
   const provider = env().OBJECT_STORAGE_PROVIDER;
-  adapter = provider === 'local' ? new LocalDiskAdapter() : new UnconfiguredAdapter(provider);
+  adapter = provider === 'local' ? new LocalDiskAdapter() : provider === 's3' ? new S3Adapter() : new UnconfiguredAdapter(provider);
   return adapter;
 }
 
