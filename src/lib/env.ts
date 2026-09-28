@@ -23,9 +23,14 @@ const schema = z.object({
   AI_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.7),
   AI_RUN_BUDGET_USD: z.coerce.number().nonnegative().default(5),
   AI_PROJECT_MONTHLY_BUDGET_USD: z.coerce.number().nonnegative().default(200),
-  EMAIL_PROVIDER: z.enum(['dev', 'postmark', 'ses', 'sendgrid']).default('dev'),
+  EMAIL_PROVIDER: z.enum(['dev', 'postmark', 'ses', 'sendgrid', 'smtp']).default('dev'),
   EMAIL_FROM: z.string().default('no-reply@example.com'),
   EMAIL_API_KEY: z.string().optional(),
+  // SMTP relay (EMAIL_PROVIDER=smtp). Mailchimp Transactional: smtp.mandrillapp.com, 587, any
+  // username, and a Mandrill API key as the password (EMAIL_API_KEY).
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.string().optional(),
   OBJECT_STORAGE_PROVIDER: z.enum(['local', 's3']).default('local'),
   OBJECT_STORAGE_BUCKET: z.string().optional(),
   OBJECT_STORAGE_REGION: z.string().optional(),
@@ -102,6 +107,9 @@ function productionGuards(env: AppEnv): string[] {
     );
   }
   if (env.EMAIL_PROVIDER === 'dev') issues.push('EMAIL_PROVIDER=dev is not permitted in production — OTP codes would be written to logs');
+  if (env.EMAIL_PROVIDER === 'smtp' && (!env.SMTP_HOST || !env.SMTP_USER || !env.EMAIL_API_KEY)) {
+    issues.push('EMAIL_PROVIDER=smtp requires SMTP_HOST, SMTP_USER and EMAIL_API_KEY (the SMTP password)');
+  }
   if (env.OBJECT_STORAGE_PROVIDER === 'local') issues.push('OBJECT_STORAGE_PROVIDER=local is not permitted in production — uploads would not survive a redeploy');
   if (env.SESSION_SECRET.startsWith('replace-with')) issues.push('SESSION_SECRET is still the placeholder value');
   if (env.IP_HASH_PEPPER === 'dev-pepper-change-me') issues.push('IP_HASH_PEPPER is still the placeholder value');

@@ -5,10 +5,12 @@
  * to the caller, so the code cannot reach the browser even by accident, and `loadEnv()` refuses
  * `EMAIL_PROVIDER=dev` in production — so this path cannot be reached from a production deploy.
  *
- * Postmark and SendGrid are wired (EMAIL_API_KEY, EMAIL_FROM). Any failure to hand a message to the
+ * Postmark and SendGrid are wired (EMAIL_API_KEY, EMAIL_FROM), and so is any SMTP relay such as
+ * Mailchimp Transactional (SMTP_HOST, SMTP_PORT, SMTP_USER, with EMAIL_API_KEY as the password). Any failure to hand a message to the
  * provider throws, rather than silently dropping mail: a user who never receives a code, with no
  * error anywhere, is the worst possible failure for a passwordless system.
  */
+import nodemailer, { type Transporter } from 'nodemailer';
 import { env } from '@/lib/env';
 
 export interface EmailMessage {
@@ -80,6 +82,33 @@ class HttpEmailAdapter implements EmailAdapter {
   }
 }
 
+/** Any SMTP relay. Port 465 uses TLS from the start; other ports must upgrade with STARTTLS. */
+class SmtpEmailAdapter implements EmailAdapter {
+  readonly name = 'smtp';
+  private transport: Transporter | null = null;
+
+  async send(message: EmailMessage): Promise<void> {
+    const e = env();
+    if (!e.SMTP_HOST || !e.SMTP_USER || !e.EMAIL_API_KEY) {
+      throw new Error('EMAIL_PROVIDER=smtp requires SMTP_HOST, SMTP_USER and EMAIL_API_KEY.');
+    }
+    this.transport ??= nodemailer.createTransport({
+      host: e.SMTP_HOST,
+      port: e.SMTP_PORT,
+      secure: e.SMTP_PORT === 465,
+      requireTLS: e.SMTP_PORT !== 465,
+      auth: { user: e.SMTP_USER, pass: e.EMAIL_API_KEY },
+    });
+    try {
+      await this.transport.sendMail({ from: e.EMAIL_FROM, to: message.to, subject: message.subject, text: message.text });
+    } catch (err) {
+      // The server's reply can echo credentials or addresses; report only its status code.
+      const code = (err as { responseCode?: number }).responseCode;
+      throw new Error(`smtp refused the message${code ? ` (SMTP ${code})` : ''}.`);
+    }
+  }
+}
+
 let adapter: EmailAdapter | null = null;
 
 export function emailAdapter(): EmailAdapter {
@@ -90,6 +119,8 @@ export function emailAdapter(): EmailAdapter {
       ? new DevLogAdapter()
       : provider === 'postmark' || provider === 'sendgrid'
         ? new HttpEmailAdapter(provider)
+        : provider === 'smtp'
+          ? new SmtpEmailAdapter()
         : new UnconfiguredAdapter(provider);
   return adapter;
 }
