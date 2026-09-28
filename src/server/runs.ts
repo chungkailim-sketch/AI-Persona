@@ -35,6 +35,9 @@ export interface RunPlan {
   briefId: string;
   /** The stimuli the plan hash covers; recorded on the run so results can say what was tested. */
   stimulusIds: string[];
+  /** The brief hypothesis the run tests. */
+  hypothesisId: string;
+  hypothesisLabel: string;
   modelProvider: string;
   modelId: string;
   seeds: number[];
@@ -106,7 +109,7 @@ export async function planRun(
   user: SessionUser,
   projectId: string,
   cohortId: string,
-  options: { seed?: number; budgetCapUsd?: number } = {},
+  options: { seed?: number; budgetCapUsd?: number; hypothesisId?: string } = {},
 ): Promise<RunPlan> {
   const ctx = await authContextFor(user, projectId);
   if (!can(ctx, 'simulation.run', projectId)) {
@@ -125,8 +128,12 @@ export async function planRun(
   const brief = await prisma.brief.findFirstOrThrow({
     where: { projectId },
     orderBy: { versionNo: 'desc' },
-    include: { stimuli: true },
+    include: { stimuli: true, hypotheses: { orderBy: { createdAt: 'asc' } } },
   });
+  const hypothesis = options.hypothesisId
+    ? brief.hypotheses.find((h) => h.id === options.hypothesisId)
+    : brief.hypotheses[0];
+  if (!hypothesis) throw new RunRefused(['That hypothesis is not part of this project\u2019s brief.']);
 
   const links = await prisma.projectDataset.findMany({
     where: { projectId },
@@ -143,11 +150,9 @@ export async function planRun(
   const provider = modelProvider();
   const seed = options.seed ?? 42;
 
-  // Calls: one independent assessment and one revision per persona, a reaction per persona when a
-  // stimulus exists, and roughly half the panel challenging.
-  const hasStimulus = brief.stimuli.length > 0;
-  const estimatedCalls =
-    personaCount * 2 + (hasStimulus ? personaCount : 0) + Math.ceil(personaCount / 2);
+  // Calls: one independent assessment, one reaction and one revision per persona, and roughly half
+  // the panel challenging. (With no stimulus, personas react to the hypothesis itself.)
+  const estimatedCalls = personaCount * 3 + Math.ceil(personaCount / 2);
 
   // Rough, and labelled as rough wherever it is shown. The evidence block dominates the input.
   const contextTokens = 2500;
@@ -165,6 +170,7 @@ export async function planRun(
     seeds: [seed],
     promptVersion: PROMPT_VERSION,
     stimulusIds: brief.stimuli.map((s) => s.id),
+    hypothesisId: hypothesis.id,
   });
 
   return {
@@ -174,6 +180,8 @@ export async function planRun(
     datasetVersionIds,
     briefId: brief.id,
     stimulusIds: brief.stimuli.map((s) => s.id),
+    hypothesisId: hypothesis.id,
+    hypothesisLabel: `${hypothesis.label}: ${hypothesis.statement}`,
     modelProvider: provider.name,
     modelId: provider.modelId,
     seeds: [seed],
@@ -217,6 +225,7 @@ export async function createRun(
         // Found in an end-to-end run: the stimulus was in the plan hash and the orchestrator
         // reacted to it, but it was never recorded here, so the results said "no stimulus".
         stimulusIds: plan.stimulusIds,
+        hypothesisId: plan.hypothesisId,
         seeds: plan.seeds,
         modelId: plan.modelId,
         modelProvider: plan.modelProvider,
@@ -361,7 +370,7 @@ export async function listRuns(user: SessionUser, projectId: string) {
     where: { projectId },
     orderBy: { createdAt: 'desc' },
     include: {
-      config: { select: { planHash: true, estimatedCostUsd: true, confirmedAt: true } },
+      config: { select: { planHash: true, estimatedCostUsd: true, confirmedAt: true, hypothesisId: true } },
       steps: { orderBy: { sequence: 'asc' } },
       _count: { select: { findings: true, modelCalls: true } },
     },

@@ -120,7 +120,9 @@ export function GenerateCohortForm({
       <input type="hidden" name="projectId" value={projectId} />
 
       <Field id="datasetVersionId" label="Build from" required>
+        <input type="hidden" name="allIds" value={usable.map((d) => d.id).join(',')} />
         <Select id="datasetVersionId" name="datasetVersionId" required>
+          {usable.length > 1 && <option value="__all__">All cleared datasets ({usable.length}) — one cohort each</option>}
           {usable.map((d) => (
             <option key={d.id} value={d.id}>
               {d.label}
@@ -134,7 +136,7 @@ export function GenerateCohortForm({
           id="personaCount"
           label="How many personas"
           required
-          hint="Segments in the data decide how many are distinct; the rest are labelled repeats."
+          hint="For survey tables, every published age and gender segment in each market becomes a persona and this number is not used. For other files, segments decide how many are distinct; the rest are labelled repeats."
         >
           <TextInput
             id="personaCount"

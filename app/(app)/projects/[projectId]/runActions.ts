@@ -31,6 +31,8 @@ function toState(e: unknown): RunFormState {
   return { error: 'That could not be completed. The failure has been recorded.' };
 }
 
+const ALL_DATASETS = '__all__';
+
 export async function generateCohortAction(
   _prev: RunFormState,
   formData: FormData,
@@ -47,12 +49,19 @@ export async function generateCohortAction(
     }
 
     const h = await headers();
-    const result = await createCohort(
-      user,
-      projectId,
-      { datasetVersionId, personaCount, seed: Number.isFinite(seed) ? seed : 42 },
-      { ip: clientIp(h) },
-    );
+    const s = Number.isFinite(seed) ? seed : 42;
+    if (datasetVersionId === ALL_DATASETS) {
+      // One cohort per cleared dataset, so every market's personas are available at once.
+      const ids = String(formData.get('allIds') ?? '').split(',').filter(Boolean);
+      let total = 0;
+      for (const id of ids) {
+        const r = await createCohort(user, projectId, { datasetVersionId: id, personaCount, seed: s }, { ip: clientIp(h) });
+        total += r.personaCount;
+      }
+      revalidatePath(`/projects/${projectId}/personas`);
+      return { ok: `${total} personas generated across ${ids.length} dataset(s). Review and approve each cohort below.` };
+    }
+    const result = await createCohort(user, projectId, { datasetVersionId, personaCount, seed: s }, { ip: clientIp(h) });
 
     revalidatePath(`/projects/${projectId}/personas`);
     return {
@@ -98,6 +107,7 @@ export async function planRunAction(_prev: RunFormState, formData: FormData): Pr
     const seedRaw = Number(formData.get('seed') ?? 42);
     const plan = await planRun(user, projectId, cohortId, {
       seed: Number.isFinite(seedRaw) ? seedRaw : 42,
+      hypothesisId: String(formData.get('hypothesisId') ?? '') || undefined,
     });
 
     const h = await headers();

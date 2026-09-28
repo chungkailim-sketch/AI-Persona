@@ -13,6 +13,14 @@ describe('environment validation', () => {
     expect(env.QUEUE_DRIVER).toBe('postgres');
   });
 
+  it('treats a blank value as unset, the way .env.example ships optional settings', () => {
+    const env = loadEnv({ ...valid, TIMESFM_URL: '', DEMO_SIGN_IN_EMAIL: '  ', ANTHROPIC_API_KEY: '' });
+    expect(env.TIMESFM_URL).toBeUndefined();
+    expect(env.DEMO_SIGN_IN_EMAIL).toBeUndefined();
+    expect(() => loadEnv({ ...valid, TIMESFM_URL: 'not a url' })).toThrow(/TIMESFM_URL/);
+    expect(() => loadEnv({ ...valid, DATABASE_URL: '' })).toThrow(EnvironmentError);
+  });
+
   it('fails when required values are missing', () => {
     expect(() => loadEnv({})).toThrow(EnvironmentError);
   });

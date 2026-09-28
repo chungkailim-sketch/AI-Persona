@@ -108,6 +108,18 @@ export function reducePipeline(events: readonly TelemetryEvent[]): PipelineState
 }
 
 function finishPipeline(stages: Record<IngestStageKey, NodeState>, source: PipelineState['source']): PipelineState {
+  // A stage still "pending" when a later stage has already moved on did not happen for this version —
+  // typically a version ingested before that stage existed. Left as pending, it kept its whole box in
+  // the data-flow diagram showing "running" forever on a version that had long since finished.
+  // Only once ingestion has finished: mid-ingest, a pending stage simply has not been reached yet.
+  const finished = stages.ready_for_review.status !== 'pending';
+  const order = INGEST_STAGES.map((s) => s.key);
+  const lastMoved = order.reduce((last, k, i) => (stages[k].status !== 'pending' && stages[k].status !== 'awaiting' ? i : last), -1);
+  order.forEach((k, i) => {
+    if (finished && i < lastMoved && stages[k].status === 'pending') {
+      stages[k] = { ...stages[k], status: 'not_performed', message: stages[k].message ?? 'Not recorded for this version — it was ingested before this stage existed. Retry ingestion to run it.' };
+    }
+  });
   let active: IngestStageKey | null = null;
   let failed: IngestStageKey | null = null;
   let completedCount = 0;
@@ -124,14 +136,14 @@ const STATUS_REACHED: Record<string, number> = {
   AWAITING_UPLOAD: 0,
   UPLOADING: 1,
   SCANNING: 1,
-  PARSING: 3,
-  PROFILING: 7,
-  MAPPING: 6,
-  VALIDATING: 8,
-  DETECTING_SENSITIVE: 11,
-  READY_FOR_REVIEW: 15,
-  PARTIALLY_IMPORTED: 15,
-  IMPORTED: 15,
+  PARSING: 2,
+  PROFILING: 6,
+  MAPPING: 5,
+  VALIDATING: 7,
+  DETECTING_SENSITIVE: 10,
+  READY_FOR_REVIEW: 14,
+  PARTIALLY_IMPORTED: 14,
+  IMPORTED: 14,
 };
 
 /**
@@ -151,12 +163,9 @@ export function pipelineFromVersionStatus(status: string, opts: { approved: bool
     // The banner above the pipeline states that these are reconstructed; repeating it on every
     // node would bury the one node that says something different.
     if (i < reached) stages[s.key] = { ...blank(), status: 'completed' };
-    else if (i === reached && reached > 0 && reached < 15) stages[s.key] = { ...blank(), status: 'active' };
+    else if (i === reached && reached > 0 && reached < 14) stages[s.key] = { ...blank(), status: 'active' };
   });
-  if (reached > 1 && !opts.scanned) {
-    stages.safety_scan = { ...blank(), status: 'not_performed', message: 'No malware scanner is configured; files are recorded as NOT_SCANNED.' };
-  }
-  if (reached >= 15) {
+  if (reached >= 14) {
     stages.ready_for_review = { ...blank(), status: 'completed' };
     stages.import_approved = opts.approved
       ? { ...blank(), status: 'completed', message: 'All four conditions for use are met.' }
@@ -171,7 +180,7 @@ export interface FlowNodeState {
   status: NodeStatus;
 }
 
-/** Collapse the sixteen stages into the seven-node flow. A node is only as far along as its least-advanced stage. */
+/** Collapse the fifteen stages into the seven-node flow. A node is only as far along as its least-advanced stage. */
 export function reduceFlow(pipeline: PipelineState): FlowNodeState[] {
   return DATA_FLOW_NODES.map((node) => {
     const states = node.stages.map((k) => pipeline.stages[k].status);

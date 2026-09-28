@@ -11,6 +11,7 @@ import { ReportModeLayout } from '@/ui/components/ReportModeLayout';
 import { PrintButton } from '@/ui/components/PrintButton';
 import { FindingSeverityBadge } from '@/ui/components/FindingSeverityBadge';
 import { findingSeverity } from '@/telemetry/status';
+import { fmtDateTime, TZ_LABEL } from '@/lib/time';
 
 export const metadata = { title: 'Report · Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -42,11 +43,11 @@ export default async function ReportModePage(props: PageProps<'/projects/[projec
     <ReportModeLayout
       title={report.headline || 'Simulation report'}
       projectName={report.projectName}
-      generatedAt={new Date().toISOString().slice(0, 16).replace('T', ' ') + ' UTC'}
+      generatedAt={fmtDateTime(new Date()) + ' ' + TZ_LABEL}
       isMock={report.isMock}
       config={[
         { label: 'Run', value: report.runId },
-        { label: 'Completed', value: report.completedAt?.toISOString().slice(0, 16).replace('T', ' ') ?? '—' },
+        { label: 'Completed', value: report.completedAt ? fmtDateTime(report.completedAt) : '—' },
         { label: 'Mode', value: run.mode.toLowerCase().replace(/_/g, ' ') },
         { label: 'Provider', value: `${report.modelProvider} · ${report.modelId}` },
         { label: 'Seeds', value: report.seeds.join(', ') },

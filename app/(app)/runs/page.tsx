@@ -6,6 +6,7 @@ import { EmptyState } from '@/ui/components/States';
 import { StatusBadge } from '@/ui/components/StatusBadge';
 import { NODE_STATUS_META } from '@/telemetry/status';
 import { isTerminalRunStatus } from '@/telemetry/contract';
+import { fmtDateTime } from '@/lib/time';
 
 export const metadata = { title: 'Simulations · Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -47,14 +48,14 @@ export default async function RunsPage() {
                 <tr key={r.id} className="border-b border-line/70">
                   <th scope="row" className="px-3 py-2 font-normal">
                     <Link href={`/projects/${r.projectId}/simulate?run=${r.id}` as Route} className="font-mono text-link underline-offset-2 hover:underline">
-                      {r.createdAt.toISOString().slice(0, 16).replace('T', ' ')}
+                      {fmtDateTime(r.createdAt)}
                     </Link>
                   </th>
                   <td className="px-3 py-2 text-ink">{r.project.name}</td>
                   <td className="px-3 py-2"><StatusBadge size="xs" meta={meta(r.status)} /></td>
                   <td className="px-3 py-2 font-mono text-xs">{r.isMock ? 'mock' : 'live'}</td>
                   <td className="px-3 py-2 font-mono text-xs">{r._count.modelCalls}</td>
-                  <td className="px-3 py-2 font-mono text-xs">{isTerminalRunStatus(r.status) ? r.completedAt?.toISOString().slice(0, 16).replace('T', ' ') ?? '—' : '—'}</td>
+                  <td className="px-3 py-2 font-mono text-xs">{isTerminalRunStatus(r.status) ? (r.completedAt ? fmtDateTime(r.completedAt) : '—') : '—'}</td>
                 </tr>
               ))}
             </tbody>

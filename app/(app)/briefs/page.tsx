@@ -3,6 +3,7 @@ import type { Route } from 'next';
 import { requireUser } from '@/auth/guard';
 import { prisma } from '@/lib/prisma';
 import { EmptyState } from '@/ui/components/States';
+import { fmtDateTime, TZ_LABEL } from '@/lib/time';
 
 export const metadata = { title: 'Briefs · Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -31,7 +32,7 @@ export default async function BriefsPage() {
               <p className="eyebrow">{b.project.name} · v{b.versionNo} · {b.status.toLowerCase()}</p>
               <p className="mt-1 text-sm text-ink">{b.researchQuestion || <span className="text-ink-subtle">No research question stated yet.</span>}</p>
               <p className="mt-2 flex items-center justify-between font-mono text-[11px] text-ink-subtle">
-                <span>{b._count.hypotheses} hypothesis(es) · saved {b.updatedAt.toISOString().slice(0, 16).replace('T', ' ')}Z</span>
+                <span>{b._count.hypotheses} hypothesis(es) · saved {fmtDateTime(b.updatedAt)} {TZ_LABEL}</span>
                 <Link href={`/projects/${b.projectId}/brief` as Route} className="font-sans text-xs text-link underline-offset-2 hover:underline">Open</Link>
               </p>
             </li>

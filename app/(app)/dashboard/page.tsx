@@ -3,6 +3,7 @@ import { requireUser } from '@/auth/guard';
 import { listProjectsForUser } from '@/server/projects';
 import { authContextFor } from '@/auth/session';
 import { can } from '@/auth/permissions';
+import { fmtDate } from '@/lib/time';
 
 export const metadata = { title: 'Home · Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -54,7 +55,7 @@ export default async function DashboardPage() {
                 >
                   <span className="font-medium text-ink">{p.name}</span>
                   <p className="mt-1 text-xs text-ink-subtle">
-                    {p.role.toLowerCase()} · updated {p.updatedAt.toISOString().slice(0, 10)}
+                    {p.role.toLowerCase()} · updated {fmtDate(p.updatedAt)}
                   </p>
                 </Link>
               </li>

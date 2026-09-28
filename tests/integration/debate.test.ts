@@ -160,6 +160,23 @@ describe('persona agent-swarm debate', () => {
     expect(await db.modelCall.count({ where: { debateId } })).toBe(0);
   });
 
+  it('names a dataset whose stored files are missing, instead of stopping on an internal error', async () => {
+    const { owner, projectId, cohortId } = await readyProject();
+    const { debateId } = await requestDebate(owner, projectId, { cohortId, topic: TOPIC });
+    // Throws ENOENT on read, exactly as the local disk store does.
+    const get = store.get.bind(store);
+    store.get = async () => { throw Object.assign(new Error('ENOENT: no such file'), { code: 'ENOENT' }); };
+    try {
+      const outcome = await executeDebate(debateId);
+      expect(outcome.status).toBe('FAILED');
+      const debate = await db.debate.findUniqueOrThrow({ where: { id: debateId } });
+      expect(debate.failureReason).toMatch(/stored data files are missing/);
+      expect(debate.failureReason).not.toMatch(/internal error/);
+    } finally {
+      store.get = get;
+    }
+  });
+
   it('will not start on a cohort nobody approved, or on a one-word topic', async () => {
     const { owner, projectId, cohortId } = await readyProject({ approve: false });
     await expect(requestDebate(owner, projectId, { cohortId, topic: 'ads?' })).rejects.toBeInstanceOf(DebateRequestRefused);

@@ -3,6 +3,7 @@
 import { useActionState } from 'react';
 import { adherenceCheckAction, buildPopulationAction, cohortFromPopulationAction, type FormState } from '../actions';
 import { Field, FormMessages, Select, SubmitButton, TextInput } from '@/ui/forms';
+import { TZ_LABEL } from '@/lib/time';
 
 const empty: FormState = {};
 
@@ -145,7 +146,7 @@ export function AdherencePanel({ projectId, cohortId, latest, canRun }: { projec
               {side('Segment mostly did not agree', latest.withoutTrait)}
             </div>
           )}
-          <p className="font-mono text-[10.5px] text-ink-subtle">{latest.model} · {latest.when} UTC</p>
+          <p className="font-mono text-[10.5px] text-ink-subtle">{latest.model} · {latest.when} {TZ_LABEL}</p>
         </div>
       )}
       {canRun && (

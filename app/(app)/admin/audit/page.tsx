@@ -1,5 +1,6 @@
 import { requireUser } from '@/auth/guard';
 import { listAuditEvents } from '@/server/admin';
+import { fmtDateTime } from '@/lib/time';
 
 export const metadata = { title: 'Audit log · Administration' };
 export const dynamic = 'force-dynamic';
@@ -28,7 +29,7 @@ export default async function AdminAuditPage() {
             </caption>
             <thead>
               <tr className="border-b border-line text-left">
-                <th scope="col" className="py-2 pr-4 font-medium text-ink-subtle">When (UTC)</th>
+                <th scope="col" className="py-2 pr-4 font-medium text-ink-subtle">When (GMT+8)</th>
                 <th scope="col" className="py-2 pr-4 font-medium text-ink-subtle">Action</th>
                 <th scope="col" className="py-2 pr-4 font-medium text-ink-subtle">Actor</th>
                 <th scope="col" className="py-2 pr-4 font-medium text-ink-subtle">Target</th>
@@ -39,7 +40,7 @@ export default async function AdminAuditPage() {
               {events.map((e) => (
                 <tr key={e.id} className="border-b border-line/60 align-top">
                   <td className="whitespace-nowrap py-2 pr-4 font-mono text-xs text-ink-subtle">
-                    {e.createdAt.toISOString().replace('T', ' ').slice(0, 19)}
+                    {fmtDateTime(e.createdAt, { seconds: true })}
                   </td>
                   <td className="py-2 pr-4 font-mono text-xs text-ink">{e.action}</td>
                   <td className="py-2 pr-4 font-mono text-xs text-ink-muted">

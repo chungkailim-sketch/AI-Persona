@@ -1,5 +1,6 @@
 import type { ConnectionState } from '../live/transport';
 import { LiveIndicator, type LiveState } from './LiveIndicator';
+import { fmtTime, TZ_LABEL } from '@/lib/time';
 
 const MAP: Record<ConnectionState, { state: LiveState; label: string; detail: string }> = {
   connecting: { state: 'idle', label: 'Connecting', detail: 'Opening the live stream.' },
@@ -20,7 +21,7 @@ export function ConnectionStatus({ state, lastEventAt }: { state: ConnectionStat
       <LiveIndicator state={m.state} label={m.label} />
       <span className="sr-only">{m.detail}</span>
       {lastEventAt && (
-        <span className="hidden font-mono text-[10.5px] text-ink-subtle sm:inline">last event {lastEventAt.slice(11, 19)}Z</span>
+        <span className="hidden font-mono text-[10.5px] text-ink-subtle sm:inline">last event {fmtTime(lastEventAt)} {TZ_LABEL}</span>
       )}
     </span>
   );

@@ -15,6 +15,7 @@ import { readRecentEvents } from '@/telemetry/read';
 import type { TelemetryEvent } from '@/telemetry/contract';
 import { getDebate, listDebates } from '@/debate/service';
 import { DebateDetail, DebateForm, type DebateView } from './DebatePanel';
+import { MarketFilter } from './MarketFilter';
 import {
   ApproveCohortForm,
   GenerateCohortForm,
@@ -22,6 +23,7 @@ import {
   PersonaCard,
   type PersonaRow,
 } from './PersonaStep';
+import { fmtDate, fmtDateTime, TZ_LABEL } from '@/lib/time';
 
 export const metadata = { title: 'Personas · Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -84,7 +86,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
     if (!a) return null;
     return {
       verdict: a.verdict,
-      when: a.createdAt.toISOString().slice(0, 16).replace('T', ' '),
+      when: fmtDateTime(a.createdAt),
       model: a.model,
       statement: a.detail.statement,
       reason: a.detail.reason,
@@ -148,6 +150,37 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
     brief ? prisma.hypothesis.findMany({ where: { briefId: brief.id }, select: { statement: true } }) : Promise.resolve([]),
   ]);
 
+  // ── Markets: from each persona's market attribute (survey cohorts) or its segment label. ──
+  const marketOf = (attrs: { key: string; value: string }[], segment: string | null): string | null => {
+    const a = attrs.find((x) => x.key.toLowerCase() === 'market');
+    if (a) return a.value.replace(/^most common across the sample:\s*/i, '').split(',')[0]!.trim();
+    return segment?.includes(' · ') ? segment.split(' · ')[0]! : null;
+  };
+  const cohortMarkets = new Map(
+    cohorts.map((c) => [
+      c.id,
+      [...new Set(c.personas.map((p) => marketOf(p.versions[0]?.attributes ?? [], p.versions[0]?.segment ?? null)).filter((m): m is string => Boolean(m)))].sort(),
+    ]),
+  );
+  const allMarkets = [...new Set([...cohortMarkets.values()].flat())].sort();
+  const marketFilter = typeof search.market === 'string' && allMarkets.includes(search.market) ? search.market : '';
+  const shownCohorts = marketFilter ? cohorts.filter((c) => cohortMarkets.get(c.id)!.includes(marketFilter)) : cohorts;
+  const readyPersonas = shownCohorts.flatMap((c) =>
+    c.personas
+      .filter((p) => p.versions[0]?.approval === 'APPROVED')
+      .map((p) => ({
+        id: p.id,
+        name: p.name,
+        cohort: c.name,
+        market: marketOf(p.versions[0]!.attributes, p.versions[0]!.segment),
+        segment: p.versions[0]!.segment,
+        base: p.versions[0]!.baseSize,
+        confidence: p.versions[0]!.confidence,
+        grounded: p.versions[0]!.attributes.filter((a) => a.origin === 'OBSERVED' || a.origin === 'DERIVED').length,
+      }))
+      .filter((p) => !marketFilter || p.market === marketFilter),
+  );
+
   const cohortEvents = new Map<string, TelemetryEvent[]>();
   for (const c of cohorts.slice(0, 3)) {
     cohortEvents.set(c.id, await readRecentEvents({ projectId, cohortId: c.id }, 300));
@@ -157,7 +190,10 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
     <div className="flex flex-col gap-2">
       <WorkflowNav projectId={projectId} projectName={project.name} current="PERSONAS" />
 
-      <h1 className="mt-6 text-2xl">Personas</h1>
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-2xl">Personas</h1>
+        {allMarkets.length > 0 && <MarketFilter markets={allMarkets} current={marketFilter} />}
+      </div>
       <p className="mt-2 max-w-prose text-sm text-ink-muted">
         A persona here is a summary of a segment in your data, not an invented character. Every
         attribute says where it came from, and the difference matters: an attribute that was
@@ -169,12 +205,51 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
         <OriginKey />
       </section>
 
-      {cohorts.length === 0 ? (
+      <section aria-labelledby="ready" className="mt-8">
+        <h2 id="ready" className="text-lg">
+          Personas ready for simulation{marketFilter ? ` — ${marketFilter}` : ''}{' '}
+          <span className="font-mono text-base text-ink-muted">{readyPersonas.length}</span>
+        </h2>
+        {readyPersonas.length === 0 ? (
+          <p className="mt-2 text-sm text-ink-muted">No approved personas{marketFilter ? ` in ${marketFilter}` : ''} yet. Generate a cohort below and approve it.</p>
+        ) : (
+          <div className="mt-2 overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="text-ink-subtle">
+                <tr>
+                  <th className="py-1 pr-3 font-normal">Persona</th>
+                  <th className="py-1 pr-3 font-normal">Market</th>
+                  <th className="py-1 pr-3 font-normal">Segment</th>
+                  <th className="py-1 pr-3 font-normal">Base</th>
+                  <th className="py-1 pr-3 font-normal">Confidence</th>
+                  <th className="py-1 pr-3 font-normal">Grounded attributes</th>
+                  <th className="py-1 font-normal">Cohort</th>
+                </tr>
+              </thead>
+              <tbody>
+                {readyPersonas.map((p) => (
+                  <tr key={p.id} className="border-t border-line align-top">
+                    <td className="max-w-[28rem] py-1.5 pr-3 text-ink">{p.name}</td>
+                    <td className="py-1.5 pr-3 text-ink-muted">{p.market ?? '—'}</td>
+                    <td className="py-1.5 pr-3 text-ink-muted">{p.segment?.split(' · ').pop() ?? '—'}</td>
+                    <td className="py-1.5 pr-3 font-mono">{p.base ?? '—'}</td>
+                    <td className="py-1.5 pr-3 font-mono">{p.confidence.toLowerCase()}</td>
+                    <td className="py-1.5 pr-3 font-mono">{p.grounded}</td>
+                    <td className="py-1.5 text-ink-muted">{p.cohort}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {shownCohorts.length === 0 ? (
         <p className="panel mt-6 px-4 py-6 text-sm text-ink-muted">
           No cohort has been generated yet.
         </p>
       ) : (
-        cohorts.map((cohort) => {
+        shownCohorts.map((cohort) => {
           const personas: PersonaRow[] = cohort.personas.map((p) => {
             const v = p.versions[0];
             return {
@@ -227,7 +302,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
                 </h2>
                 <p className="font-mono text-xs text-ink-subtle">
                   {personas.length} personas · generated{' '}
-                  {cohort.generatedAt.toISOString().slice(0, 10)}
+                  {fmtDate(cohort.generatedAt)}
                 </p>
               </div>
 
@@ -284,7 +359,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
                 <DebateForm
                   projectId={projectId}
                   cohorts={debateCohorts}
-                  runs={completedRuns.map((r) => ({ id: r.id, label: `Run ${r.id.slice(-8)} · ${r.completedAt?.toISOString().slice(0, 10) ?? ''}${r.isMock ? ' · mock' : ''}` }))}
+                  runs={completedRuns.map((r) => ({ id: r.id, label: `Run ${r.id.slice(-8)} · ${r.completedAt ? fmtDate(r.completedAt) : ''}${r.isMock ? ' · mock' : ''}` }))}
                   hypotheses={hypotheses.map((h) => h.statement)}
                 />
               )}
@@ -302,7 +377,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
                       >
                         <span className="line-clamp-2 text-xs text-ink">{d.topic}</span>
                         <span className="mt-0.5 block font-mono text-[10px] text-ink-subtle">
-                          {d.status.toLowerCase()} · {d.cohort.name} · {d.createdAt.toISOString().slice(0, 16).replace('T', ' ')}{d.isMock ? ' · mock' : ''}
+                          {d.status.toLowerCase()} · {d.cohort.name} · {fmtDateTime(d.createdAt)}{d.isMock ? ' · mock' : ''}
                         </span>
                       </Link>
                     </li>
@@ -337,7 +412,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
             {population && popSpec ? (
               <div className="flex flex-col gap-4">
                 <p className="font-mono text-[11px] text-ink-subtle">
-                  {popSources.find((x) => x.id === population.datasetVersionId)?.label ?? 'Dataset'} · {population.size.toLocaleString()} members · seed {population.seed} · {population.primaryGroup}{population.secondaryGroup ? ` × ${population.secondaryGroup}` : ''} · {popSpec.wave} · built {population.createdAt.toISOString().slice(0, 16).replace('T', ' ')} UTC · {popSpec.rejectedDraws ?? 0} redraws
+                  {popSources.find((x) => x.id === population.datasetVersionId)?.label ?? 'Dataset'} · {population.size.toLocaleString()} members · seed {population.seed} · {population.primaryGroup}{population.secondaryGroup ? ` × ${population.secondaryGroup}` : ''} · {popSpec.wave} · built {fmtDateTime(population.createdAt)} {TZ_LABEL} · {popSpec.rejectedDraws ?? 0} redraws
                 </p>
                 {canCreate && (
                   <CohortFromPopulationForm projectId={projectId} sampleId={population.id} cells={popQuotas.filter((q) => q.members > 0).length} defaultCount={Math.min(12, popQuotas.filter((q) => q.members > 0).length)} />

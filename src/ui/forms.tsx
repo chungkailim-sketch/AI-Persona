@@ -13,30 +13,71 @@
 import { useFormStatus } from 'react-dom';
 import { cn } from './cn';
 
+/** What a field is for, with an example of a good answer — shown from an "i" beside the label. */
+export interface FieldInfo {
+  definition: string;
+  example: string;
+}
+
+/**
+ * The "i" beside a label. Opens on hover and on keyboard focus (never only on hover, which a
+ * keyboard or touch user cannot reach), and the text is also the button's accessible description.
+ */
+export function InfoTip({ id, info }: { id: string; info: FieldInfo }) {
+  return (
+    <span className="group relative ml-1.5 inline-flex align-middle">
+      <button
+        type="button"
+        aria-label="What goes here?"
+        aria-describedby={`${id}-info`}
+        className="inline-flex h-4 w-4 items-center justify-center rounded-full border border-line-strong font-serif text-[10px] italic leading-none text-ink-muted hover:border-brand hover:text-brand focus-visible:border-brand focus-visible:text-brand"
+      >
+        i
+      </button>
+      <span
+        id={`${id}-info`}
+        role="tooltip"
+        className="invisible absolute left-0 top-6 z-40 w-72 rounded border border-line bg-elevated p-3 text-left text-xs font-normal leading-relaxed text-ink shadow-lg opacity-0 transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100"
+      >
+        <span className="block">{info.definition}</span>
+        <span className="mt-2 block text-ink-muted">
+          <span className="font-medium text-ink">Good example: </span>
+          {info.example}
+        </span>
+      </span>
+    </span>
+  );
+}
+
 export function Field({
   id,
   label,
   hint,
+  info,
   required,
   children,
 }: {
   id: string;
   label: string;
   hint?: string;
+  info?: FieldInfo;
   required?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <label htmlFor={id} className="text-sm font-medium text-ink">
-        {label}
-        {required && (
-          <span className="ml-1 text-danger" aria-hidden>
-            *
-          </span>
-        )}
-        {required && <span className="sr-only"> (required)</span>}
-      </label>
+      <span className="flex items-center">
+        <label htmlFor={id} className="text-sm font-medium text-ink">
+          {label}
+          {required && (
+            <span className="ml-1 text-danger" aria-hidden>
+              *
+            </span>
+          )}
+          {required && <span className="sr-only"> (required)</span>}
+        </label>
+        {info && <InfoTip id={id} info={info} />}
+      </span>
       {hint && (
         <p id={`${id}-hint`} className="text-xs text-ink-subtle">
           {hint}

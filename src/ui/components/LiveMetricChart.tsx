@@ -1,6 +1,7 @@
 'use client';
 import { memo, useMemo, useState } from 'react';
 import type { TelemetryEvent } from '@/telemetry/contract';
+import { fmtTime } from '@/lib/time';
 
 /**
  * Completed model calls per time bucket, stacked by verdict — computed from recorded events only.
@@ -31,7 +32,7 @@ export const LiveMetricChart = memo(function LiveMetricChart({ events, bucketSec
 
   const max = Math.max(1, ...buckets.map((b) => b.pass + b.flag + b.fail));
   const W = 100 / Math.max(buckets.length, 1);
-  const fmt = (t: number) => new Date(t * 1000).toISOString().slice(11, 19);
+  const fmt = (t: number) => fmtTime(t * 1000);
 
   return (
     <figure className="panel" aria-labelledby="throughput-title">
@@ -47,7 +48,7 @@ export const LiveMetricChart = memo(function LiveMetricChart({ events, bucketSec
         ) : asTable ? (
           <table className="w-full text-left font-mono text-[11px] text-ink-muted">
             <thead className="text-ink-subtle">
-              <tr><th scope="col" className="font-normal">Bucket (UTC)</th><th scope="col" className="text-right font-normal">Pass</th><th scope="col" className="text-right font-normal">Flag</th><th scope="col" className="text-right font-normal">Fail</th></tr>
+              <tr><th scope="col" className="font-normal">Bucket (GMT+8)</th><th scope="col" className="text-right font-normal">Pass</th><th scope="col" className="text-right font-normal">Flag</th><th scope="col" className="text-right font-normal">Fail</th></tr>
             </thead>
             <tbody>
               {buckets.map((b) => (

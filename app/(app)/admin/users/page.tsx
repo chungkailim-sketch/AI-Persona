@@ -3,6 +3,7 @@ import { authContextFor } from '@/auth/session';
 import { SYSTEM_ROLES, can, canAssignSystemRole } from '@/auth/permissions';
 import { listUsers } from '@/server/admin';
 import { UserRow } from './UserRow';
+import { fmtDate } from '@/lib/time';
 
 export const metadata = { title: 'Users · Administration' };
 export const dynamic = 'force-dynamic';
@@ -40,7 +41,7 @@ export default async function AdminUsersPage() {
             email={u.email}
             systemRole={u.systemRole}
             status={u.status}
-            lastLoginAt={u.lastLoginAt ? u.lastLoginAt.toISOString().slice(0, 10) : null}
+            lastLoginAt={u.lastLoginAt ? fmtDate(u.lastLoginAt) : null}
             projectCount={u._count.memberships}
             assignableRoles={assignable}
             isSelf={u.id === actor.userId}

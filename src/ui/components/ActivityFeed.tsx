@@ -15,6 +15,7 @@ import { Icon } from './Icon';
 import { StatusBadge } from './StatusBadge';
 import { useReducedMotion } from '../live/useReducedMotion';
 import { cn } from '../cn';
+import { fmtTime } from '@/lib/time';
 
 const EVENT_STATUS_TO_NODE: Record<TelemetryEvent['status'], NodeStatus> = {
   pending: 'awaiting',
@@ -51,7 +52,7 @@ export const ActivityFeedRow = memo(function ActivityFeedRow({
   const verdict = verdictOf(event);
   const persona = typeof m.personaKey === 'string' ? m.personaKey : null;
   const isCall = event.eventType === 'run.call.completed';
-  const time = event.timestamp.slice(11, 19);
+  const time = fmtTime(event.timestamp);
   const [copied, setCopied] = useState(false);
   const detailsId = `ev-${event.eventId}`;
 

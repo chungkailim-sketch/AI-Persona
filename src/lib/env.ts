@@ -112,7 +112,10 @@ function productionGuards(env: AppEnv): string[] {
 let cached: AppEnv | null = null;
 
 export function loadEnv(source: Record<string, string | undefined> = process.env): AppEnv {
-  const parsed = schema.safeParse(source);
+  // An empty value ("TIMESFM_URL=", as .env.example ships it) means "not set", not "an invalid
+  // value" — otherwise every optional URL or email left blank stops the app from starting.
+  const present = Object.fromEntries(Object.entries(source).filter(([, v]) => v !== undefined && v.trim() !== ''));
+  const parsed = schema.safeParse(present);
   if (!parsed.success) {
     throw new EnvironmentError(parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`));
   }

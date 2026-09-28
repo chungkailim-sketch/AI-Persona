@@ -1,7 +1,6 @@
 import { MetricCard, MetricGrid } from '@/ui/components/MetricCard';
 import { PassFlagFailSummary } from '@/ui/components/PassFlagFailSummary';
 import { SegmentDistributionBar } from '@/ui/components/SegmentDistributionBar';
-import { VariantComparisonTable } from '@/ui/components/VariantComparisonTable';
 import { FindingSeverityBadge } from '@/ui/components/FindingSeverityBadge';
 import { StatusBadge } from '@/ui/components/StatusBadge';
 import { findingSeverity, NODE_STATUS_META } from '@/telemetry/status';
@@ -43,10 +42,19 @@ export function ResultsOverview({ report, summary }: { report: AssembledReport; 
 
       <section aria-labelledby="segments-title" className="flex flex-col gap-2">
         <h2 id="segments-title" className="text-lg">Segment comparison</h2>
-        <p className="max-w-prose text-xs text-ink-subtle">
-          One row per persona. No statistical significance is claimed: no test is run, and these are simulated positions, not
-          measurements.
-        </p>
+        <div className="max-w-prose text-xs text-ink-subtle">
+          <p>
+            One row per persona, showing how the engine reached its position. Each persona first answered the hypothesis
+            alone, grounded in its segment&rsquo;s published shares from the cleared data and citing the evidence fields it
+            relied on. The engine then took the independent majority and had at least half the panel argue against it; every
+            persona reconsidered in the light of those challenges. The run&rsquo;s classification comes from the final split
+            and the anti-herding check — support that only appears after exposure counts for less than support given alone.
+          </p>
+          <p className="mt-1">
+            &ldquo;Key explanation&rdquo; gives each persona&rsquo;s stated reasoning, whether and why it moved, and the base behind it.
+            These are simulated positions, not measurements, so no significance test is applied to them.
+          </p>
+        </div>
         <div className="panel overflow-x-auto" tabIndex={0} role="region" aria-label="Segment comparison table">
           <table className="w-full min-w-[46rem] text-left text-[12.5px]">
             <caption className="sr-only">Segment comparison: independent and final stance per persona, with base, confidence and status</caption>
@@ -79,24 +87,15 @@ export function ResultsOverview({ report, summary }: { report: AssembledReport; 
         </div>
       </section>
 
-      <section aria-labelledby="variants-title" className="flex flex-col gap-2">
-        <h2 id="variants-title" className="text-lg">Variant comparison</h2>
-        <VariantComparisonTable
-          rows={[]}
-          variantLabels={['Variant A', 'Variant B']}
-          unavailableReason={`This run tested ${summary.stimulusCount === 0 ? 'no stimulus' : summary.stimulusCount === 1 ? 'one stimulus' : `${summary.stimulusCount} stimuli sequentially`}. This build's orchestrator runs a single-concept panel; it does not execute A/B comparisons, so there is no second variant to set beside the first and no population-weighted difference to report.`}
-        />
-      </section>
-
       {f && (
         <section aria-labelledby="finding-table-title" className="flex flex-col gap-2">
           <h2 id="finding-table-title" className="text-lg">Findings at a glance</h2>
           <div className="panel overflow-x-auto" tabIndex={0} role="region" aria-label="Findings table">
             <table className="w-full min-w-[52rem] text-left text-[12.5px]">
-              <caption className="sr-only">Findings with severity, evidence, segment, variant, confidence, caveat, recommendation and lineage</caption>
+              <caption className="sr-only">Findings with severity, evidence, segment, variant, confidence, caveat and recommendation</caption>
               <thead className="border-b border-line text-ink-subtle">
                 <tr>
-                  {['Severity', 'Finding', 'Evidence', 'Affected segments', 'Variant', 'Confidence', 'Caveat', 'Recommendation', 'Lineage'].map((h) => (
+                  {['Severity', 'Finding', 'Evidence', 'Affected segments', 'Variant', 'Confidence', 'Caveat', 'Recommendation'].map((h) => (
                     <th key={h} scope="col" className="px-3 py-2 font-normal">{h}</th>
                   ))}
                 </tr>
@@ -114,7 +113,6 @@ export function ResultsOverview({ report, summary }: { report: AssembledReport; 
                       <td className="px-3 py-2">{x.confidence.toLowerCase()}</td>
                       <td className="px-3 py-2 text-ink-muted">Simulated; not evidence of what real people think.</td>
                       <td className="px-3 py-2 text-ink-muted">{report.qualifiedRecommendation}</td>
-                      <td className="px-3 py-2 font-mono text-[11px] text-ink-subtle">run {report.runId.slice(-8)} · plan {report.planHash.slice(0, 8)}</td>
                     </tr>
                   );
                 })}

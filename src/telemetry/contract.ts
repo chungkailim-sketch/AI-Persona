@@ -146,12 +146,12 @@ export type StreamSnapshot = z.infer<typeof StreamSnapshotSchema>;
 // ── Stage catalogues ──────────────────────────────────────────────────────────
 
 /**
- * The sixteen ingestion stages, in order. Each is emitted by `runIngest()` (or the upload and
+ * The fifteen ingestion stages, in order. (Malware scanning is recorded against each file but not shown
+ * as a stage: no scanner is part of this deployment, so a permanent "not performed" node told nobody anything.) Each is emitted by `runIngest()` (or the upload and
  * governance paths) at the moment the underlying work actually happens.
  */
 export const INGEST_STAGES = [
   { key: 'upload_received', label: 'Upload received', description: 'Files stored under generated keys' },
-  { key: 'safety_scan', label: 'Safety scan', description: 'Malware scan of each file' },
   { key: 'file_identification', label: 'File identification', description: 'Format recognised from the file' },
   { key: 'parsing', label: 'Parsing', description: 'Sheets and rows read' },
   { key: 'data_structuring', label: 'Data structuring', description: 'Report layouts flattened into typed, loadable tables' },
@@ -172,7 +172,7 @@ export type IngestStageKey = (typeof INGEST_STAGES)[number]['key'];
 /** The condensed flow drawn by the data-flow visualisation, each node owning a run of stages. */
 export const DATA_FLOW_NODES: readonly { key: string; label: string; stages: readonly IngestStageKey[] }[] = [
   { key: 'source', label: 'Source file', stages: ['upload_received'] },
-  { key: 'validation', label: 'Validation', stages: ['safety_scan', 'file_identification'] },
+  { key: 'validation', label: 'Validation', stages: ['file_identification'] },
   { key: 'parsing', label: 'Parsing', stages: ['parsing', 'data_structuring', 'schema_detection', 'field_mapping'] },
   {
     key: 'profiling',

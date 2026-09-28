@@ -35,6 +35,7 @@ import { SimulationNotice } from '@/ui/components/SimulationNotice';
 import { StatusBadge } from '@/ui/components/StatusBadge';
 import { ErrorState } from '@/ui/components/States';
 import { cancelRunAction } from '../runActions';
+import { fmtTime, TZ_LABEL } from '@/lib/time';
 
 export interface RunHeaderInfo {
   runId: string;
@@ -160,7 +161,7 @@ export function SimulationControlRoom({
             <dl className="mt-2 grid grid-cols-2 gap-x-5 gap-y-0.5 text-[12px] sm:grid-cols-4">
               <div><dt className="inline text-ink-subtle">Project </dt><dd className="inline text-ink">{info.projectName}</dd></div>
               <div><dt className="inline text-ink-subtle">Run ID </dt><dd className="inline font-mono text-ink">{info.runId.slice(-10)}</dd></div>
-              <div><dt className="inline text-ink-subtle">Started </dt><dd className="inline font-mono text-ink">{run?.startedAt ? `${run.startedAt.slice(11, 19)}Z` : 'not yet'}</dd></div>
+              <div><dt className="inline text-ink-subtle">Started </dt><dd className="inline font-mono text-ink">{run?.startedAt ? `${fmtTime(run.startedAt)} ${TZ_LABEL}` : 'not yet'}</dd></div>
               <div><dt className="inline text-ink-subtle">Elapsed </dt><dd className="inline font-mono text-ink">{elapsed(run?.startedAt ?? null, run?.completedAt ?? null, now) ?? '—'}</dd></div>
               <div><dt className="inline text-ink-subtle">Cohort </dt><dd className="inline text-ink">{info.cohortName} · {info.cohortSize}</dd></div>
               <div><dt className="inline text-ink-subtle">Professional personas </dt><dd className="inline text-ink">none in this run</dd></div>

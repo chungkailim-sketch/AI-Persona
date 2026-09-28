@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireUser } from '@/auth/guard';
 import { listProjectsForUser } from '@/server/projects';
 import { NewProjectForm } from './NewProjectForm';
+import { fmtDate } from '@/lib/time';
 
 export const metadata = { title: 'Projects · Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -58,7 +59,7 @@ export default async function ProjectsPage() {
                     {STEP_LABEL[p.currentStep] ?? p.currentStep} · {p.memberCount}{' '}
                     {p.memberCount === 1 ? 'member' : 'members'} · updated{' '}
                     <time dateTime={p.updatedAt.toISOString()}>
-                      {p.updatedAt.toISOString().slice(0, 10)}
+                      {fmtDate(p.updatedAt)}
                     </time>
                   </p>
                 </Link>

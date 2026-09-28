@@ -9,10 +9,12 @@ const empty: RunFormState = {};
 export function PlanRunForm({
   projectId,
   cohorts,
+  hypotheses,
   blockers,
 }: {
   projectId: string;
   cohorts: { id: string; name: string; approved: number }[];
+  hypotheses: { id: string; label: string; statement: string }[];
   blockers: string[];
 }) {
   const [state, action] = useActionState(planRunAction, empty);
@@ -42,6 +44,16 @@ export function PlanRunForm({
           {cohorts.map((c) => (
             <option key={c.id} value={c.id}>
               {c.name} ({c.approved} approved)
+            </option>
+          ))}
+        </Select>
+      </Field>
+
+      <Field id="hypothesisId" label="Hypothesis to test" required hint="One run tests one hypothesis from the brief. Run again to test another.">
+        <Select id="hypothesisId" name="hypothesisId" required aria-describedby="hypothesisId-hint">
+          {hypotheses.map((h) => (
+            <option key={h.id} value={h.id}>
+              {h.label}: {h.statement.length > 110 ? `${h.statement.slice(0, 109)}…` : h.statement}
             </option>
           ))}
         </Select>
@@ -157,12 +169,13 @@ export function ConfirmRunPanel({ projectId, plan }: { projectId: string; plan: 
  * Plan the same run again: same cohort, same seed. It creates a new plan that still has to be
  * confirmed — nothing runs from this button.
  */
-export function RerunButton({ projectId, cohortId, seed }: { projectId: string; cohortId: string; seed: number }) {
+export function RerunButton({ projectId, cohortId, seed, hypothesisId }: { projectId: string; cohortId: string; seed: number; hypothesisId?: string | null }) {
   const [state, action] = useActionState(planRunAction, empty);
   return (
     <form action={action} className="flex flex-col items-end gap-1">
       <input type="hidden" name="projectId" value={projectId} />
       <input type="hidden" name="cohortId" value={cohortId} />
+      {hypothesisId && <input type="hidden" name="hypothesisId" value={hypothesisId} />}
       <input type="hidden" name="seed" value={seed} />
       <button type="submit" className="rounded border border-line-strong px-3 py-1.5 text-xs text-ink-muted hover:border-brand hover:text-ink">
         Plan a rerun

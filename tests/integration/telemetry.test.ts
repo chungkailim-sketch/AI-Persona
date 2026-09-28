@@ -237,7 +237,8 @@ describe('run telemetry', () => {
     const stages = reduceRunStages(events, snapshot.run);
     expect(stages.INDEPENDENT_ASSESSMENT.status).toBe('completed');
     expect(stages.REPORT.status).toBe('completed');
-    expect(stages.CONSUMER_REACTION.status).toBe('not_performed'); // no stimulus in this brief
+    // No stimulus in this brief: the personas react to the hypothesis itself, so the stage runs.
+    expect(stages.CONSUMER_REACTION.status).toBe('completed');
     expect(effectiveRunStatus(events, snapshot.run!.status)).toBe(snapshot.run!.status);
     for (const e of events) expect(e.isMock).toBe(true);
   });
@@ -280,7 +281,7 @@ describe('run telemetry', () => {
     const replayed: unknown[] = [];
     new FixtureTransport([live]).start({ onEvents: (e) => replayed.push(...e), onSnapshot: () => {}, onStatus: () => {} });
     for (const e of [...live, ...replayed]) expect(TelemetryEventSchema.safeParse(e).success).toBe(true);
-    expect(INGEST_STAGES.length).toBe(16);
+    expect(INGEST_STAGES.length).toBe(15);
   });
 
   it('persists a theme preference on the user', async () => {

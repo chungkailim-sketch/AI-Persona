@@ -1,7 +1,7 @@
 'use client';
 /**
  * The ingestion command center for one dataset version: metrics, the data-flow strip, the
- * sixteen-stage pipeline, the activity feed and the warning panel — all reduced from the same
+ * fifteen-stage pipeline, the activity feed and the warning panel — all reduced from the same
  * event stream, with the server's snapshot as the authority on the version's status.
  */
 import { useActionState, useEffect, useMemo, useRef } from 'react';

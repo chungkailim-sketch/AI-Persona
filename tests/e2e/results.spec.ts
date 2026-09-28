@@ -65,19 +65,20 @@ test.describe('the results page of a completed run', () => {
     return { projectId };
   }
 
-  test('puts the limitations above the findings, not in an appendix', async ({ page }) => {
+  test('puts the simulation notice above the findings, and shows the support statistics', async ({ page }) => {
     await signInAs(page, 'e2e-results-read@example.com', 'STANDARD_USER');
     const { projectId } = await seedCompletedRun('e2e-results-read@example.com');
     await goAndHydrate(page, `/projects/${projectId}/results`);
 
-    const limitations = page.getByRole('heading', { name: 'What this cannot support' });
+    const notice = page.getByRole('complementary', { name: 'Simulation notice' }).first();
     const findings = page.getByRole('heading', { name: 'Findings', exact: true });
-    await expect(limitations).toBeVisible();
+    await expect(notice).toBeVisible();
     await expect(findings).toBeVisible();
-
-    const limitBox = await limitations.boundingBox();
-    const findBox = await findings.boundingBox();
-    expect(limitBox?.y ?? 0).toBeLessThan(findBox?.y ?? Number.MAX_SAFE_INTEGER);
+    expect((await notice.boundingBox())?.y ?? 0).toBeLessThan((await findings.boundingBox())?.y ?? Number.MAX_SAFE_INTEGER);
+    await expect(page.getByText('Support after challenge')).toBeVisible();
+    for (const removed of ['What this cannot support', 'How much to trust it', 'The bar, set before the run', 'Dissent', 'Variant comparison']) {
+      await expect(page.getByRole('heading', { name: removed, exact: true })).toHaveCount(0);
+    }
   });
 
   test('states the simulation caveat without any interaction', async ({ page }) => {
@@ -91,14 +92,6 @@ test.describe('the results page of a completed run', () => {
     ).toBeVisible();
   });
 
-  test('shows the threshold that was set before the run', async ({ page }) => {
-    await signInAs(page, 'e2e-results-bar@example.com', 'STANDARD_USER');
-    const { projectId } = await seedCompletedRun('e2e-results-bar@example.com');
-    await goAndHydrate(page, `/projects/${projectId}/results`);
-
-    await expect(page.getByRole('heading', { name: 'The bar, set before the run' })).toBeVisible();
-    await expect(page.getByText(/Set in advance as the bar/)).toBeVisible();
-  });
 
   test('opens an evidence drawer showing each persona before and after', async ({ page }) => {
     await signInAs(page, 'e2e-results-drawer@example.com', 'STANDARD_USER');
