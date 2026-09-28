@@ -13,6 +13,8 @@ import { latestAdherence } from '@/run/adherenceService';
 import { latestPopulationSample } from '@/population/service';
 import { readRecentEvents } from '@/telemetry/read';
 import type { TelemetryEvent } from '@/telemetry/contract';
+import { getDebate, listDebates } from '@/debate/service';
+import { DebateDetail, DebateForm, type DebateView } from './DebatePanel';
 import {
   ApproveCohortForm,
   GenerateCohortForm,
@@ -26,6 +28,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function PersonaStepPage(props: PageProps<'/projects/[projectId]/personas'>) {
   const { projectId } = await props.params;
+  const search = await props.searchParams;
   const user = await requireUser(`/projects/${projectId}/personas`);
 
   const ctx = await authContextFor(user, projectId);
@@ -39,6 +42,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
 
   const canCreate = can(ctx, 'persona.create', projectId);
   const canApprove = can(ctx, 'persona.approve', projectId);
+  const canDebate = can(ctx, 'simulation.run', projectId);
 
   const [links, cohorts, brief] = await Promise.all([
     prisma.projectDataset.findMany({
@@ -92,6 +96,57 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
   const popQuotas = (population?.quotas ?? []) as { cell: string; weight: number; members: number }[];
   const popCal = (population?.calibration ?? []) as { dimension: string; maxAbsErrorPp: number; worstValue: string }[];
   const popExamples = (population?.examples ?? []) as { id: string; text: string }[];
+
+  // ── Swarm debate ──
+  const debates = await listDebates(user, projectId);
+  const requestedDebate = typeof search.debate === 'string' ? search.debate : debates[0]?.id;
+  const debateRow = requestedDebate ? await getDebate(user, projectId, requestedDebate) : null;
+  const debateView: DebateView | null = debateRow
+    ? {
+        id: debateRow.id,
+        topic: debateRow.topic,
+        hypothesis: debateRow.hypothesis,
+        status: debateRow.status,
+        phase: debateRow.phase,
+        isMock: debateRow.isMock,
+        rounds: debateRow.rounds,
+        seed: debateRow.seed,
+        cohortName: debateRow.cohort.name,
+        createdAt: debateRow.createdAt.toISOString(),
+        completedAt: debateRow.completedAt?.toISOString() ?? null,
+        spendUsd: debateRow.spendUsd,
+        failureReason: debateRow.failureReason,
+        agents: (debateRow.agents ?? []) as unknown as DebateView['agents'],
+        evidence: (debateRow.evidence ?? null) as unknown as DebateView['evidence'],
+        metrics: (debateRow.metrics ?? null) as unknown as DebateView['metrics'],
+        conclusion: (debateRow.conclusion ?? null) as unknown as DebateView['conclusion'],
+        turns: debateRow.turns.map((t) => ({
+          seq: t.seq,
+          round: t.round,
+          phase: t.phase,
+          agentKey: t.agentKey,
+          agentName: t.agentName,
+          agentRole: t.agentRole,
+          stance: t.stance,
+          confidence: t.confidence,
+          addressedTo: t.addressedTo,
+          content: t.content as Record<string, unknown>,
+          ok: t.ok,
+        })),
+      }
+    : null;
+  const debateCohorts = cohorts
+    .map((c) => ({ id: c.id, name: c.name, approved: c.personas.filter((p) => p.versions[0]?.approval === 'APPROVED').length }))
+    .filter((c) => c.approved >= 2);
+  const [completedRuns, hypotheses] = await Promise.all([
+    prisma.run.findMany({
+      where: { projectId, status: { in: ['COMPLETED', 'COMPLETED_WITH_WARNINGS'] }, synthesis: { isNot: null } },
+      orderBy: { completedAt: 'desc' },
+      take: 5,
+      select: { id: true, completedAt: true, isMock: true },
+    }),
+    brief ? prisma.hypothesis.findMany({ where: { briefId: brief.id }, select: { statement: true } }) : Promise.resolve([]),
+  ]);
 
   const cohortEvents = new Map<string, TelemetryEvent[]>();
   for (const c of cohorts.slice(0, 3)) {
@@ -208,6 +263,63 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
           );
         })
       )}
+
+      <section aria-labelledby="debate-heading" id="debate" className="mt-12 scroll-mt-48 border-t border-line pt-8">
+        <h2 id="debate-heading" className="text-lg">Agent swarm debate</h2>
+        <p className="mt-1 max-w-prose text-xs text-ink-subtle">
+          Put a topic or hypothesis to a crew of agents: one per approved persona, plus a moderator who manages the debate and
+          hands the floor to named agents, an evidence analyst, a devil&rsquo;s advocate and a synthesis judge. Openings are
+          given in isolation, every claim cites the cleared data by id, and the judge&rsquo;s reference conclusion sits beside a
+          segment comparison computed in code. The agents are simulations of published segments; their agreement is not
+          evidence.
+        </p>
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+          <div className="flex flex-col gap-4">
+            <div className="panel px-3.5 py-3">
+              {!canDebate ? (
+                <p className="text-sm text-ink-muted">Running a debate needs the <span className="font-mono">simulation.run</span> permission.</p>
+              ) : debateCohorts.length === 0 ? (
+                <p className="text-sm text-ink-muted">Approve a cohort with at least two personas first. The debate runs on approved personas only.</p>
+              ) : (
+                <DebateForm
+                  projectId={projectId}
+                  cohorts={debateCohorts}
+                  runs={completedRuns.map((r) => ({ id: r.id, label: `Run ${r.id.slice(-8)} · ${r.completedAt?.toISOString().slice(0, 10) ?? ''}${r.isMock ? ' · mock' : ''}` }))}
+                  hypotheses={hypotheses.map((h) => h.statement)}
+                />
+              )}
+            </div>
+            {debates.length > 0 && (
+              <nav aria-label="Recent debates" className="panel">
+                <div className="panel-head"><h3 className="font-sans text-sm font-medium text-ink">Recent debates</h3></div>
+                <ul className="flex flex-col divide-y divide-line">
+                  {debates.map((d) => (
+                    <li key={d.id}>
+                      <Link
+                        href={`/projects/${projectId}/personas?debate=${d.id}#debate`}
+                        aria-current={d.id === debateView?.id ? 'true' : undefined}
+                        className={`block px-3.5 py-2 hover:bg-bg ${d.id === debateView?.id ? 'border-l-2 border-brand bg-brand-soft/40' : 'border-l-2 border-transparent'}`}
+                      >
+                        <span className="line-clamp-2 text-xs text-ink">{d.topic}</span>
+                        <span className="mt-0.5 block font-mono text-[10px] text-ink-subtle">
+                          {d.status.toLowerCase()} · {d.cohort.name} · {d.createdAt.toISOString().slice(0, 16).replace('T', ' ')}{d.isMock ? ' · mock' : ''}
+                        </span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            )}
+          </div>
+          <div className="min-w-0">
+            {debateView ? (
+              <DebateDetail debate={debateView} />
+            ) : (
+              <p className="rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">No debate yet. Enter a topic and run one.</p>
+            )}
+          </div>
+        </div>
+      </section>
 
       <section aria-labelledby="population" className="mt-12 border-t border-line pt-8">
         <h2 id="population" className="text-lg">Population sample</h2>

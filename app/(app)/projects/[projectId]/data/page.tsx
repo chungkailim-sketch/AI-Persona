@@ -18,6 +18,8 @@ import { downstreamImpact } from '@/server/workflow';
 import { latestForecastAnalysis } from '@/forecast/analysis';
 import { trendAnalysisView } from '@/forecast/view';
 import { TrendRequestForm, TrendResults } from './TrendPanel';
+import { StructuredPanel } from './StructuredPanel';
+import { structuredTablesView } from '@/ingest/structured';
 import {
   FieldReviewForm,
   FindingItem,
@@ -112,6 +114,7 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
   const impact = await downstreamImpact(projectId);
   const analysis = detail ? await latestForecastAnalysis(user, projectId, detail.version.id) : null;
   const trendView = analysis ? trendAnalysisView(analysis) : null;
+  const structured = detail ? await structuredTablesView(detail.version.id) : [];
   const hasLongTable = ['wave_year', 'wave_month', 'statement', 'response', 'segment', 'share'].every((c) => (detail?.fields ?? []).some((f) => f.name.trim().toLowerCase() === c));
   const segmentGroups = (() => {
     const f = (detail?.fields ?? []).find((x) => x.name.trim().toLowerCase() === 'segment_group');
@@ -255,6 +258,22 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
               </ul>
             </div>
           )}
+        </section>
+      )}
+
+      {/* ── Structured data ──────────────────────────────────────────────── */}
+      {detail && structured.length > 0 && (
+        <section aria-labelledby="structured" className="">
+          <h2 id="structured" className="text-lg">Structured data</h2>
+          <p className="mt-1 max-w-prose text-xs text-ink-subtle">
+            What the upload contains, as tables ready to use: report layouts such as Mintel databooks flattened into one
+            long table (market × wave × question × response × segment, each with its base), column names turned into
+            identifiers, &ldquo;no data&rdquo; markers blanked and numbers written plainly. Nothing is imputed. Each table has a data
+            dictionary, and downloads leave out any column excluded in the field review.
+          </p>
+          <div className="mt-3">
+            <StructuredPanel projectId={projectId} datasetVersionId={detail.version.id} tables={structured} canDownload={canEdit} />
+          </div>
         </section>
       )}
 

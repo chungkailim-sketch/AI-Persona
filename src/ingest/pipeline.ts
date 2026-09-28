@@ -12,7 +12,15 @@
 import { createHash } from 'node:crypto';
 import { prisma } from '@/lib/prisma';
 import { storage } from '@/storage/adapter';
-import { parseFile } from '@/ingest/parse';
+import { parseFile, type ParsedTable } from '@/ingest/parse';
+import { readMintelBuffer, keepForAnalysis, type MintelRow } from '@/demo/mintel';
+import {
+  structureQuestionIndex,
+  structureSurveyLong,
+  structureTabular,
+  type StructuredDraft,
+} from '@/ingest/structure';
+import { persistStructuredTables } from '@/ingest/structured';
 import { profileTable, type FieldProfile } from '@/ingest/profile';
 import { classifyField } from '@/ingest/sensitivity';
 import { secondOpinionOnFields } from '@/judge/checks';
@@ -140,6 +148,80 @@ async function ingestStages(
   let failedFiles = 0;
   let filesDone = 0;
 
+  // What the structuring stage will write: one draft per ordinary table, plus the long table and
+  // question index flattened from any databooks, which are accumulated across files so every
+  // market and wave lands in one longitudinal table.
+  const drafts: StructuredDraft[] = [];
+  const mintelRows: MintelRow[] = [];
+  const mintelFiles: string[] = [];
+  const mintelNotes: string[] = [];
+  const questionIndex = new Map<string, { question: string; markets: Set<string>; waves: Set<string> }>();
+  let mintelDropped = 0;
+
+  /**
+   * Profile, check and record one table. Every table goes through here — a sheet of an ordinary
+   * workbook, a CSV, or the long table flattened from a databook — so each is treated identically.
+   */
+  const absorb = async (table: ParsedTable, fileName: string, encoding: string): Promise<number> => {
+    anyParsed = true;
+    totalRows += table.rows.length;
+    totalCells += table.rows.length * table.headers.length;
+
+    if (table.sheetName) {
+      await emit({
+        eventType: 'sheet.detected',
+        stage: 'parsing',
+        status: 'active',
+        message: `Sheet "${table.sheetName}" in ${fileName}: ${table.rows.length.toLocaleString()} rows, ${table.headers.length} columns.`,
+        safeMetadata: {
+          fileName,
+          sheetName: table.sheetName,
+          rowCount: table.rows.length,
+          fieldCount: table.headers.length,
+        },
+      });
+    }
+
+    const profiles = profileTable(table.headers, table.rows);
+    const prefix = table.sheetName ? `${table.sheetName}/` : '';
+
+    profiles.forEach((p, col) => {
+      const values = table.rows.map((r) => r[col] ?? '');
+      allProfiles.push({ profile: { ...p, name: `${prefix}${p.name}` }, values });
+
+      // One evidence chunk per field, holding the summary a finding can later cite. Cell-level
+      // chunks are created on demand by the analysis stage, not eagerly for every cell.
+      chunkRows.push({
+        locatorType: 'field',
+        locator: `${fileName}${table.sheetName ? `#${table.sheetName}` : ''}/${p.sourceName}`,
+        fieldName: `${prefix}${p.name}`,
+        value: p.topValues.map((t) => `${t.value} (${t.count})`).join('; ').slice(0, 2000),
+        numericValue: p.numeric ? p.numeric.mean : null,
+        baseSize: table.rows.length - p.missingCount,
+        suppressed: false,
+      });
+    });
+
+    findings.push(
+      ...checkIntegrity({
+        originalName: fileName,
+        encoding,
+        headers: table.headers,
+        rows: table.rows,
+        fields: profiles.map((p) => ({
+          name: p.name,
+          missingPct: p.missingPct,
+          distinctCount: p.distinctCount,
+          type: p.type,
+        })),
+        // The caption rows the parser found above the header are where a file states what it
+        // actually contains — which is what the filename is checked against.
+        internalLabels: [...table.preamble, ...table.headers],
+      }),
+    );
+    return table.rows.length;
+  };
+
   for (const file of version.files) {
     const kind = kindFromName(file.originalName) ?? 'csv';
     let bytes: Buffer;
@@ -167,69 +249,49 @@ async function ingestStages(
     }
     hasher.update(bytes);
 
+    // A databook is a report of cross-tabs, not a table. Recognise it first and flatten it, rather
+    // than profiling fifty sheets of stacked headers as if each were data.
+    if (kind === 'xlsx') {
+      const book = await readMintelBuffer(bytes, file.originalName).catch(() => null);
+      if (book && book.rows.length > 0) {
+        const kept = book.rows.filter(keepForAnalysis);
+        mintelDropped += book.rows.length - kept.length;
+        mintelRows.push(...kept);
+        mintelFiles.push(file.originalName);
+        mintelNotes.push(...book.warnings.map((w) => `${file.originalName}: ${w}`));
+        for (const [id, question] of book.questionText) {
+          const entry = questionIndex.get(id) ?? { question, markets: new Set<string>(), waves: new Set<string>() };
+          entry.markets.add(book.market);
+          entry.waves.add(book.wave);
+          questionIndex.set(id, entry);
+        }
+        anyParsed = true;
+        await prisma.sourceFile.update({
+          where: { id: file.id },
+          data: { extractionStatus: 'COMPLETED', parseError: null },
+        });
+        filesDone += 1;
+        await emit({
+          eventType: 'rows.parsed',
+          stage: 'parsing',
+          status: 'active',
+          message: `${file.originalName}: recognised as a Mintel databook (${book.market}, ${book.wave}); ${book.questions} question sheet(s) read into ${kept.length.toLocaleString()} rows.`,
+          progressCurrent: filesDone,
+          progressTotal: version.files.length,
+          safeMetadata: { fileName: file.originalName, rowCount: kept.length, sheetCount: book.questions },
+        });
+        continue;
+      }
+    }
+
     try {
       const parsed = await parseFile(bytes, kind);
       notes.push(...parsed.notes.map((n) => `${file.originalName}: ${n}`));
 
       let fileRows = 0;
       for (const table of parsed.tables) {
-        anyParsed = true;
-        totalRows += table.rows.length;
-        fileRows += table.rows.length;
-        totalCells += table.rows.length * table.headers.length;
-
-        if (table.sheetName) {
-          await emit({
-            eventType: 'sheet.detected',
-            stage: 'parsing',
-            status: 'active',
-            message: `Sheet "${table.sheetName}" in ${file.originalName}: ${table.rows.length.toLocaleString()} rows, ${table.headers.length} columns.`,
-            safeMetadata: {
-              fileName: file.originalName,
-              sheetName: table.sheetName,
-              rowCount: table.rows.length,
-              fieldCount: table.headers.length,
-            },
-          });
-        }
-
-        const profiles = profileTable(table.headers, table.rows);
-        const prefix = table.sheetName ? `${table.sheetName}/` : '';
-
-        profiles.forEach((p, col) => {
-          const values = table.rows.map((r) => r[col] ?? '');
-          allProfiles.push({ profile: { ...p, name: `${prefix}${p.name}` }, values });
-
-          // One evidence chunk per field, holding the summary a finding can later cite. Cell-level
-          // chunks are created on demand by the analysis stage, not eagerly for every cell.
-          chunkRows.push({
-            locatorType: 'field',
-            locator: `${file.originalName}${table.sheetName ? `#${table.sheetName}` : ''}/${p.sourceName}`,
-            fieldName: `${prefix}${p.name}`,
-            value: p.topValues.map((t) => `${t.value} (${t.count})`).join('; ').slice(0, 2000),
-            numericValue: p.numeric ? p.numeric.mean : null,
-            baseSize: table.rows.length - p.missingCount,
-            suppressed: false,
-          });
-        });
-
-        findings.push(
-          ...checkIntegrity({
-            originalName: file.originalName,
-            encoding: parsed.encoding,
-            headers: table.headers,
-            rows: table.rows,
-            fields: profiles.map((p) => ({
-              name: p.name,
-              missingPct: p.missingPct,
-              distinctCount: p.distinctCount,
-              type: p.type,
-            })),
-            // The caption rows the parser found above the header are where a file states what it
-            // actually contains — which is what the filename is checked against.
-            internalLabels: [...table.preamble, ...table.headers],
-          }),
-        );
+        fileRows += await absorb(table, file.originalName, parsed.encoding);
+        drafts.push(structureTabular(table, file.originalName));
       }
 
       await prisma.sourceFile.update({
@@ -268,6 +330,28 @@ async function ingestStages(
     }
   }
 
+  if (mintelRows.length > 0) {
+    if (mintelDropped > 0) {
+      mintelNotes.push(
+        `${mintelDropped.toLocaleString()} row(s) from demographic crosses outside the analysis breaks ` +
+          '(region, gender, age, area, income, financial situation, employment, education, parental status) were left out.',
+      );
+    }
+    const long = structureSurveyLong(mintelRows, mintelFiles, mintelNotes);
+    drafts.unshift(long, structureQuestionIndex(questionIndex, mintelFiles));
+    const table: ParsedTable = {
+      sheetName: null,
+      headers: long.columns.map((c) => c.name),
+      rows: long.rows,
+      preamble: [],
+      totalRows: long.rows.length,
+      truncated: false,
+      notes: [],
+    };
+    await absorb(table, mintelFiles.length === 1 ? mintelFiles[0]! : `${mintelFiles.length} databooks`, 'xlsx');
+    notes.push(...mintelNotes);
+  }
+
   if (!anyParsed) {
     await prisma.datasetVersion.update({
       where: { id: datasetVersionId },
@@ -303,6 +387,31 @@ async function ingestStages(
         : `${totalRows.toLocaleString()} rows parsed from ${version.files.length} file(s).`,
     progressCurrent: totalRows,
     safeMetadata: { rowCount: totalRows, fileCount: version.files.length },
+  });
+
+  // ── Structuring: write each table out typed and tidy, with its dictionary. ──
+  enter('data_structuring');
+  const structured = await persistStructuredTables(datasetVersionId, drafts);
+  for (const t of structured.slice(0, 20)) {
+    await emit({
+      eventType: 'table.structured',
+      stage: 'data_structuring',
+      status: 'active',
+      message: `"${t.title}": ${t.rowCount.toLocaleString()} rows × ${t.columnCount} columns, typed and ready to load${t.isPrimary ? ' (used for analysis)' : ''}.`,
+      safeMetadata: { rowCount: t.rowCount, fieldCount: t.columnCount },
+    });
+  }
+  await emit({
+    eventType: 'ingest.stage',
+    stage: 'data_structuring',
+    status: 'completed',
+    message:
+      mintelFiles.length > 0
+        ? `${mintelFiles.length} databook(s) flattened into one long table with a question index; ${structured.length} structured table(s) ready to download.`
+        : `${structured.length} structured table(s) ready to download, each with a data dictionary.`,
+    progressCurrent: structured.length,
+    progressTotal: structured.length,
+    safeMetadata: { count: structured.length },
   });
 
   // ── Schema, profiling, duplicates, missing values, outliers — all computed during parsing above;

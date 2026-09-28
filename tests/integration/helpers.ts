@@ -19,7 +19,7 @@ export const db = new PrismaClient({ adapter: new PrismaPg({ connectionString: u
 export async function resetDatabase(): Promise<void> {
   await db.$executeRawUnsafe(`
     TRUNCATE TABLE
-      "JudgeCheck", "PopulationSample", "ForecastAnalysis", "TelemetryEvent", "AuditEvent", "Session", "OtpChallenge",
+      "DebateTurn", "Debate", "StructuredTable", "JudgeCheck", "PopulationSample", "ForecastAnalysis", "TelemetryEvent", "AuditEvent", "Session", "OtpChallenge",
       "ReportExport", "Recommendation", "Dissent", "Synthesis", "AntiHerdMetric", "PersonaVote", "EvidenceRef",
       "Finding", "SimulatedResponse", "ModelCall", "RunStep", "RunConfigDataset", "RunConfig", "Run",
       "PersonaAttribute", "PersonaVersion", "Persona", "Cohort",

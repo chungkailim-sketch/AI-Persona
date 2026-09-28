@@ -30,6 +30,7 @@ import { prisma } from './src/lib/prisma';
 import { executeRun } from './src/run/orchestrator';
 import { provisionDemoWorkspace } from './src/demo/provision';
 import { runForecastAnalysis } from './src/forecast/analysis';
+import { executeDebate } from './src/debate/engine';
 
 const WORKER_ID = `${process.env.RAILWAY_REPLICA_ID ?? 'local'}-${randomUUID().slice(0, 8)}`;
 
@@ -78,6 +79,13 @@ async function handle(job: ClaimedJob): Promise<Record<string, unknown>> {
       const input = job.input as { analysisId?: string };
       if (!input.analysisId) throw new Error('Job input does not name an analysis.');
       const outcome = await runForecastAnalysis(input.analysisId, job.id);
+      return outcome as unknown as Record<string, unknown>;
+    }
+    case 'debate': {
+      const input = job.input as { debateId?: string };
+      if (!input.debateId) throw new Error('Job input does not name a debate.');
+      // A debate records its own failure (refusal, budget, error) and never throws for one.
+      const outcome = await executeDebate(input.debateId);
       return outcome as unknown as Record<string, unknown>;
     }
     case 'demo_provision': {
@@ -188,7 +196,7 @@ async function loop(): Promise<void> {
     }
     let job: ClaimedJob | null = null;
     try {
-      job = await claimNext(WORKER_ID, ['ingest', 'simulate', 'export', 'demo_provision', 'trend_analysis']);
+      job = await claimNext(WORKER_ID, ['ingest', 'simulate', 'export', 'demo_provision', 'trend_analysis', 'debate']);
     } catch (e) {
       log('could not reach the queue', { error: e instanceof Error ? e.message : String(e) });
       await new Promise((r) => setTimeout(r, 5_000));

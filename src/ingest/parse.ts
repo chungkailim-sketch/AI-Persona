@@ -111,7 +111,8 @@ function detectDelimiter(firstLine: string): string {
   return best;
 }
 
-export function parseCsv(text: string): ParsedTable {
+export function parseCsv(text: string, opts: { maxRows?: number } = {}): ParsedTable {
+  const maxRows = opts.maxRows ?? UPLOAD_LIMITS.maxRows;
   const notes: string[] = [];
   const src = stripBom(text);
   const firstNewline = src.indexOf('\n');
@@ -168,9 +169,9 @@ export function parseCsv(text: string): ParsedTable {
   const headerRow = body.shift() ?? [];
   const headers = headerRow.map((h, idx) => h.trim() || `column_${idx + 1}`);
   const totalRows = body.length;
-  const capped = body.slice(0, UPLOAD_LIMITS.maxRows);
+  const capped = body.slice(0, maxRows);
   if (totalRows > capped.length) {
-    notes.push(`Only the first ${UPLOAD_LIMITS.maxRows.toLocaleString()} rows were read.`);
+    notes.push(`Only the first ${maxRows.toLocaleString()} rows were read.`);
   }
 
   return {

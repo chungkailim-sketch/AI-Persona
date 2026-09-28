@@ -4,10 +4,10 @@ import { RUN_STAGES } from '../../src/run/orchestrator';
 import { ev } from './telemetry-fixtures';
 
 describe('the event contract', () => {
-  it('lists fifteen ingestion stages in order', () => {
-    expect(INGEST_STAGES).toHaveLength(15);
+  it('lists sixteen ingestion stages in order', () => {
+    expect(INGEST_STAGES).toHaveLength(16);
     expect(INGEST_STAGES[0]!.key).toBe('upload_received');
-    expect(INGEST_STAGES[14]!.key).toBe('import_approved');
+    expect(INGEST_STAGES[15]!.key).toBe('import_approved');
   });
 
   it('mirrors the orchestrator stage list exactly', () => {

@@ -8,9 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { can } from '@/auth/permissions';
 import { authContextFor, type SessionUser } from '@/auth/session';
 import { AuthorizationError } from '@/auth/guard';
-import { storage } from '@/storage/adapter';
-import { parseFile } from '@/ingest/parse';
-import { kindFromName } from '@/ingest/limits';
+import { readVersionTables } from '@/ingest/structured';
 import { recordAudit } from '@/lib/audit';
 import { isLongSurveyTable } from '@/forecast/series';
 import { assessUsability } from '@/ingest/pipeline';
@@ -38,19 +36,14 @@ export async function populationGroups(datasetVersionId: string): Promise<string
 }
 
 export async function loadLongTable(datasetVersionId: string): Promise<{ headers: string[]; rows: string[][] } | null> {
-  const version = await prisma.datasetVersion.findUnique({ where: { id: datasetVersionId }, include: { files: true } });
-  if (!version) return null;
   let headers: string[] | null = null;
   const rows: string[][] = [];
-  for (const f of version.files) {
-    const parsed = await parseFile(await storage().get(f.storageKey), kindFromName(f.originalName) ?? 'csv');
-    for (const t of parsed.tables) {
-      if (!isLongSurveyTable(t.headers)) continue;
-      // Tables from different files may order columns differently; align on the first.
-      if (!headers) headers = t.headers;
-      const map = headers.map((h) => t.headers.indexOf(h));
-      for (const r of t.rows) rows.push(map.map((i) => (i >= 0 ? (r[i] ?? '') : '')));
-    }
+  for (const t of await readVersionTables(datasetVersionId)) {
+    if (!isLongSurveyTable(t.headers)) continue;
+    // Tables from different files may order columns differently; align on the first.
+    if (!headers) headers = t.headers;
+    const map = headers.map((h) => t.headers.indexOf(h));
+    for (const r of t.rows) rows.push(map.map((i) => (i >= 0 ? (r[i] ?? '') : '')));
   }
   return headers ? { headers, rows } : null;
 }

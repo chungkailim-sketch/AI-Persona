@@ -48,13 +48,16 @@ export class BudgetExceeded extends Error {
 }
 
 export interface CallOptions<T> {
-  runId: string;
+  /** The run or the debate the call belongs to — exactly one. Its spend is what the cap is checked against. */
+  runId?: string;
+  debateId?: string;
   stage: string;
   personaKey?: string;
   system: string;
   messages: ModelRequest['messages'];
   schemaName: string;
-  schema: z.ZodType<T>;
+  // The input may differ from the output (defaults fill missing arrays); what is returned is the output.
+  schema: z.ZodType<T, z.ZodTypeDef, unknown>;
   seed?: number;
   /** Hash of the evidence that was placed in this prompt, so a finding can be traced to it. */
   evidenceManifestHash?: string;
@@ -76,6 +79,12 @@ export interface CallResult<T> {
   inputTokens: number;
   outputTokens: number;
   latencyMs: number;
+}
+
+/** The running total for a debate, read from the calls already recorded. */
+export async function debateSpendUsd(debateId: string): Promise<number> {
+  const agg = await prisma.modelCall.aggregate({ where: { debateId }, _sum: { costUsd: true } });
+  return agg._sum.costUsd ?? 0;
 }
 
 /** The running total for a run, read from the calls already recorded. */
@@ -114,8 +123,10 @@ export async function callModel<T>(options: CallOptions<T>): Promise<CallResult<
   const p = modelProvider();
   const isMock = p.name === 'mock';
 
+  if (!options.runId === !options.debateId) throw new Error('A model call belongs to exactly one run or debate.');
+
   if (options.budgetCapUsd !== undefined && !isMock) {
-    const spent = await runSpendUsd(options.runId);
+    const spent = options.runId ? await runSpendUsd(options.runId) : await debateSpendUsd(options.debateId!);
     if (spent >= options.budgetCapUsd) throw new BudgetExceeded(spent, options.budgetCapUsd);
   }
 
@@ -156,7 +167,8 @@ export async function callModel<T>(options: CallOptions<T>): Promise<CallResult<
 
     await prisma.modelCall.create({
       data: {
-        runId: options.runId,
+        runId: options.runId ?? null,
+        debateId: options.debateId ?? null,
         stage: options.stage,
         personaKey: options.personaKey ?? null,
         provider: response.provider,

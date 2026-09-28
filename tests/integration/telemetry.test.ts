@@ -280,7 +280,7 @@ describe('run telemetry', () => {
     const replayed: unknown[] = [];
     new FixtureTransport([live]).start({ onEvents: (e) => replayed.push(...e), onSnapshot: () => {}, onStatus: () => {} });
     for (const e of [...live, ...replayed]) expect(TelemetryEventSchema.safeParse(e).success).toBe(true);
-    expect(INGEST_STAGES.length).toBe(15);
+    expect(INGEST_STAGES.length).toBe(16);
   });
 
   it('persists a theme preference on the user', async () => {

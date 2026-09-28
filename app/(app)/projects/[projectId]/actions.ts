@@ -8,6 +8,7 @@
  * can reach it.
  */
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { z } from 'zod';
 import { requireUserApi, AuthorizationError } from '@/auth/guard';
@@ -37,6 +38,7 @@ import { requestForecastAnalysis } from '@/forecast/analysis';
 import { buildPopulationSample, createCohortFromPopulation, PopulationRefused } from '@/population/service';
 import { EvidenceRefused } from '@/model/context';
 import { runAdherenceCheck } from '@/run/adherenceService';
+import { requestDebate, DebateRequestRefused } from '@/debate/service';
 
 export interface FormState {
   error?: string;
@@ -48,7 +50,7 @@ function toState(e: unknown): FormState {
   if (e instanceof AuthorizationError) {
     return { error: 'You do not have permission to do that in this project.' };
   }
-  if (e instanceof GovernanceRefused || e instanceof BriefRefused || e instanceof PopulationRefused) {
+  if (e instanceof GovernanceRefused || e instanceof BriefRefused || e instanceof PopulationRefused || e instanceof DebateRequestRefused) {
     return { problems: e.problems };
   }
   if (e instanceof UploadRejected) return { error: e.message };
@@ -437,4 +439,31 @@ export async function adherenceCheckAction(_prev: FormState, formData: FormData)
     if (e instanceof EvidenceRefused) return { problems: e.reasons };
     return toState(e);
   }
+}
+
+// ── Step 3: persona agent-swarm debate ────────────────────────────────────────
+
+export async function startDebateAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  let debateId: string;
+  try {
+    const user = await requireUserApi();
+    if (!projectId) return { error: 'Invalid request.' };
+    const focus = String(formData.get('focusSegments') ?? '')
+      .split(/[,;\n]/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+    ({ debateId } = await requestDebate(user, projectId, {
+      cohortId: String(formData.get('cohortId') ?? ''),
+      topic: String(formData.get('topic') ?? ''),
+      hypothesis: String(formData.get('hypothesis') ?? ''),
+      focusSegments: focus,
+      rounds: Number(formData.get('rounds') ?? 2),
+      contextRunId: String(formData.get('contextRunId') ?? '') || null,
+    }));
+  } catch (e) {
+    return toState(e);
+  }
+  // Outside the try: a redirect is thrown, and must not be caught as a failure.
+  redirect(`/projects/${projectId}/personas?debate=${debateId}#debate`);
 }

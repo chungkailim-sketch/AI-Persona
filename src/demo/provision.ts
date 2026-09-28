@@ -32,29 +32,11 @@ import { recordGovernance, confirmFieldReview, acknowledgeFinding } from '@/serv
 import { getOrCreateBrief, saveBrief, addHypothesis } from '@/server/brief';
 import { createCohort, approveCohort } from '@/server/personas';
 import { runIngest } from '@/ingest/pipeline';
-import { readMintelWorkbook, toCsv, monthIndex, parseFileName, type MintelRow } from '@/demo/mintel';
+import { readMintelWorkbook, toCsv, monthIndex, parseFileName, keepForAnalysis, type MintelRow } from '@/demo/mintel';
 
 export const DEMO_PROJECT_NAME = 'CBGA Outlook 2027 — demonstration';
 
-/**
- * Which demographic breaks to keep.
- *
- * A databook carries every cross of every break — "Gender and age" alone is thirty-odd segments,
- * and "Living situation" and "Pet ownership" another thirty between them. Keeping all of it
- * produces roughly a million rows across the twenty-nine files for no analytical gain in a
- * demonstration. These are the breaks the CBGA work actually reasons about.
- */
-const KEPT_SEGMENT_GROUPS = new Set(
-  [
-    'all', 'region', 'gender', 'age groups', 'area',
-    'monthly household income', 'net monthly household income', 'household income',
-    'financial situation', 'employment', 'educational level', 'parental status',
-  ].map((s) => s.toLowerCase()),
-);
-
-function keep(row: MintelRow): boolean {
-  return KEPT_SEGMENT_GROUPS.has(row.segment_group.toLowerCase());
-}
+const keep = keepForAnalysis;
 
 export interface ProvisionOutcome {
   status: 'created' | 'already-present' | 'skipped';

@@ -14,9 +14,7 @@ import { prisma } from '@/lib/prisma';
 import { can } from '@/auth/permissions';
 import { authContextFor, type SessionUser } from '@/auth/session';
 import { AuthorizationError } from '@/auth/guard';
-import { storage } from '@/storage/adapter';
-import { parseFile } from '@/ingest/parse';
-import { kindFromName } from '@/ingest/limits';
+import { readVersionTables } from '@/ingest/structured';
 import { enqueue } from '@/queue/queue';
 import { recordAudit } from '@/lib/audit';
 import { datasetEmitter } from '@/telemetry/emit';
@@ -131,22 +129,17 @@ export async function runForecastAnalysis(analysisId: string, correlationId?: st
   await emit({ eventType: 'trend.started', stage: 'trend_analysis', status: 'active', message: 'Trend and forecast analysis started.' });
 
   try {
-    const version = await prisma.datasetVersion.findUniqueOrThrow({ where: { id: a.datasetVersionId }, include: { files: true } });
     const series: Series[] = [];
     let dropped = 0;
     let periods: string[] = [];
     let longTable = false;
-    for (const f of version.files) {
-      const kind = kindFromName(f.originalName) ?? 'csv';
-      const parsed = await parseFile(await storage().get(f.storageKey), kind);
-      for (const t of parsed.tables) {
-        if (!isLongSurveyTable(t.headers)) continue;
-        longTable = true;
-        const r = seriesFromLongTable(t.headers, t.rows, { groups: a.groups, maxSeries: MAX_SERIES - series.length });
-        series.push(...r.series);
-        dropped += r.dropped;
-        periods = periods.length >= r.periods.length ? periods : r.periods;
-      }
+    for (const t of await readVersionTables(a.datasetVersionId)) {
+      if (!isLongSurveyTable(t.headers)) continue;
+      longTable = true;
+      const r = seriesFromLongTable(t.headers, t.rows, { groups: a.groups, maxSeries: MAX_SERIES - series.length });
+      series.push(...r.series);
+      dropped += r.dropped;
+      periods = periods.length >= r.periods.length ? periods : r.periods;
     }
 
     const model = await modelSpec();

@@ -143,11 +143,24 @@ export async function readMintelWorkbook(
   filePath: string,
   fileName: string,
 ): Promise<MintelWorkbook | null> {
-  const meta = parseFileName(fileName);
-  if (!meta) return null;
-
+  if (!parseFileName(fileName)) return null;
   const wb = new ExcelJS.Workbook();
   await wb.xlsx.readFile(filePath);
+  return mintelFromWorkbook(wb, fileName);
+}
+
+/** The same, from uploaded bytes. Returns null when the file is not a Mintel databook. */
+export async function readMintelBuffer(bytes: Buffer, fileName: string): Promise<MintelWorkbook | null> {
+  if (!parseFileName(fileName)) return null;
+  const wb = new ExcelJS.Workbook();
+  await wb.xlsx.load(bytes as unknown as ArrayBuffer);
+  if (sheetsToRead(wb).length === 0) return null;
+  return mintelFromWorkbook(wb, fileName);
+}
+
+function mintelFromWorkbook(wb: ExcelJS.Workbook, fileName: string): MintelWorkbook | null {
+  const meta = parseFileName(fileName);
+  if (!meta) return null;
 
   const rows: MintelRow[] = [];
   const questionText = new Map<string, string>();
@@ -258,6 +271,26 @@ export function toCsv(rows: readonly MintelRow[]): string {
   const out = [MINTEL_COLUMNS.join(',')];
   for (const r of rows) out.push(MINTEL_COLUMNS.map((c) => csvCell(r[c])).join(','));
   return out.join('\n');
+}
+
+/**
+ * Which demographic breaks the analysis table keeps.
+ *
+ * A databook carries every cross of every break — "Gender and age" alone is thirty-odd segments,
+ * and "Living situation" and "Pet ownership" another thirty between them. Keeping all of it
+ * produces roughly a million rows across a season of files for no analytical gain. These are the
+ * breaks persona, trend and debate work actually reasons about.
+ */
+export const ANALYSIS_SEGMENT_GROUPS = new Set(
+  [
+    'all', 'region', 'gender', 'age groups', 'area',
+    'monthly household income', 'net monthly household income', 'household income',
+    'financial situation', 'employment', 'educational level', 'parental status',
+  ].map((s) => s.toLowerCase()),
+);
+
+export function keepForAnalysis(row: MintelRow): boolean {
+  return ANALYSIS_SEGMENT_GROUPS.has(row.segment_group.toLowerCase());
 }
 
 export function monthIndex(month: string): number {

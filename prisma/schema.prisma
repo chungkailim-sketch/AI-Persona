@@ -147,6 +147,7 @@ model Project {
   briefs       Brief[]
   cohorts      Cohort[]
   runs         Run[]
+  debates      Debate[]
 
   @@index([workspaceId, status])
   @@index([createdById])
@@ -239,6 +240,7 @@ model DatasetVersion {
   governance  GovernanceRecord?
   integrity   IntegrityFinding[]
   runConfigs  RunConfigDataset[]
+  structured  StructuredTable[]
 
   @@unique([datasetId, versionNo])
   @@index([status])
@@ -513,6 +515,7 @@ model Cohort {
   populationSampleId String?
   personas   Persona[]
   runConfigs RunConfig[]
+  debates    Debate[]
 
   @@index([projectId])
 }
@@ -759,6 +762,8 @@ model ModelCall {
   id             String   @id @default(cuid())
   runId          String?
   run            Run?     @relation(fields: [runId], references: [id], onDelete: Cascade)
+  debateId       String?
+  debate         Debate?  @relation(fields: [debateId], references: [id], onDelete: Cascade)
   stage          String
   personaKey     String?
   provider       String
@@ -778,6 +783,7 @@ model ModelCall {
   createdAt      DateTime @default(now())
 
   @@index([runId, stage])
+  @@index([debateId])
   @@index([createdAt])
 }
 
@@ -1210,4 +1216,81 @@ model JudgeCheck {
 
   @@index([projectId, kind, createdAt])
   @@index([targetType, targetId])
+}
+
+/// A table the structuring stage produced from an upload: tidy, typed and ready to load elsewhere.
+model StructuredTable {
+  id               String         @id @default(cuid())
+  datasetVersionId String
+  datasetVersion   DatasetVersion @relation(fields: [datasetVersionId], references: [id], onDelete: Cascade)
+  name             String // identifier, also the exported file name
+  title            String
+  kind             String // survey_long | question_index | tabular
+  isPrimary        Boolean        @default(false) // the table downstream analysis reads
+  storageKey       String
+  byteSize         Int            @default(0)
+  rowCount         Int
+  columns          Json // StructuredColumn[] — the data dictionary
+  preview          Json // first rows, for display without reading the file
+  sourceFiles      String[]
+  notes            String[]
+  createdAt        DateTime       @default(now())
+
+  @@unique([datasetVersionId, name])
+  @@index([datasetVersionId])
+}
+
+/// A persona agent-swarm debate on a motion, run against an approved cohort and cleared evidence.
+model Debate {
+  id            String    @id @default(cuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cohortId      String
+  cohort        Cohort    @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  /// A completed simulation whose synthesis is given to the swarm as context, if one was chosen.
+  contextRunId  String?
+  topic         String
+  hypothesis    String?
+  focusSegments String[]
+  rounds        Int       @default(2)
+  seed          Int
+  status        String    @default("QUEUED") // QUEUED | RUNNING | COMPLETED | FAILED
+  phase         String?
+  isMock        Boolean   @default(true)
+  agents        Json? // roster: key, name, role, goal, backstory
+  evidence      Json? // what the swarm was shown: sources, statements, manifest hashes
+  metrics       Json? // stance movement, consensus, herding checks
+  conclusion    Json?
+  spendUsd      Float     @default(0)
+  failureReason String?
+  createdById   String
+  createdAt     DateTime  @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  turns      DebateTurn[]
+  modelCalls ModelCall[]
+
+  @@index([projectId, createdAt])
+}
+
+/// One contribution to a debate, in the order it was made.
+model DebateTurn {
+  id          String   @id @default(cuid())
+  debateId    String
+  debate      Debate   @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  seq         Int
+  round       Int      @default(0)
+  phase       String // FRAMING | OPENING | EVIDENCE_REVIEW | MODERATION | REBUTTAL | CHALLENGE | CLOSING | VERDICT
+  agentKey    String
+  agentName   String
+  agentRole   String
+  stance      String? // support | oppose | undecided
+  confidence  Float?
+  addressedTo String[]
+  content     Json
+  ok          Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@unique([debateId, seq])
 }

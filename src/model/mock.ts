@@ -19,6 +19,12 @@ import {
 } from '@/model/provider';
 
 const STANCES = ['confirm', 'dispute', 'abstain'] as const;
+const DEBATE_STANCES = ['support', 'oppose', 'undecided'] as const;
+
+/** One to three of the first few evidence ids. The engine drops any that were not shown. */
+function mockEvidence(rng: () => number): string[] {
+  return [...new Set(Array.from({ length: 1 + Math.floor(rng() * 3) }, () => `E${1 + Math.floor(rng() * 6)}`))];
+}
 
 function pick<T>(rng: () => number, items: readonly T[]): T {
   return items[Math.floor(rng() * items.length)] as T;
@@ -87,6 +93,80 @@ function body(schemaName: string, rng: () => number, personaKey: string): unknow
         limitations: [
           'This run used the mock provider. No model was consulted and nothing here is evidence.',
         ],
+      };
+
+    // ── Swarm debate ──────────────────────────────────────────────────────────
+    case 'debate_framing':
+      return {
+        motion: '[MOCK] Placeholder restatement of the motion.',
+        subQuestions: ['[MOCK] Placeholder sub-question.'],
+        decisionCriteria: ['[MOCK] Placeholder criterion: weigh arguments by the evidence behind them.'],
+        groundRules: ['[MOCK] Cite evidence items by id.'],
+      };
+
+    case 'debate_opening':
+      return {
+        stance: pick(rng, DEBATE_STANCES),
+        confidence: round(0.35 + rng() * 0.55),
+        argument: `[MOCK] Placeholder opening argument from ${personaKey}. It exercises the debate and says nothing about the world.`,
+        keyPoints: ['[MOCK] placeholder point'],
+        evidenceIds: mockEvidence(rng),
+        whatWouldChangeMyMind: '[MOCK] Placeholder.',
+      };
+
+    case 'debate_evidence_review':
+      return {
+        summary: '[MOCK] Placeholder evidence review.',
+        unsupportedClaims: [],
+        strongestEvidenceIds: mockEvidence(rng),
+        evidenceGaps: ['[MOCK] Placeholder evidence gap.'],
+      };
+
+    case 'debate_handoff':
+      // No handoffs: the engine's deterministic choice (minority first) takes over, which is what
+      // a mock should exercise.
+      return { focus: '[MOCK] Placeholder focus for this round.', handoffs: [] };
+
+    case 'debate_rebuttal':
+      return {
+        respondsTo: 'unknown',
+        rebuttal: `[MOCK] Placeholder rebuttal from ${personaKey}.`,
+        concedes: rng() > 0.7,
+        stance: pick(rng, DEBATE_STANCES),
+        confidence: round(0.3 + rng() * 0.6),
+        evidenceIds: mockEvidence(rng),
+      };
+
+    case 'debate_challenge':
+      return {
+        challenge: "[MOCK] Placeholder devil's-advocate challenge to the panel's lean.",
+        alternativeExplanation: '[MOCK] Placeholder alternative explanation.',
+        evidenceIds: mockEvidence(rng),
+        severity: pick(rng, ['minor', 'material', 'fundamental']),
+      };
+
+    case 'debate_closing':
+      return {
+        stance: pick(rng, DEBATE_STANCES),
+        confidence: round(0.3 + rng() * 0.6),
+        changed: false,
+        reason: `[MOCK] Placeholder reason from ${personaKey}.`,
+        finalArgument: `[MOCK] Placeholder closing argument from ${personaKey}.`,
+        evidenceIds: mockEvidence(rng),
+      };
+
+    case 'debate_verdict':
+      return {
+        answer: 'insufficient_evidence',
+        conclusion: '[MOCK] Placeholder verdict. Produced by the mock provider, not by a model. Read the segment comparison, which is computed from the data.',
+        confidence: 'low',
+        segmentFindings: [],
+        argumentsFor: ['[MOCK] Placeholder argument for.'],
+        argumentsAgainst: ['[MOCK] Placeholder argument against.'],
+        consensus: [],
+        dissent: ['[MOCK] Placeholder recorded dissent.'],
+        evidenceGaps: ['This debate used the mock provider. No model was consulted.'],
+        recommendations: [],
       };
 
     default:

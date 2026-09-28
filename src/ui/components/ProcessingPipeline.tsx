@@ -37,7 +37,7 @@ export function PipelineNode({ index, label, description, node, compact }: { ind
 }
 
 /**
- * The fifteen ingestion stages. Every state shown is the reduction of recorded events (or, for
+ * The sixteen ingestion stages. Every state shown is the reduction of recorded events (or, for
  * versions ingested before events existed, a reconstruction that says so). A failed stage stops
  * the column: nothing after it is shown as progressing.
  */
