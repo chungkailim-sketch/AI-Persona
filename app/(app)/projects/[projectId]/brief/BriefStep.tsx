@@ -8,7 +8,80 @@ import {
   removeHypothesisAction,
   type FormState,
 } from '../actions';
-import { Field, FormMessages, Select, SubmitButton, TextArea, TextInput } from '@/ui/forms';
+import { Field, FormMessages, Select, SubmitButton, TextArea, TextInput, type FieldInfo, InfoTip } from '@/ui/forms';
+
+/** Definitions and best-practice examples behind each brief field's "i". */
+const BRIEF_INFO = {
+  researchQuestion: {
+    definition: "The single question this project exists to answer. Specific enough that a result could clearly answer it, and neutral about the answer.",
+    example: "Among internet users in China and Indonesia, which age group is more receptive to advertising shown inside AI assistants?",
+  },
+  decisionSupported: {
+    definition: "The business decision that will change depending on the answer. If no decision hangs on it, the result cannot be judged useful afterwards.",
+    example: "Whether the 2027 CBGA media plan should allocate test budget to AI-assistant ad placements for 18-34s in Q1.",
+  },
+  objective: {
+    definition: "What kind of study this is. It changes how results are framed: exploring a territory, testing a stated claim, comparing options, or stress-testing a plan.",
+    example: "Test — we have a specific hypothesis about younger consumers and want it confirmed or refuted.",
+  },
+  markets: {
+    definition: "The markets the question covers, matching the market names in your data so evidence can be selected for each.",
+    example: "China, Indonesia, Mexico",
+  },
+  timePeriod: {
+    definition: "The period the evidence and conclusions should cover — usually the survey waves in scope, or the planning window the decision applies to.",
+    example: "Mintel waves March 2024 to March 2026; conclusions apply to 2027 planning.",
+  },
+  targetAudience: {
+    definition: "Who the consumers in question are — the population the personas stand in for. Be as specific as the data allows.",
+    example: "Internet users aged 16–34 in urban China who used an AI chatbot in the last month.",
+  },
+  competitors: {
+    definition: "Brands or products the question, or the personas, may reasonably compare against. Leave empty if competition is not part of the question.",
+    example: "Sephora, Watsons, Guardian",
+  },
+  businessContext: {
+    definition: "The situation behind the question: what prompted it, what is already known, and any recent change in the market. Context, not conclusions.",
+    example: "The client is considering sponsored placements in AI shopping assistants. Past Mintel waves show rising trust in AI recommendations among 18–24s, but no study has looked at advertising specifically.",
+  },
+  desiredOutcome: {
+    definition: "What you are privately hoping the answer will be. It is recorded for the report so bias can be checked, and is never shown to the personas.",
+    example: "We hope younger consumers are receptive enough to justify a pilot.",
+  },
+  exclusions: {
+    definition: "Topics the run must not address, even if the evidence touches them.",
+    example: "pricing strategy, retail distribution, B2B audiences",
+  },
+  prohibitedInferences: {
+    definition: "Conclusions the run must never draw — typically anything the data cannot legitimately support.",
+    example: "anything about individual respondents, health or medical claims, predictions of sales volume",
+  },
+  constraints: {
+    definition: "Practical limits the answer has to respect: budget, timing, channels, brand or legal rules.",
+    example: "Findings must be usable for a Q1 2027 media plan; the client cannot run ads to under-18s.",
+  },
+  personaCount: {
+    definition: "How many personas the cohort should have — usually one per meaningful segment in the data. More is not better if segments become too small.",
+    example: "8 — one per age group and gender cell with a base above 150.",
+  },
+  runCount: {
+    definition: "How many times the simulation is repeated with different seeds. More repeats show how stable the result is.",
+    example: "3 — enough to see whether the direction of the result holds across seeds.",
+  },
+  simulationDepth: {
+    definition: "How much deliberation each run includes. Quick is for trying things out; deep adds more challenge and revision and costs more.",
+    example: "Standard for a working answer; Deep before anything goes to the client.",
+  },
+  confidenceRequirement: {
+    definition: "How certain the decision needs you to be, stated in plain terms. It sets the bar a result must clear before it is acted on.",
+    example: "High — the result will be quoted in the client report, so it needs consistent support across markets and seeds.",
+  },
+  reportAudience: {
+    definition: "Who will read the output, so it can be pitched at the right level of detail.",
+    example: "Client marketing director and the RF Asia strategy team.",
+  },
+} satisfies Record<string, FieldInfo>;
+
 
 /**
  * Note on validation: these fields carry `required` but not `minLength`.
@@ -61,7 +134,7 @@ export function BriefForm({
 
       <Field
         id="researchQuestion"
-        label="What are you trying to find out?"
+info={BRIEF_INFO.researchQuestion}         label="What are you trying to find out?"
         required
         hint="One question, stated plainly. If there are three, this is three runs."
       >
@@ -77,7 +150,7 @@ export function BriefForm({
 
       <Field
         id="decisionSupported"
-        label="What decision will this inform?"
+info={BRIEF_INFO.decisionSupported}         label="What decision will this inform?"
         required
         hint="A run with no decision behind it cannot be judged useful or useless afterwards."
       >
@@ -91,7 +164,7 @@ export function BriefForm({
         />
       </Field>
 
-      <Field id="objective" label="Objective" hint="Shapes how results are presented.">
+      <Field id="objective" info={BRIEF_INFO.objective} label="Objective" hint="Shapes how results are presented.">
         <Select id="objective" name="objective" defaultValue={defaults.objective || 'explore'}>
           <option value="explore">Explore — map the territory</option>
           <option value="test">Test — check specific hypotheses</option>
@@ -101,21 +174,21 @@ export function BriefForm({
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field id="markets" label="Markets" required hint="Comma separated.">
+        <Field id="markets" info={BRIEF_INFO.markets} label="Markets" required hint="Comma separated.">
           <TextInput id="markets" name="markets" required defaultValue={defaults.markets} />
         </Field>
-        <Field id="timePeriod" label="Time period in scope">
+        <Field id="timePeriod" info={BRIEF_INFO.timePeriod} label="Time period in scope">
           <TextInput id="timePeriod" name="timePeriod" defaultValue={defaults.timePeriod} />
         </Field>
-        <Field id="targetAudience" label="Audience">
+        <Field id="targetAudience" info={BRIEF_INFO.targetAudience} label="Audience">
           <TextInput id="targetAudience" name="targetAudience" defaultValue={defaults.targetAudience} />
         </Field>
-        <Field id="competitors" label="Competitors named" hint="Comma separated.">
+        <Field id="competitors" info={BRIEF_INFO.competitors} label="Competitors named" hint="Comma separated.">
           <TextInput id="competitors" name="competitors" defaultValue={defaults.competitors} />
         </Field>
       </div>
 
-      <Field id="businessContext" label="Background">
+      <Field id="businessContext" info={BRIEF_INFO.businessContext} label="Background">
         <TextArea
           id="businessContext"
           name="businessContext"
@@ -125,8 +198,9 @@ export function BriefForm({
       </Field>
 
       <fieldset className="rounded border border-line bg-surface p-4">
-        <legend className="px-1 text-sm font-medium text-ink">
+        <legend className="flex items-center px-1 text-sm font-medium text-ink">
           What you are hoping to find
+          <InfoTip id="desiredOutcome" info={BRIEF_INFO.desiredOutcome} />
         </legend>
         <p className="max-w-prose text-xs text-ink-subtle">{desiredOutcomeNotice}</p>
         <TextArea
@@ -142,14 +216,14 @@ export function BriefForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           id="exclusions"
-          label="Out of scope"
+info={BRIEF_INFO.exclusions}           label="Out of scope"
           hint="Comma separated. Things the run must not address."
         >
           <TextInput id="exclusions" name="exclusions" defaultValue={defaults.exclusions} />
         </Field>
         <Field
           id="prohibitedInferences"
-          label="Inferences not to draw"
+info={BRIEF_INFO.prohibitedInferences}           label="Inferences not to draw"
           hint="Comma separated. E.g. anything about health, or about individuals."
         >
           <TextInput
@@ -160,12 +234,12 @@ export function BriefForm({
         </Field>
       </div>
 
-      <Field id="constraints" label="Constraints">
+      <Field id="constraints" info={BRIEF_INFO.constraints} label="Constraints">
         <TextArea id="constraints" name="constraints" rows={2} defaultValue={defaults.constraints} />
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <Field id="personaCount" label="Cohort size" required>
+        <Field id="personaCount" info={BRIEF_INFO.personaCount} label="Cohort size" required>
           <TextInput
             id="personaCount"
             name="personaCount"
@@ -176,7 +250,7 @@ export function BriefForm({
             defaultValue={defaults.personaCount}
           />
         </Field>
-        <Field id="runCount" label="Repeat runs" required>
+        <Field id="runCount" info={BRIEF_INFO.runCount} label="Repeat runs" required>
           <TextInput
             id="runCount"
             name="runCount"
@@ -187,7 +261,7 @@ export function BriefForm({
             defaultValue={defaults.runCount}
           />
         </Field>
-        <Field id="simulationDepth" label="Depth">
+        <Field id="simulationDepth" info={BRIEF_INFO.simulationDepth} label="Depth">
           <Select
             id="simulationDepth"
             name="simulationDepth"
@@ -203,7 +277,7 @@ export function BriefForm({
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           id="confidenceRequirement"
-          label="Confidence needed"
+info={BRIEF_INFO.confidenceRequirement}           label="Confidence needed"
           hint="How sure does this decision need you to be?"
         >
           <TextInput
@@ -212,7 +286,7 @@ export function BriefForm({
             defaultValue={defaults.confidenceRequirement}
           />
         </Field>
-        <Field id="reportAudience" label="Who reads the report">
+        <Field id="reportAudience" info={BRIEF_INFO.reportAudience} label="Who reads the report">
           <TextInput id="reportAudience" name="reportAudience" defaultValue={defaults.reportAudience} />
         </Field>
       </div>

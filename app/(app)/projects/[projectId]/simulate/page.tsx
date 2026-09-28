@@ -42,6 +42,14 @@ export default async function SimulateStepPage(props: PageProps<'/projects/[proj
     approved: c.personas.filter((p) => p.versions[0]?.approval === 'APPROVED').length,
   }));
 
+  const brief = await prisma.brief.findFirst({
+    where: { projectId },
+    orderBy: { versionNo: 'desc' },
+    include: { hypotheses: { orderBy: { createdAt: 'asc' } } },
+  });
+  const hypotheses = (brief?.hypotheses ?? []).map((h) => ({ id: h.id, label: h.label, statement: h.statement }));
+  const hypothesisLabel = (id: string | null | undefined) => hypotheses.find((h) => h.id === id)?.label ?? hypotheses[0]?.label ?? '';
+
   const readiness =
     cohorts.length > 0
       ? await assessRunReadiness(projectId, cohorts[0]!.id)
@@ -98,7 +106,7 @@ export default async function SimulateStepPage(props: PageProps<'/projects/[proj
       <header>
         <h1 className="text-2xl">Simulation</h1>
         <p className="mt-1 max-w-prose text-sm text-ink-muted">
-          A run asks every approved persona the brief&rsquo;s first hypothesis alone, has at least half
+          A run asks every approved persona the hypothesis you choose, alone, has at least half
           the panel argue against whatever the majority concluded, lets everyone reconsider, and then
           reports the distribution together with how much of the agreement survived that pressure.
         </p>
@@ -120,7 +128,7 @@ export default async function SimulateStepPage(props: PageProps<'/projects/[proj
                   : 'rounded border border-line bg-surface px-2.5 py-1 font-mono text-[11px] text-ink-muted hover:text-ink'
               }
             >
-              {fmtDateTime(r.createdAt).slice(5)} · {r.status.toLowerCase().replace(/_/g, ' ')}
+              {hypothesisLabel(r.config?.hypothesisId)} · {fmtDateTime(r.createdAt).slice(5)} · {r.status.toLowerCase().replace(/_/g, ' ')}
             </Link>
           ))}
         </nav>
@@ -132,7 +140,7 @@ export default async function SimulateStepPage(props: PageProps<'/projects/[proj
           projectId={projectId}
           info={{
             runId: selected.id,
-            name: `Run ${fmtDateTime(selected.createdAt)}`,
+            name: `${hypothesisLabel(room.config?.hypothesisId)} · Run ${fmtDateTime(selected.createdAt)}`,
             mode: selected.mode,
             projectName: project.name,
             cohortName: room.config?.cohort?.name ?? 'Cohort',
@@ -152,7 +160,7 @@ export default async function SimulateStepPage(props: PageProps<'/projects/[proj
           resultsHref={`/projects/${projectId}/results?run=${selected.id}`}
           rerun={
             canRun && room.config?.cohortId && !awaitingConfirmation ? (
-              <RerunButton projectId={projectId} cohortId={room.config.cohortId} seed={room.config.seeds[0] ?? 42} />
+              <RerunButton projectId={projectId} cohortId={room.config.cohortId} seed={room.config.seeds[0] ?? 42} hypothesisId={room.config.hypothesisId} />
             ) : null
           }
         />
@@ -189,7 +197,7 @@ export default async function SimulateStepPage(props: PageProps<'/projects/[proj
       {canRun && !awaitingConfirmation && (
         <section aria-labelledby="plan" className="border-t border-line pt-6">
           <h2 id="plan" className="text-lg">Plan a run</h2>
-          <PlanRunForm projectId={projectId} cohorts={cohorts} blockers={readiness.blockers} />
+          <PlanRunForm projectId={projectId} cohorts={cohorts} hypotheses={hypotheses} blockers={readiness.blockers} />
         </section>
       )}
 

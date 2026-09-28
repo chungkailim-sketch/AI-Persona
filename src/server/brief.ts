@@ -348,6 +348,7 @@ export interface BriefModelContext {
   exclusions: string[];
   prohibitedInferences: string[];
   hypotheses: {
+    id: string;
     label: string;
     statement: string;
     operationalDefinition: string | null;
@@ -377,6 +378,7 @@ export async function briefForModelContext(briefId: string): Promise<BriefModelC
     exclusions: brief.exclusions,
     prohibitedInferences: brief.prohibitedInferences,
     hypotheses: brief.hypotheses.map((h) => ({
+      id: h.id,
       label: h.label,
       statement: h.statement,
       operationalDefinition: h.operationalDefinition,

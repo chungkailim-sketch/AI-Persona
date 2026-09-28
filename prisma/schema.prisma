@@ -679,6 +679,8 @@ model RunConfig {
   metrics     String[]
   evaluatorKeys String[]
   stimulusIds String[]
+  /// The brief hypothesis this run tests. Null on runs made before the choice existed (they tested the first).
+  hypothesisId String?
   blindLabelMap Json?   // stored, never sent to the model (FR-48)
   budgetCapUsd Float?
   estimatedCostUsd Float?

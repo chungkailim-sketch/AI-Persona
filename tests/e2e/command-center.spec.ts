@@ -106,21 +106,22 @@ test.describe('ingestion command center', () => {
 
     const pipeline = page.getByRole('region', { name: 'Processing pipeline' });
     await expect(pipeline.locator('li', { hasText: 'Upload received' })).toHaveAttribute('data-stage-status', 'completed', { timeout: 30_000 });
-    await expect(pipeline.locator('li', { hasText: 'Safety scan' })).toHaveAttribute('data-stage-status', 'not_performed');
+    await expect(pipeline.locator('li', { hasText: 'Safety scan' })).toHaveCount(0);
     await expect(pipeline.locator('li', { hasText: 'Ready for review' })).toHaveAttribute('data-stage-status', /completed|warning/, { timeout: 60_000 });
     await expect(pipeline.locator('li', { hasText: 'Sensitive-data detection' })).toHaveAttribute('data-stage-status', 'warning');
     await expect(pipeline.locator('li', { hasText: 'Missing-value analysis' })).toHaveAttribute('data-stage-status', 'warning');
-    await expect(pipeline.locator('li', { hasText: 'Import approved' })).toHaveAttribute('data-stage-status', 'awaiting');
+    // Clearance is recorded automatically once ingestion finishes; the sensitive field stays excluded.
+    await expect(pipeline.locator('li', { hasText: 'Import approved' })).toHaveAttribute('data-stage-status', 'completed', { timeout: 30_000 });
 
-    // The warnings are listed and reviewable.
+    // The warnings are still listed.
     const warnings = page.getByRole('region', { name: 'Warnings and exceptions' });
     await expect(warnings.getByText(/"email" flagged as possibly sensitive/)).toBeVisible();
     await page.reload();
     await page.waitForSelector('html[data-hydrated="true"]');
-    await page.getByRole('button', { name: 'Acknowledge this finding' }).first().click();
-    await page.getByLabel(/How was this resolved/).first().fill('The notes column is unused in this demonstration file.');
-    await page.getByRole('button', { name: 'Record acknowledgement' }).first().click();
-    await expect(page.getByText('acknowledged').first()).toBeVisible();
+    await expect(page.getByText(/Every condition is met/)).toBeVisible();
+    for (const removed of ['What the checks found', 'Provenance and permission', 'Field review']) {
+      await expect(page.getByRole('heading', { name: removed, exact: true })).toHaveCount(0);
+    }
   });
 });
 

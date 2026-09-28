@@ -50,8 +50,8 @@ describe('pipeline state transitions', () => {
   });
 
   it('records a skipped check as not performed, and a human gate as awaiting', () => {
-    const p = reducePipeline([ev({ stage: 'safety_scan', status: 'skipped' }), ev({ stage: 'import_approved', status: 'pending' })]);
-    expect(p.stages.safety_scan.status).toBe('not_performed');
+    const p = reducePipeline([ev({ stage: 'outlier_analysis', status: 'skipped' }), ev({ stage: 'import_approved', status: 'pending' })]);
+    expect(p.stages.outlier_analysis.status).toBe('not_performed');
     expect(p.stages.import_approved.status).toBe('awaiting');
   });
 
@@ -67,7 +67,7 @@ describe('pipeline state transitions', () => {
   it('reconstructs from a recorded status and labels the source', () => {
     const p = pipelineFromVersionStatus('READY_FOR_REVIEW', { approved: false, scanned: false });
     expect(p.source).toBe('status');
-    expect(p.stages.safety_scan.status).toBe('not_performed');
+    expect(p.stages.parsing.status).toBe('completed');
     expect(p.stages.ready_for_review.status).toBe('completed');
     expect(p.stages.import_approved.status).toBe('awaiting');
     const approved = pipelineFromVersionStatus('READY_FOR_REVIEW', { approved: true, scanned: false });

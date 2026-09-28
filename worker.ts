@@ -25,6 +25,7 @@ import {
   type ErrorCategory,
 } from './src/queue/queue';
 import { runIngest } from './src/ingest/pipeline';
+import { autoClearVersion } from './src/ingest/autoClear';
 import { datasetEmitter, emitTelemetry } from './src/telemetry/emit';
 import { prisma } from './src/lib/prisma';
 import { executeRun } from './src/run/orchestrator';
@@ -67,6 +68,8 @@ async function handle(job: ClaimedJob): Promise<Record<string, unknown>> {
       const input = job.input as { datasetVersionId?: string };
       if (!input.datasetVersionId) throw new Error('Job input does not name a dataset version.');
       const outcome = await runIngest(input.datasetVersionId, { correlationId: job.id });
+      // The source-data step has no manual review any more; clear the version for use now.
+      await autoClearVersion(input.datasetVersionId);
       return outcome as unknown as Record<string, unknown>;
     }
     case 'simulate': {

@@ -80,6 +80,7 @@ export function computePlanHash(input: {
   seeds: number[];
   promptVersion: string;
   stimulusIds: string[];
+  hypothesisId?: string;
 }): string {
   const canonical = JSON.stringify({
     cohortId: input.cohortId,
@@ -89,6 +90,8 @@ export function computePlanHash(input: {
     seeds: input.seeds,
     promptVersion: input.promptVersion,
     stimulusIds: [...input.stimulusIds].sort(),
+    // Only when set, so plans made before the choice existed keep their hash.
+    ...(input.hypothesisId ? { hypothesisId: input.hypothesisId } : {}),
   });
   return createHash('sha256').update(canonical).digest('hex');
 }
@@ -364,8 +367,14 @@ export async function executeRun(runId: string): Promise<RunOutcome> {
     }
     await step.finish(stepId, 'completed', { personas: personas.length });
 
-    const hypothesis = brief.hypotheses[0]!;
-    const stimulus = brief.stimuli[0];
+    const hypothesis = brief.hypotheses.find((h) => h.id === run.config!.hypothesisId) ?? brief.hypotheses[0]!;
+    // With no stimulus in the brief, the personas react to the hypothesis itself, presented as a
+    // proposition — so the reaction stage always runs rather than being skipped as "not performed".
+    const stimulus = brief.stimuli[0] ?? {
+      label: hypothesis.label,
+      name: 'The hypothesis under test, as a proposition',
+      untrustedContent: [hypothesis.statement, hypothesis.operationalDefinition ? `How it is measured: ${hypothesis.operationalDefinition}` : ''].filter(Boolean).join('\n'),
+    };
 
     // ── 3. Independent assessment — the isolated round ───────────────────────
     stepId = await step.begin('INDEPENDENT_ASSESSMENT', personas.length);
@@ -510,6 +519,32 @@ export async function executeRun(runId: string): Promise<RunOutcome> {
       }
       await step.finish(stepId, 'completed', { reacted: reactions.size });
     }
+
+    // Kept per persona so the results can show what each segment said and why — the stage's
+    // metrics alone say only how many answered.
+    await prisma.simulatedResponse.createMany({
+      data: [
+        ...[...independent].map(([key, a]) => ({
+          runId,
+          personaKey: key,
+          seed: deriveSeed(seed, 'independent', key),
+          responseType: 'assessment',
+          content: a.rationale.slice(0, 4000),
+          sentiment: a.stance,
+          scores: { confidence: a.confidence, evidenceCited: a.evidenceCited, uncertainties: a.uncertainties },
+        })),
+        ...[...reactions].map(([key, r]) => ({
+          runId,
+          personaKey: key,
+          stimulusId: brief.stimuli[0] ? (run.config!.stimulusIds[0] ?? null) : null,
+          seed: deriveSeed(seed, 'reaction', key),
+          responseType: 'reaction',
+          content: r.verbatim.slice(0, 4000),
+          sentiment: r.reaction,
+          scores: { intensity: r.intensity, drivers: r.drivers, barriers: r.barriers },
+        })),
+      ],
+    });
 
     // ── 5. Cross-examination ─────────────────────────────────────────────────
     stepId = await step.begin('CROSS_EXAMINATION');

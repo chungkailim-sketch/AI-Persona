@@ -27,6 +27,9 @@ import { recordAudit } from '@/lib/audit';
 import { emitTelemetry } from '@/telemetry/emit';
 import { buildEvidenceContext, EvidenceRefused, type EvidenceContext } from '@/model/context';
 import { deriveSeed, seededRandom } from '@/model/provider';
+import { readVersionTables } from '@/ingest/structured';
+import { isLongSurveyTable } from '@/forecast/series';
+import { generateLongTableCohort } from './longCohort';
 
 export type AttributeOrigin = 'OBSERVED' | 'DERIVED' | 'INFERRED' | 'USER_ENTERED' | 'SIMULATED';
 
@@ -291,7 +294,14 @@ export async function createCohort(
   // Throws EvidenceRefused when the governance gate is not satisfied. That is the whole point:
   // no cohort can be built from data nobody cleared.
   const context = await buildEvidenceContext(input.datasetVersionId);
-  const { personas, note } = generateCohort(context, {
+  // A survey long table gets real segment personas, unless the review excluded a column they need.
+  const needed = ['statement', 'response', 'segment', 'share'];
+  const included = new Set(context.fields.map((f) => f.name.trim().toLowerCase()));
+  const long = needed.every((c) => included.has(c))
+    ? (await readVersionTables(input.datasetVersionId)).find((t) => isLongSurveyTable(t.headers))
+    : undefined;
+  const fromLong = long ? generateLongTableCohort(long, { datasetName: context.datasetName, seed: input.seed }) : null;
+  const { personas, note } = fromLong ?? generateCohort(context, {
     personaCount: input.personaCount,
     seed: input.seed,
     segmentFieldName: input.segmentFieldName,
@@ -303,7 +313,7 @@ export async function createCohort(
     personas,
   });
 
-  await recordGenerationEvents(projectId, cohort.id, context, personas, input.segmentFieldName);
+  await recordGenerationEvents(projectId, cohort.id, context, personas, input.segmentFieldName, fromLong ? 'Segmenting on each market\u2019s published age and gender breaks.' : undefined);
 
   await recordAudit({
     action: 'persona.cohort.generated',
@@ -374,6 +384,7 @@ async function recordGenerationEvents(
   context: EvidenceContext,
   personas: GeneratedPersona[],
   requestedSegmentField: string | undefined,
+  segmentationNote?: string,
 ): Promise<void> {
   const base = { sourceType: 'cohort' as const, sourceId: cohortId, projectId, cohortId };
   await emitTelemetry({
@@ -385,15 +396,15 @@ async function recordGenerationEvents(
     safeMetadata: { fieldCount: context.fields.length, rowCount: context.rowCount },
   });
 
-  const segmentField = chooseSegmentField(context, requestedSegmentField);
+  const segmentField = segmentationNote ? null : chooseSegmentField(context, requestedSegmentField);
   await emitTelemetry({
     ...base,
     eventType: 'segment.validated',
     stage: 'segmentation',
-    status: segmentField ? 'completed' : 'warning',
-    message: segmentField
+    status: segmentField || segmentationNote ? 'completed' : 'warning',
+    message: segmentationNote ?? (segmentField
       ? `Segmenting on "${segmentField.name}" (${Math.min(segmentField.topValues.length, Math.max(8, personas.length))} segment value(s)).`
-      : 'No field splits the sample into usable segments; every persona describes the whole sample.',
+      : 'No field splits the sample into usable segments; every persona describes the whole sample.'),
     safeMetadata: segmentField ? { fieldName: segmentField.name } : null,
   });
 

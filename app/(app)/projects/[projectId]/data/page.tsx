@@ -4,9 +4,7 @@ import { authContextFor } from '@/auth/session';
 import { can } from '@/auth/permissions';
 import { prisma } from '@/lib/prisma';
 import { listProjectDatasets, getDatasetVersion } from '@/server/datasets';
-import { DETECTION_CAVEAT } from '@/ingest/sensitivity';
 import { QUALITY_CAVEAT } from '@/ingest/quality';
-import { MODEL_PROCESSING_NOTICE } from '@/server/governance';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { WorkflowNav } from '../WorkflowNav';
@@ -20,13 +18,8 @@ import { trendAnalysisView } from '@/forecast/view';
 import { TrendRequestForm, TrendResults } from './TrendPanel';
 import { StructuredPanel } from './StructuredPanel';
 import { structuredTablesView } from '@/ingest/structured';
-import {
-  FieldReviewForm,
-  FindingItem,
-  GovernanceForm,
-  UploadForm,
-  type FieldRow,
-} from './DataStep';
+import { autoClearProject } from '@/ingest/autoClear';
+import { UploadForm } from './DataStep';
 import { fmtDateTime, TZ_LABEL } from '@/lib/time';
 
 export const metadata = { title: 'Source data · Persona Intelligence' };
@@ -47,10 +40,6 @@ const STATUS_LABEL: Record<string, string> = {
   FAILED: 'Failed',
 };
 
-function toDateInput(d: Date | null | undefined): string {
-  return d ? d.toISOString().slice(0, 10) : '';
-}
-
 export default async function DataStepPage(props: PageProps<'/projects/[projectId]/data'>) {
   const { projectId } = await props.params;
   const search = await props.searchParams;
@@ -66,6 +55,8 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
   if (!project) notFound();
 
   const canEdit = can(ctx, 'dataset.upload', projectId);
+  // Versions that finished ingesting before automatic clearance existed are cleared on first view.
+  if (canEdit) await autoClearProject(projectId);
   const datasets = await listProjectDatasets(user, projectId);
 
   const requested = typeof search.version === 'string' ? search.version : undefined;
@@ -74,26 +65,6 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
 
   const detail = selectedId ? await getDatasetVersion(user, projectId, selectedId) : null;
 
-  const fieldRows: FieldRow[] = (detail?.fields ?? []).map((f) => {
-    const profile = f.profile as { withheld?: true; topValues?: { value: string; count: number }[] } | null;
-    return {
-      id: f.id,
-      name: f.name,
-      type: f.type,
-      typeConfidence: f.typeConfidence,
-      scalePoints: f.scalePoints,
-      missingPct: f.missingPct,
-      distinctCount: f.distinctCount,
-      outlierCount: f.outlierCount,
-      sensitivity: f.sensitivity,
-      sensitivityReason: f.sensitivityReason,
-      excluded: f.excluded,
-      inclusionJustification: f.inclusionJustification,
-      constructMappingGrade: f.constructMappingGrade,
-      topValues: profile?.withheld ? null : (profile?.topValues ?? null),
-      withheld: Boolean(profile?.withheld),
-    };
-  });
 
   // ── Live monitor inputs: recorded events, the authoritative snapshot, and — for versions
   //    ingested before per-stage events existed — a labelled reconstruction from the status.
@@ -305,32 +276,6 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
         </section>
       )}
 
-      {/* ── Integrity findings ───────────────────────────────────────────── */}
-      {detail && detail.version.integrity.length > 0 && (
-        <section aria-labelledby="integrity" className="">
-          <h2 id="integrity" className="text-lg">What the checks found</h2>
-          <p className="mt-1 max-w-prose text-xs text-ink-subtle">
-            Each of these corresponds to a defect that has actually appeared in supplier data and
-            would have changed a conclusion without being noticed.
-          </p>
-          <ul className="mt-3 flex flex-col gap-2">
-            {detail.version.integrity.map((f) => (
-              <FindingItem
-                key={f.id}
-                projectId={projectId}
-                finding={{
-                  id: f.id,
-                  check: f.check,
-                  severity: f.severity,
-                  message: f.message,
-                  acknowledged: Boolean(f.acknowledgedAt),
-                }}
-              />
-            ))}
-          </ul>
-        </section>
-      )}
-
       {/* ── Trends and forecast gate ──────────────────────────────────────── */}
       {detail && hasLongTable && (
         <section aria-labelledby="trends" className="border-t border-line pt-6">
@@ -364,47 +309,6 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
               )}
             </div>
           </div>
-        </section>
-      )}
-
-      {/* ── Governance ───────────────────────────────────────────────────── */}
-      {detail && canEdit && (
-        <section aria-labelledby="governance" className="border-t border-line pt-6">
-          <h2 id="governance" className="text-lg">Provenance and permission</h2>
-          <GovernanceForm
-            projectId={projectId}
-            datasetVersionId={detail.version.id}
-            notice={MODEL_PROCESSING_NOTICE}
-            defaults={{
-              dataOwner: detail.version.governance?.dataOwner ?? '',
-              sourceName: detail.version.governance?.sourceName ?? '',
-              methodology: detail.version.governance?.methodology ?? '',
-              collectionStart: toDateInput(detail.version.governance?.collectionStart),
-              collectionEnd: toDateInput(detail.version.governance?.collectionEnd),
-              geography: (detail.version.governance?.geography ?? []).join(', '),
-              language: (detail.version.governance?.language ?? []).join(', '),
-              sampleSize: detail.version.governance?.sampleSize?.toString() ?? '',
-              lawfulBasis: detail.version.governance?.lawfulBasis ?? 'NOT_APPLICABLE_AGGREGATE',
-              classification: detail.version.governance?.classification ?? 'CLIENT_CONFIDENTIAL',
-              permittedUses: (detail.version.governance?.permittedUses ?? []).join(', '),
-              restrictions: detail.version.governance?.restrictions ?? '',
-              retentionDays: detail.version.governance?.retentionDays ?? 90,
-              allowModelProcessing: detail.version.governance?.allowModelProcessing ?? false,
-            }}
-          />
-        </section>
-      )}
-
-      {/* ── Field review ─────────────────────────────────────────────────── */}
-      {detail && fieldRows.length > 0 && canEdit && (
-        <section aria-labelledby="fields" className="border-t border-line pt-6">
-          <h2 id="fields" className="text-lg">Field review</h2>
-          <FieldReviewForm
-            projectId={projectId}
-            datasetVersionId={detail.version.id}
-            fields={fieldRows}
-            detectionCaveat={DETECTION_CAVEAT}
-          />
         </section>
       )}
 

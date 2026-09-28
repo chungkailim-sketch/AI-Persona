@@ -4,10 +4,10 @@ import { RUN_STAGES } from '../../src/run/orchestrator';
 import { ev } from './telemetry-fixtures';
 
 describe('the event contract', () => {
-  it('lists sixteen ingestion stages in order', () => {
-    expect(INGEST_STAGES).toHaveLength(16);
+  it('lists fifteen ingestion stages in order', () => {
+    expect(INGEST_STAGES).toHaveLength(15);
     expect(INGEST_STAGES[0]!.key).toBe('upload_received');
-    expect(INGEST_STAGES[15]!.key).toBe('import_approved');
+    expect(INGEST_STAGES[14]!.key).toBe('import_approved');
   });
 
   it('mirrors the orchestrator stage list exactly', () => {
@@ -93,5 +93,18 @@ describe('merging a first batch that arrives out of order', () => {
     const a = ev({ stage: 'parsing', status: 'active', seq: 7 });
     const b = ev({ stage: 'parsing', status: 'active', seq: 5 });
     expect(mergeEvents([], [a, b]).map((e) => e.seq)).toEqual([5, 7]);
+  });
+});
+
+describe('a version ingested before a stage existed', () => {
+  it('does not leave that stage, or its data-flow box, running forever', async () => {
+    const { reducePipeline, reduceFlow } = await import('../../src/telemetry/reduce');
+    const done = (stage: string, seq: number) => ev({ stage, status: 'completed', seq });
+    // Every stage except data_structuring recorded, as for a version ingested before it existed.
+    const events = ['upload_received', 'file_identification', 'parsing', 'schema_detection', 'field_mapping', 'data_profiling', 'evidence_preparation', 'ready_for_review'].map((s, i) => done(s, i + 1));
+    const p = reducePipeline(events);
+    expect(p.stages.data_structuring.status).toBe('not_performed');
+    expect(p.active).toBeNull();
+    expect(reduceFlow(p).find((n) => n.key === 'parsing')!.status).not.toBe('active');
   });
 });

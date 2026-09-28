@@ -35,7 +35,8 @@ describe('ProcessingPipeline', () => {
     const parsing = screen.getByText('Parsing').closest('li')!;
     expect(parsing).toHaveAttribute('data-stage-status', 'failed');
     expect(within(parsing).getByText('Nothing could be read.')).toBeInTheDocument();
-    expect(screen.getByText('Safety scan').closest('li')).toHaveAttribute('data-stage-status', 'not_performed');
+    // Malware scanning is not a pipeline stage: no scanner is part of this deployment.
+    expect(screen.queryByText('Safety scan')).toBeNull();
     expect(screen.getByText('Schema detection').closest('li')).toHaveAttribute('data-stage-status', 'pending');
   });
 
