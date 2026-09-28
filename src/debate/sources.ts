@@ -28,6 +28,14 @@ export interface GatheredEvidence {
   focusMatched: string[];
 }
 
+export const MISSING_FILES =
+  "Its stored data files are missing from this installation's .storage folder (usually because the app " +
+  'was moved or re-extracted without it). Copy the old .storage folder across, or upload the dataset again.';
+
+export function isMissingFile(e: unknown): boolean {
+  return typeof e === 'object' && e !== null && (e as { code?: string }).code === 'ENOENT';
+}
+
 /** Columns the evidence reads. If the review excluded any of them, the table cannot be used. */
 const REQUIRED = ['statement', 'response', 'segment', 'share'];
 
@@ -68,12 +76,25 @@ export async function gatherDebateEvidence(projectId: string, motion: string, fo
       sources.push({ datasetVersionId: v.id, name, used: false, reason: `The field review excluded ${blocked.join(', ')}, which the debate needs.` });
       continue;
     }
-    const long = (await readVersionTables(v.id)).filter((t) => isLongSurveyTable(t.headers));
+    let long: Awaited<ReturnType<typeof readVersionTables>>;
+    try {
+      long = (await readVersionTables(v.id)).filter((t) => isLongSurveyTable(t.headers));
+    } catch (e) {
+      // The database row survives when the stored file does not — typically the app was moved or
+      // re-extracted to a new folder without its `.storage` directory. Skip it and say so; one
+      // missing dataset must not take the whole debate down with it.
+      if (!isMissingFile(e)) throw e;
+      sources.push({ datasetVersionId: v.id, name, used: false, reason: MISSING_FILES });
+      continue;
+    }
     if (long.length === 0) {
       sources.push({ datasetVersionId: v.id, name, used: false, reason: 'No survey long table (statement × response × segment × share) in this dataset.' });
       continue;
     }
-    const questionText = await questionIndex(v.id);
+    const questionText = await questionIndex(v.id).catch((e: unknown) => {
+      if (isMissingFile(e)) return new Map<string, string>();
+      throw e;
+    });
     for (const t of long) tables.push({ source: name, headers: t.headers, rows: t.rows, questionText });
     sources.push({ datasetVersionId: v.id, name, used: true, reason: null });
   }

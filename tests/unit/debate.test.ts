@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ageRange, compareSegments, matchSegments, mentionedRanges, relevance, selectEvidence, topicTerms, type LongTableInput } from '../../src/debate/evidence';
 import { resolveHandoffs, specialistAgents } from '../../src/debate/crew';
-import { leaning, pickPersonas } from '../../src/debate/engine';
+import { describeFailure, leaning, pickPersonas } from '../../src/debate/engine';
 
 const HEADERS = ['market', 'wave', 'wave_year', 'wave_month', 'question_id', 'statement', 'response', 'segment_group', 'segment', 'sample_base', 'share'];
 function row(statement: string, segment: string, share: number, opts: { wave?: [number, string]; group?: string; base?: number; q?: string; response?: string } = {}) {
@@ -119,5 +119,15 @@ describe('the crew', () => {
       ['16-24'],
     );
     expect(agents.map((a) => `${a.key}:${a.name}`)).toEqual(['P1:16-24', 'P2:35-44']);
+  });
+});
+
+describe('failure reasons', () => {
+  it('says what to do, without quoting the error message', () => {
+    expect(describeFailure(Object.assign(new Error('ENOENT: /secret/path'), { code: 'ENOENT' }))).toMatch(/stored data file could not be found.*\.storage/);
+    expect(describeFailure(Object.assign(new Error('x'), { code: 'P1001' }))).toMatch(/database error \(P1001\)/);
+    const other = describeFailure(new TypeError('value "respondent@x.com" is bad'));
+    expect(other).toMatch(/TypeError/);
+    expect(other).not.toMatch(/respondent/);
   });
 });

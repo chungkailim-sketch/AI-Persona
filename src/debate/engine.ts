@@ -42,7 +42,7 @@ import {
   type DebateStance,
 } from './schemas';
 import { renderComparison, renderEvidenceItems } from './evidence';
-import { DebateRefused, gatherDebateEvidence, simulationContext, type GatheredEvidence } from './sources';
+import { DebateRefused, gatherDebateEvidence, isMissingFile, MISSING_FILES, simulationContext, type GatheredEvidence } from './sources';
 
 export const DEBATE_PROMPT_VERSION = '1.0.0';
 const MAX_SPEAKERS_PER_ROUND = 4;
@@ -599,8 +599,22 @@ export async function executeDebate(debateId: string): Promise<DebateOutcome> {
     if (e instanceof BudgetExceeded) return fail(debateId, e.message, debate.createdById, debate.projectId);
     if (e instanceof DebateRefused) return fail(debateId, e.reasons.join(' '), debate.createdById, debate.projectId);
     console.error('[debate] unexpected failure', e);
-    return fail(debateId, 'The debate stopped with an internal error. The cause is in the worker log.', debate.createdById, debate.projectId);
+    return fail(debateId, describeFailure(e), debate.createdById, debate.projectId);
   }
+}
+
+/**
+ * A failure reason a person can act on. Only the error's class and code are used — never its
+ * message, which can quote data values or file paths.
+ */
+export function describeFailure(e: unknown): string {
+  const code = typeof e === 'object' && e !== null ? (e as { code?: unknown }).code : undefined;
+  if (isMissingFile(e)) return `A stored data file could not be found. ${MISSING_FILES}`;
+  if (typeof code === 'string' && /^P\d{4}$/.test(code)) {
+    return `The debate stopped on a database error (${code}). Check the database is running and migrated (npm run db:deploy); details are in the worker window.`;
+  }
+  const kind = e instanceof Error ? e.name : 'Error';
+  return `The debate stopped with an internal error (${kind}${typeof code === 'string' ? ` ${code}` : ''}). Details are in the worker window.`;
 }
 
 async function fail(debateId: string, reason: string, actor: string, projectId: string): Promise<DebateOutcome> {
