@@ -65,13 +65,14 @@ export interface ModelProvider {
  * provider's own billing. The interface says so wherever a cost is shown.
  */
 const PRICE_PER_MTOK: Record<string, { input: number; output: number }> = {
+  'claude-sonnet-5-5': { input: 2, output: 10 },
   'claude-sonnet-4-5': { input: 3, output: 15 },
   'claude-opus-4-5': { input: 15, output: 75 },
   'claude-haiku-4-5': { input: 1, output: 5 },
 };
 
 export function estimateCostUsd(modelId: string, inputTokens: number, outputTokens: number): number {
-  const price = PRICE_PER_MTOK[modelId] ?? PRICE_PER_MTOK['claude-sonnet-4-5']!;
+  const price = PRICE_PER_MTOK[modelId] ?? PRICE_PER_MTOK['claude-sonnet-5-5']!;
   return (inputTokens / 1_000_000) * price.input + (outputTokens / 1_000_000) * price.output;
 }
 

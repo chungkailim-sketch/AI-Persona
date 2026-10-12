@@ -18,7 +18,7 @@ const schema = z.object({
   IP_HASH_PEPPER: z.string().min(8).default('dev-pepper-change-me'),
   MODEL_PROVIDER: z.enum(['mock', 'anthropic']).default('mock'),
   ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL_ID: z.string().default('claude-sonnet-4-5'),
+  ANTHROPIC_MODEL_ID: z.string().default('claude-sonnet-5-5'),
   AI_MAX_TOKENS: z.coerce.number().int().positive().default(4000),
   AI_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.7),
   AI_RUN_BUDGET_USD: z.coerce.number().nonnegative().default(5),

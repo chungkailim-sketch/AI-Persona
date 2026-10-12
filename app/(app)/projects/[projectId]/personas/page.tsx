@@ -16,6 +16,7 @@ import type { TelemetryEvent } from '@/telemetry/contract';
 import { getDebate, listDebates } from '@/debate/service';
 import { DebateDetail, DebateForm, type DebateView } from './DebatePanel';
 import { MarketFilter } from './MarketFilter';
+import { PagedList, PagedTable } from '@/ui/Pager';
 import {
   ApproveCohortForm,
   GenerateCohortForm,
@@ -214,7 +215,9 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
           <p className="mt-2 text-sm text-ink-muted">No approved personas{marketFilter ? ` in ${marketFilter}` : ''} yet. Generate a cohort below and approve it.</p>
         ) : (
           <div className="mt-2 overflow-x-auto">
-            <table className="w-full text-left text-xs">
+            <PagedTable
+              className="w-full text-left text-xs"
+              head={
               <thead className="text-ink-subtle">
                 <tr>
                   <th className="py-1 pr-3 font-normal">Persona</th>
@@ -226,8 +229,8 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
                   <th className="py-1 font-normal">Cohort</th>
                 </tr>
               </thead>
-              <tbody>
-                {readyPersonas.map((p) => (
+              }
+              rows={readyPersonas.map((p) => (
                   <tr key={p.id} className="border-t border-line align-top">
                     <td className="max-w-[28rem] py-1.5 pr-3 text-ink">{p.name}</td>
                     <td className="py-1.5 pr-3 text-ink-muted">{p.market ?? '—'}</td>
@@ -238,8 +241,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
                     <td className="py-1.5 text-ink-muted">{p.cohort}</td>
                   </tr>
                 ))}
-              </tbody>
-            </table>
+            />
           </div>
         )}
       </section>
@@ -317,11 +319,12 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
               </div>
 
               <h3 className="mt-6 font-sans text-sm font-medium text-ink">Personas</h3>
-              <ul className="mt-2 grid gap-3 xl:grid-cols-2">
-                {personas.map((p) => (
+              <PagedList
+                className="mt-2 grid gap-3 xl:grid-cols-2"
+                items={personas.map((p) => (
                   <PersonaCard key={p.id} persona={p} />
                 ))}
-              </ul>
+              />
 
               {cohort.populationSampleId && (
                 <AdherencePanel projectId={projectId} cohortId={cohort.id} latest={adherenceView(cohort.id)} canRun={canCreate} />

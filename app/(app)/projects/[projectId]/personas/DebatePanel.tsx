@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { startDebateAction, type FormState } from '../actions';
 import { Field, FormMessages, Select, SubmitButton, TextArea, TextInput } from '@/ui/forms';
 import { fmtDateTime, TZ_LABEL } from '@/lib/time';
+import { PagerControls, usePage } from '@/ui/Pager';
 
 // ── View model ────────────────────────────────────────────────────────────────
 
@@ -342,6 +343,17 @@ export function DebateDetail({ debate }: { debate: DebateView }) {
     else groups.push({ key, label, turns: [t] });
   }
 
+  // Five turns per page; a page keeps the phase headings of the turns it shows.
+  const turnCount = debate.turns.length;
+  const turnPage = usePage(turnCount);
+  const pagedGroups: typeof groups = [];
+  let seen = 0;
+  for (const g of groups) {
+    const turns = g.turns.filter((_, i) => seen + i >= turnPage.start && seen + i < turnPage.end);
+    seen += g.turns.length;
+    if (turns.length) pagedGroups.push({ ...g, turns });
+  }
+
   return (
     <article className="flex flex-col gap-5" data-debate-status={debate.status}>
       <DebateAutoRefresh active={running} />
@@ -475,7 +487,7 @@ export function DebateDetail({ debate }: { debate: DebateView }) {
         <section aria-label="Debate transcript">
           <h4 className="text-sm font-medium text-ink">Transcript</h4>
           <ol className="mt-2 flex flex-col gap-4">
-            {groups.map((g) => (
+            {pagedGroups.map((g) => (
               <li key={g.key}>
                 <h5 className="font-mono text-[10.5px] uppercase tracking-wide text-ink-subtle">{g.label}</h5>
                 <ul className="mt-1.5 flex flex-col gap-2">
@@ -509,6 +521,7 @@ export function DebateDetail({ debate }: { debate: DebateView }) {
               </li>
             ))}
           </ol>
+          <PagerControls {...turnPage} total={turnCount} />
         </section>
       )}
 

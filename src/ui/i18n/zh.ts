@@ -1349,4 +1349,9 @@ export const ZH: Record<string, string> = {
   "“Key explanation” gives each persona’s stated reasoning, whether and why it moved, and the base behind it. These are simulated positions, not measurements, so no significance test is applied to them.": "“要点说明”给出每个画像陈述的理由、立场是否变化及原因，以及其背后的样本量。这些是模拟立场而非测量值，因此不对其进行显著性检验。",
   "← Back to results": "← 返回结果",
   "→ answering": "→ 回应",
+  "Previous": "上一页",
+  "Next": "下一页",
+  "#–# of #": "第 #1–#2 项，共 #3 项",
+  "Page # of #": "第 #1 页，共 #2 页",
+  "Pagination": "分页",
 };
