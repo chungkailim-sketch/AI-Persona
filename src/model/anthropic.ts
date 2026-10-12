@@ -20,6 +20,15 @@ const API_URL = 'https://api.anthropic.com/v1/messages';
 const API_VERSION = '2023-06-01';
 const TIMEOUT_MS = 120_000;
 
+/**
+ * Models from Claude Sonnet 5.5 on reject a non-default temperature and think by default. For
+ * them, temperature is left out, and thinking is switched off with `between_tools` so that every
+ * output token goes to the answer, as on the older models this app was written for.
+ */
+function isLegacySampling(modelId: string): boolean {
+  return /^claude-(sonnet|opus|haiku)-4-[0-6]/.test(modelId) || /^claude-3/.test(modelId);
+}
+
 interface AnthropicContentBlock {
   type: string;
   text?: string;
@@ -70,7 +79,9 @@ export class AnthropicProvider implements ModelProvider {
         body: JSON.stringify({
           model: this.modelId,
           max_tokens: request.maxTokens ?? env().AI_MAX_TOKENS,
-          temperature: request.temperature ?? env().AI_TEMPERATURE,
+          ...(isLegacySampling(this.modelId)
+            ? { temperature: request.temperature ?? env().AI_TEMPERATURE }
+            : { thinking: { type: 'between_tools' } }),
           system: request.system,
           messages: request.messages,
         }),
