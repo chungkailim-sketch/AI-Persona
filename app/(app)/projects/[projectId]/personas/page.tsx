@@ -13,8 +13,9 @@ import { latestAdherence } from '@/run/adherenceService';
 import { latestPopulationSample } from '@/population/service';
 import { readRecentEvents } from '@/telemetry/read';
 import type { TelemetryEvent } from '@/telemetry/contract';
-import { getDebate, listDebates } from '@/debate/service';
+import { getDebate, listDebates, listInsights } from '@/debate/service';
 import { DebateDetail, DebateForm, type DebateView } from './DebatePanel';
+import { DebateInsights, type InsightArtifactView } from './DebateInsights';
 import { MarketFilter } from './MarketFilter';
 import { PagedList, PagedTable } from '@/ui/Pager';
 import {
@@ -104,6 +105,22 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
   const debates = await listDebates(user, projectId);
   const requestedDebate = typeof search.debate === 'string' ? search.debate : debates[0]?.id;
   const debateRow = requestedDebate ? await getDebate(user, projectId, requestedDebate) : null;
+  const insightRows = debateRow ? await listInsights(user, projectId, debateRow.id) : [];
+  const insights: InsightArtifactView[] = insightRows.map((a) => ({
+    id: a.id,
+    kind: a.kind as InsightArtifactView['kind'],
+    agentKey: a.agentKey,
+    prompt: a.prompt,
+    status: a.status,
+    content: a.content,
+    failureReason: a.failureReason,
+    createdAt: a.createdAt.toISOString(),
+  }));
+  const insightPersonas = debateRow
+    ? ((debateRow.agents ?? []) as { key: string; name: string; kind: string; segment?: string | null }[])
+        .filter((a) => a.kind === 'persona')
+        .map((a) => ({ key: a.key, name: a.name, segment: a.segment ?? null }))
+    : [];
   const debateView: DebateView | null = debateRow
     ? {
         id: debateRow.id,
@@ -397,6 +414,28 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
             )}
           </div>
         </div>
+
+        {debateView && (
+          <div id="insights" className="mt-8 scroll-mt-48">
+            <h3 className="text-base">Use this debate</h3>
+            <p className="mt-1 max-w-prose text-xs text-ink-subtle">
+              Put a consumer question to every persona in the swarm, generate a market-entry PR and communications strategy from the focus
+              group, or meet each persona and interview it as a market strategist would. Answers are grounded in the historical data and in
+              what each persona said in the debate, and cite the evidence by id.
+            </p>
+            <div className="mt-3">
+              <DebateInsights
+                projectId={projectId}
+                debateId={debateView.id}
+                canRun={canDebate}
+                completed={debateView.status === 'COMPLETED'}
+                isMock={debateView.isMock}
+                personas={insightPersonas}
+                artifacts={insights}
+              />
+            </div>
+          </div>
+        )}
       </section>
 
       <section aria-labelledby="population" className="mt-12 border-t border-line pt-8">

@@ -49,6 +49,8 @@ export const AUDIT_ACTIONS = [
   'debate.requested',
   'debate.completed',
   'debate.failed',
+  'debate.insight_requested',
+  'debate.insight_failed',
   'run.created',
   'run.confirmed',
   'run.started',

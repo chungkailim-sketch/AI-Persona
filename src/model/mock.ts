@@ -169,6 +169,55 @@ function body(schemaName: string, rng: () => number, personaKey: string): unknow
         recommendations: [],
       };
 
+    case 'panel_answer':
+      return {
+        answer: `[MOCK] Placeholder panel answer for ${personaKey}. Produced locally; says nothing about the world.`,
+        categories: [
+          { category: 'Smartphones & consumer electronics', likelihood: pick(rng, ['very_likely', 'likely']), reason: '[MOCK] Placeholder reason.', evidenceIds: [] },
+          { category: 'Electric vehicles & cars', likelihood: pick(rng, ['likely', 'unlikely']), reason: '[MOCK] Placeholder reason.', evidenceIds: [] },
+          { category: 'Food & beverage', likelihood: pick(rng, ['unlikely', 'would_not']), reason: '[MOCK] Placeholder reason.', evidenceIds: [] },
+        ],
+        conditions: ['[MOCK] Placeholder condition.'],
+        barriers: ['[MOCK] Placeholder barrier.'],
+        confidence: round(0.3 + rng() * 0.5),
+      };
+
+    case 'comms_report':
+      return {
+        title: '[MOCK] Market entry communications strategy',
+        executiveSummary: '[MOCK] Placeholder report produced by the mock provider. No model was consulted.',
+        situation: '[MOCK] Placeholder situation.',
+        objectives: ['[MOCK] Placeholder objective.'],
+        audienceInsights: [{ segment: '[MOCK] Segment', insight: '[MOCK] Insight.', implication: '[MOCK] Implication.', evidenceIds: [] }],
+        positioning: '[MOCK] Placeholder positioning.',
+        keyMessages: [{ message: '[MOCK] Key message.', audience: '[MOCK] Audience', proofPoints: ['[MOCK] Proof point.'] }],
+        channels: [{ channel: '[MOCK] Channel', role: '[MOCK] Role.', rationale: '[MOCK] Rationale.' }],
+        voices: [{ voice: '[MOCK] Voice', why: '[MOCK] Why.' }],
+        phasedPlan: [{ phase: '[MOCK] Phase 1', timing: 'Months 1-3', objective: '[MOCK] Objective.', activities: ['[MOCK] Activity.'] }],
+        risks: [{ risk: '[MOCK] Risk.', likelihood: 'medium', mitigation: '[MOCK] Mitigation.' }],
+        kpis: [{ kpi: '[MOCK] KPI', target: '[MOCK] Target', measurement: '[MOCK] Measurement.' }],
+        limitations: ['This report used the mock provider. No model was consulted.'],
+      };
+
+    case 'self_intro':
+      return {
+        headline: `[MOCK] Persona ${personaKey}`,
+        introduction: '[MOCK] Placeholder self-introduction produced by the mock provider.',
+        aboutMe: ['[MOCK] Placeholder fact.'],
+        whatIValue: ['[MOCK] Placeholder value.'],
+        viewOnTheTopic: '[MOCK] Placeholder view.',
+        howToReachMe: ['[MOCK] Placeholder channel.'],
+        evidenceIds: [],
+      };
+
+    case 'interview_answer':
+      return {
+        answer: `[MOCK] Placeholder answer from ${personaKey}. Produced locally; says nothing about the world.`,
+        confidence: round(0.3 + rng() * 0.5),
+        evidenceIds: [],
+        outsideEvidence: false,
+      };
+
     default:
       return { note: `[MOCK] No shape is defined for schema "${schemaName}".` };
   }

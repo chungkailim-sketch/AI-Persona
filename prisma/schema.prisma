@@ -1272,8 +1272,34 @@ model Debate {
 
   turns      DebateTurn[]
   modelCalls ModelCall[]
+  artifacts  DebateArtifact[]
 
   @@index([projectId, createdAt])
+}
+
+/// Something made from a completed debate: a question put to the whole panel, a communications
+/// strategy report, a persona's self-introduction, or one strategist question and its answer.
+model DebateArtifact {
+  id            String    @id @default(cuid())
+  debateId      String
+  debate        Debate    @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  projectId     String
+  kind          String // PANEL_QUESTION | COMMS_REPORT | SELF_INTRO | INTERVIEW
+  /// Persona agent key, for SELF_INTRO and INTERVIEW.
+  agentKey      String?
+  /// The question, or the report's brief, as entered.
+  prompt        String?
+  options       Json?
+  status        String    @default("QUEUED") // QUEUED | RUNNING | COMPLETED | FAILED
+  content       Json?
+  evidence      Json? // extra evidence gathered for this artifact (panel questions)
+  spendUsd      Float     @default(0)
+  failureReason String?
+  createdById   String
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  @@index([debateId, kind, createdAt])
 }
 
 /// One contribution to a debate, in the order it was made.

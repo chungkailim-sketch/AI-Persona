@@ -24,6 +24,8 @@ import { setModelProvider } from '../../src/model/client';
 import { MockProvider } from '../../src/model/mock';
 import { requestDebate, DebateRequestRefused } from '../../src/debate/service';
 import { executeDebate } from '../../src/debate/engine';
+import { requestInsight } from '../../src/debate/service';
+import { executeInsight, reportMarkdown, tallyCategories } from '../../src/debate/insights';
 
 class MemoryStore implements StorageAdapter {
   readonly name = 'memory';
@@ -183,5 +185,78 @@ describe('persona agent-swarm debate', () => {
     await expect(requestDebate(owner, projectId, { cohortId, topic: 'ads?' })).rejects.toMatchObject({
       problems: expect.arrayContaining([expect.stringMatching(/at least two approved personas/), expect.stringMatching(/at least a sentence/)]),
     });
+  });
+});
+
+describe('using a completed debate', () => {
+  beforeEach(async () => { await resetDatabase(); });
+
+  it('refuses until the debate has completed', async () => {
+    const { owner, projectId, cohortId } = await readyProject();
+    const { debateId } = await requestDebate(owner, projectId, { cohortId, topic: TOPIC, rounds: 1 });
+    await expect(requestInsight(owner, projectId, debateId, { kind: 'COMMS_REPORT' })).rejects.toBeInstanceOf(DebateRequestRefused);
+  });
+
+  it('puts a question to every persona, counts the category ratings in code, writes a report, and runs an interview with memory', async () => {
+    const { owner, projectId, cohortId } = await readyProject();
+    const { debateId } = await requestDebate(owner, projectId, { cohortId, topic: TOPIC, rounds: 1 });
+    expect((await executeDebate(debateId)).status).toBe('COMPLETED');
+
+    // Panel question
+    const { artifactIds: [panelId] } = await requestInsight(owner, projectId, debateId, {
+      kind: 'PANEL_QUESTION',
+      prompt: 'In the next one year, which categories would you be willing to try a Chinese brand in?',
+    });
+    expect(await db.job.count({ where: { kind: 'debate_insight' } })).toBe(1);
+    expect((await executeInsight(panelId!)).status).toBe('COMPLETED');
+    const panel = await db.debateArtifact.findUniqueOrThrow({ where: { id: panelId! } });
+    const pc = panel.content as { answers: { ok: boolean; market: string }[]; tally: { category: string; counts: { very_likely: number; likely: number; unlikely: number; would_not: number }; willingShare: number }[] };
+    expect(pc.answers).toHaveLength(3);
+    expect(pc.answers.every((a) => a.ok)).toBe(true);
+    expect(pc.answers[0]!.market).toBe('China');
+    const phones = pc.tally.find((t) => t.category === 'Smartphones & consumer electronics')!;
+    // The mock rates phones very likely or likely for everyone, so all three are willing.
+    expect(phones.willingShare).toBe(1);
+    expect(phones.counts.very_likely + phones.counts.likely).toBe(3);
+
+    // Report, which reads the panel result
+    const { artifactIds: [reportId] } = await requestInsight(owner, projectId, debateId, { kind: 'COMMS_REPORT', options: { brand: 'Test brand', markets: 'Indonesia' } });
+    expect((await executeInsight(reportId!)).status).toBe('COMPLETED');
+    const report = await db.debateArtifact.findUniqueOrThrow({ where: { id: reportId! } });
+    expect((report.content as { basedOn: { panelQuestionId: string } }).basedOn.panelQuestionId).toBe(panelId);
+    const md = reportMarkdown(report.content as never, { topic: TOPIC, createdAt: report.createdAt, isMock: true });
+    expect(md).toContain('## Executive summary');
+    expect(md).toContain('not real respondents');
+
+    // Self-introductions for every persona agent
+    const intros = await requestInsight(owner, projectId, debateId, { kind: 'SELF_INTRO', agentKey: 'all' });
+    expect(intros.artifactIds).toHaveLength(3);
+    for (const id of intros.artifactIds) expect((await executeInsight(id)).status).toBe('COMPLETED');
+
+    // Interview: the second question is sent with the first question and answer as history
+    const q1 = await requestInsight(owner, projectId, debateId, { kind: 'INTERVIEW', agentKey: 'P1', prompt: 'What would make you trust a new brand?' });
+    await executeInsight(q1.artifactIds[0]!);
+    const q2 = await requestInsight(owner, projectId, debateId, { kind: 'INTERVIEW', agentKey: 'P1', prompt: 'And which channel would you hear about it on?' });
+    await executeInsight(q2.artifactIds[0]!);
+    const calls = await db.modelCall.findMany({ where: { debateId, stage: 'INSIGHT_INTERVIEW' }, orderBy: { createdAt: 'asc' } });
+    expect(calls).toHaveLength(2);
+    expect((await db.debateArtifact.findUniqueOrThrow({ where: { id: q2.artifactIds[0]! } })).status).toBe('COMPLETED');
+
+    // An unknown persona is refused
+    await expect(requestInsight(owner, projectId, debateId, { kind: 'INTERVIEW', agentKey: 'P99', prompt: 'Hello there, persona?' })).rejects.toBeInstanceOf(DebateRequestRefused);
+  });
+
+  it('counts willingness against every persona that answered, per market', () => {
+    const t = tallyCategories([
+      { market: 'China', ok: true, categories: [{ category: 'EVs', likelihood: 'very_likely' }] },
+      { market: 'China', ok: true, categories: [{ category: 'EVs', likelihood: 'would_not' }] },
+      { market: 'Mexico', ok: true, categories: [{ category: 'EVs', likelihood: 'likely' }] },
+      { market: 'Mexico', ok: false },
+    ]);
+    expect(t[0]!.willingShare).toBeCloseTo(2 / 3);
+    expect(t[0]!.byMarket).toEqual([
+      { market: 'China', willing: 1, answered: 2 },
+      { market: 'Mexico', willing: 1, answered: 1 },
+    ]);
   });
 });

@@ -38,7 +38,7 @@ import { requestForecastAnalysis } from '@/forecast/analysis';
 import { buildPopulationSample, createCohortFromPopulation, PopulationRefused } from '@/population/service';
 import { EvidenceRefused } from '@/model/context';
 import { runAdherenceCheck } from '@/run/adherenceService';
-import { requestDebate, DebateRequestRefused } from '@/debate/service';
+import { requestDebate, requestInsight, DebateRequestRefused, type InsightRequest } from '@/debate/service';
 
 export interface FormState {
   error?: string;
@@ -466,4 +466,37 @@ export async function startDebateAction(_prev: FormState, formData: FormData): P
   }
   // Outside the try: a redirect is thrown, and must not be caught as a failure.
   redirect(`/projects/${projectId}/personas?debate=${debateId}#debate`);
+}
+
+/**
+ * Ask something of a completed debate: a panel question, a communications report, persona
+ * self-introductions, or one interview question. Runs on the worker; the page refreshes until done.
+ */
+export async function debateInsightAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  const debateId = String(formData.get('debateId') ?? '');
+  const kind = String(formData.get('kind') ?? '') as InsightRequest['kind'];
+  if (!projectId || !debateId || !['PANEL_QUESTION', 'COMMS_REPORT', 'SELF_INTRO', 'INTERVIEW'].includes(kind)) {
+    return { error: 'Invalid request.' };
+  }
+  try {
+    const user = await requireUserApi();
+    const text = (k: string) => String(formData.get(k) ?? '').trim();
+    const options: Record<string, unknown> = {};
+    if (kind === 'PANEL_QUESTION') {
+      const cats = text('categories').split(/[\n;]/).map((s) => s.trim()).filter(Boolean);
+      if (cats.length) options.categories = cats;
+    }
+    if (kind === 'COMMS_REPORT') for (const k of ['brand', 'category', 'markets', 'objective']) options[k] = text(k);
+    const { artifactIds } = await requestInsight(user, projectId, debateId, {
+      kind,
+      prompt: text('prompt') || null,
+      agentKey: text('agentKey') || null,
+      options,
+    });
+    revalidatePath(`/projects/${projectId}/personas`);
+    return { ok: artifactIds.length > 1 ? `Queued ${artifactIds.length}. Results appear below as they finish.` : 'Queued. The result appears below when it finishes.' };
+  } catch (e) {
+    return toState(e);
+  }
 }
