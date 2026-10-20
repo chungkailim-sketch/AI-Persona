@@ -62,6 +62,8 @@ export interface CallOptions<T> {
   /** Hash of the evidence that was placed in this prompt, so a finding can be traced to it. */
   evidenceManifestHash?: string;
   budgetCapUsd?: number;
+  /** Output ceiling for this call; defaults to AI_MAX_TOKENS. Long reports need more. */
+  maxTokens?: number;
   promptTemplate: string;
   promptVersion: string;
   /** Called before each attempt, so a caller can record that a call (or a repair) is in flight. */
@@ -147,6 +149,7 @@ export async function callModel<T>(options: CallOptions<T>): Promise<CallResult<
       messages,
       schemaName: options.schemaName,
       seed: options.seed,
+      maxTokens: options.maxTokens,
     });
     totalCost += response.costUsd;
     inputTokens += response.inputTokens;

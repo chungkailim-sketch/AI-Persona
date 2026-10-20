@@ -103,3 +103,71 @@ export async function getDebate(user: SessionUser, projectId: string, debateId: 
     include: { turns: { orderBy: { seq: 'asc' } }, cohort: { select: { name: true } } },
   });
 }
+
+// ── What is made from a completed debate ──────────────────────────────────────
+
+export interface InsightRequest {
+  kind: 'PANEL_QUESTION' | 'COMMS_REPORT' | 'SELF_INTRO' | 'INTERVIEW';
+  prompt?: string | null;
+  /** A persona agent key, or 'all' for self-introductions from every persona agent. */
+  agentKey?: string | null;
+  options?: Record<string, unknown>;
+}
+
+/**
+ * Queue something to be made from a completed debate. Spends model budget, so it needs the same
+ * permission as the debate itself, and is audited.
+ */
+export async function requestInsight(user: SessionUser, projectId: string, debateId: string, input: InsightRequest): Promise<{ artifactIds: string[] }> {
+  const ctx = await authContextFor(user, projectId);
+  if (!can(ctx, 'simulation.run', projectId)) throw new AuthorizationError('simulation.run', projectId);
+
+  const problems: string[] = [];
+  const debate = await prisma.debate.findFirst({ where: { id: debateId, projectId }, select: { id: true, status: true, agents: true } });
+  if (!debate) throw new DebateRequestRefused(['That debate is not part of this project.']);
+  if (debate.status !== 'COMPLETED') problems.push('Wait for the debate to complete first.');
+  const personaKeys = ((debate.agents ?? []) as { key: string; kind: string }[]).filter((a) => a.kind === 'persona').map((a) => a.key);
+
+  const prompt = input.prompt?.trim() || null;
+  let agentKeys: (string | null)[] = [null];
+  if (input.kind === 'PANEL_QUESTION' || input.kind === 'INTERVIEW') {
+    if (!prompt || prompt.length < 8) problems.push('Enter the question in at least a few words.');
+    else if (prompt.length > 1500) problems.push('Keep the question under 1,500 characters.');
+  } else if (prompt && prompt.length > 3000) problems.push('Keep the brief under 3,000 characters.');
+  if (input.kind === 'INTERVIEW' || input.kind === 'SELF_INTRO') {
+    if (input.kind === 'SELF_INTRO' && input.agentKey === 'all') agentKeys = personaKeys;
+    else if (input.agentKey && personaKeys.includes(input.agentKey)) agentKeys = [input.agentKey];
+    else problems.push('Choose a persona from this debate.');
+  }
+  const options: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(input.options ?? {})) {
+    if (Array.isArray(v)) options[k] = v.map((x) => String(x).trim().slice(0, 80)).filter(Boolean).slice(0, 16);
+    else if (v !== null && v !== undefined && String(v).trim()) options[k] = String(v).trim().slice(0, 300);
+  }
+  if (problems.length > 0) throw new DebateRequestRefused(problems);
+
+  const artifactIds: string[] = [];
+  for (const agentKey of agentKeys) {
+    const a = await prisma.debateArtifact.create({
+      data: { debateId, projectId, kind: input.kind, agentKey, prompt, options: options as object, createdById: user.userId },
+    });
+    await enqueue({ kind: 'debate_insight', input: { artifactId: a.id }, idempotencyKey: `debate_insight:${a.id}`, maxAttempts: 1 });
+    artifactIds.push(a.id);
+  }
+  await recordAudit({
+    action: 'debate.insight_requested',
+    targetType: 'debate',
+    targetId: debateId,
+    projectId,
+    actorUserId: user.userId,
+    actorEmail: user.email,
+    reason: `${input.kind.toLowerCase().replace('_', ' ')} requested (${artifactIds.length})`,
+  });
+  return { artifactIds };
+}
+
+export async function listInsights(user: SessionUser, projectId: string, debateId: string) {
+  const ctx = await authContextFor(user, projectId);
+  if (!can(ctx, 'project.view', projectId)) throw new AuthorizationError('project.view', projectId);
+  return prisma.debateArtifact.findMany({ where: { debateId, projectId }, orderBy: { createdAt: 'asc' } });
+}

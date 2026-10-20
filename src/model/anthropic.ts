@@ -18,7 +18,8 @@ import {
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const API_VERSION = '2023-06-01';
-const TIMEOUT_MS = 120_000;
+// Long enough for a full report (about 10k output tokens) without streaming.
+const TIMEOUT_MS = 300_000;
 
 /**
  * Models from Claude Sonnet 5.5 on reject a non-default temperature and think by default. For
