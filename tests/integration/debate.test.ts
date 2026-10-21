@@ -25,6 +25,8 @@ import { MockProvider } from '../../src/model/mock';
 import { requestDebate, DebateRequestRefused } from '../../src/debate/service';
 import { executeDebate } from '../../src/debate/engine';
 import { requestInsight } from '../../src/debate/service';
+import { removeDatasets } from '../../src/server/datasets';
+import { listProjectDatasets } from '../../src/server/datasets';
 import { executeInsight, reportMarkdown, tallyCategories } from '../../src/debate/insights';
 
 class MemoryStore implements StorageAdapter {
@@ -280,5 +282,25 @@ describe('using a completed debate', () => {
       { market: 'China', willing: 1, answered: 2 },
       { market: 'Mexico', willing: 1, answered: 1 },
     ]);
+  });
+});
+
+describe('removing source data', () => {
+  beforeEach(async () => { await resetDatabase(); });
+
+  it('detaches every dataset, deletes its stored files, keeps lineage, and leaves nothing to build from', async () => {
+    const { owner, projectId, datasetVersionId } = await readyProject();
+    const files = await db.sourceFile.findMany({ where: { datasetVersionId } });
+    expect(files.length).toBeGreaterThan(0);
+
+    const r = await removeDatasets(owner, projectId, { all: true });
+    expect(r.removed).toBe(1);
+    expect(r.filesDeleted).toBeGreaterThanOrEqual(files.length);
+    expect(await listProjectDatasets(owner, projectId)).toHaveLength(0);
+    for (const f of files) await expect(store.get(f.storageKey)).rejects.toThrow();
+    // Lineage stays: the version row and the cohort built from it are still there.
+    expect(await db.datasetVersion.count({ where: { id: datasetVersionId } })).toBe(1);
+    expect(await db.cohort.count({ where: { projectId } })).toBe(1);
+    expect(await db.auditEvent.count({ where: { action: 'dataset.deleted' } })).toBe(1);
   });
 });

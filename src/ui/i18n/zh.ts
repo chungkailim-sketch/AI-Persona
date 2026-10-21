@@ -1415,4 +1415,8 @@ export const ZH: Record<string, string> = {
   "Each persona is one model call. Up to 40.": "每个画像对应一次模型调用。最多 40 个。",
   "Choose at least one segment group for the panel.": "请为小组至少选择一个细分维度。",
   "Cohorts": "群组列表",
+  "One dataset per file, named exactly as the file": "每个文件作为一个数据集，并完全沿用文件名",
+  "Untick to combine everything you select into one dataset under a name you choose.": "取消勾选则将所选内容合并为一个数据集，并使用您指定的名称。",
+  "Remove all": "全部移除",
+  "Removing…": "移除中…",
 };

@@ -58,6 +58,7 @@ function sizeProblem(files: FileList | null): string | null {
 export function UploadForm({ projectId }: { projectId: string }) {
   const [state, action] = useActionState(uploadDatasetAction, empty);
   const [tooBig, setTooBig] = useState<string | null>(null);
+  const [perFile, setPerFile] = useState(true);
   return (
     <form
       action={action}
@@ -70,9 +71,18 @@ export function UploadForm({ projectId }: { projectId: string }) {
       className="mt-4 flex max-w-xl flex-col gap-4"
     >
       <input type="hidden" name="projectId" value={projectId} />
-      <Field id="ds-name" label="Dataset name" required>
-        <TextInput id="ds-name" name="name" required maxLength={120} />
-      </Field>
+      <label className="flex items-start gap-2 text-sm text-ink-muted">
+        <input type="checkbox" name="perFile" checked={perFile} onChange={(e) => setPerFile(e.target.checked)} className="mt-1" />
+        <span>
+          One dataset per file, named exactly as the file
+          <span className="block text-xs text-ink-subtle">Untick to combine everything you select into one dataset under a name you choose.</span>
+        </span>
+      </label>
+      {!perFile && (
+        <Field id="ds-name" label="Dataset name" required>
+          <TextInput id="ds-name" name="name" required maxLength={120} />
+        </Field>
+      )}
       <Field
         id="ds-files"
         label="Files"

@@ -20,6 +20,7 @@ import { StructuredPanel } from './StructuredPanel';
 import { structuredTablesView } from '@/ingest/structured';
 import { autoClearProject } from '@/ingest/autoClear';
 import { UploadForm } from './DataStep';
+import { RemoveAllData, RemoveDatasetButton } from './RemoveData';
 import { fmtDateTime, TZ_LABEL } from '@/lib/time';
 
 export const metadata = { title: 'Source data · Persona Intelligence' };
@@ -55,6 +56,7 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
   if (!project) notFound();
 
   const canEdit = can(ctx, 'dataset.upload', projectId);
+  const canDelete = can(ctx, 'dataset.delete', projectId);
   // Versions that finished ingesting before automatic clearance existed are cleared on first view.
   if (canEdit) await autoClearProject(projectId);
   const datasets = await listProjectDatasets(user, projectId);
@@ -149,11 +151,13 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
                           </span>
                         </span>
                       </Link>
+                      {canDelete && <RemoveDatasetButton projectId={projectId} datasetId={d.datasetId} name={d.name} />}
                     </li>
                   );
                 })}
               </ul>
             )}
+            {canDelete && <RemoveAllData projectId={projectId} count={datasets.length} />}
           </section>
 
           {canEdit && (

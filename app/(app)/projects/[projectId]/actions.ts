@@ -15,6 +15,7 @@ import { requireUserApi, AuthorizationError } from '@/auth/guard';
 import { clientIp } from '@/lib/request';
 import {
   createDatasetWithVersion,
+  removeDatasets,
   retryIngestion,
   UploadRejected,
   type UploadedFile,
@@ -69,8 +70,10 @@ export async function uploadDatasetAction(
     const user = await requireUserApi();
     const projectId = String(formData.get('projectId') ?? '');
     const name = String(formData.get('name') ?? '').trim();
+    // Each file becomes its own dataset, named after the file, unless one name is given for all.
+    const perFile = formData.get('perFile') === 'on';
     if (!projectId) return { error: 'Invalid request.' };
-    if (name.length < 2) return { error: 'Give the dataset a name.' };
+    if (!perFile && name.length < 2) return { error: 'Give the dataset a name.' };
 
     const entries = formData.getAll('files').filter((f): f is File => f instanceof File);
     const files: UploadedFile[] = [];
@@ -85,15 +88,45 @@ export async function uploadDatasetAction(
     if (files.length === 0) return { error: 'Choose at least one file.' };
 
     const h = await headers();
-    await createDatasetWithVersion(
-      user,
-      projectId,
-      { name, files, changeNote: String(formData.get('changeNote') ?? '') },
-      { ip: clientIp(h) },
-    );
+    const changeNote = String(formData.get('changeNote') ?? '');
+    if (perFile) {
+      for (const f of files) {
+        await createDatasetWithVersion(user, projectId, { name: datasetNameFromFile(f.originalName), files: [f], changeNote }, { ip: clientIp(h) });
+      }
+    } else {
+      await createDatasetWithVersion(user, projectId, { name, files, changeNote }, { ip: clientIp(h) });
+    }
 
     revalidatePath(`/projects/${projectId}/data`);
-    return { ok: 'Upload accepted. Ingestion is running; this page updates as it progresses.' };
+    return {
+      ok: perFile && files.length > 1
+        ? `${files.length} files accepted, each as its own dataset named after the file. Ingestion is running; this page updates as it progresses.`
+        : 'Upload accepted. Ingestion is running; this page updates as it progresses.',
+    };
+  } catch (e) {
+    return toState(e);
+  }
+}
+
+/** The dataset is named exactly as the uploaded file, e.g. "Mintel_China_Smartphones_2026.xlsx". */
+function datasetNameFromFile(fileName: string): string {
+  return (fileName.split(/[\\/]/).pop() ?? fileName).trim().slice(0, 120);
+}
+
+/** Remove one dataset, or every dataset attached to the project. */
+export async function removeDatasetsAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  const datasetId = String(formData.get('datasetId') ?? '');
+  const all = formData.get('all') === 'yes';
+  if (!projectId || (!all && !datasetId)) return { error: 'Invalid request.' };
+  if (all && String(formData.get('confirm') ?? '').trim().toUpperCase() !== 'REMOVE ALL') {
+    return { error: 'Type REMOVE ALL to confirm.' };
+  }
+  try {
+    const user = await requireUserApi();
+    const r = await removeDatasets(user, projectId, all ? { all: true } : { datasetIds: [datasetId] });
+    revalidatePath(`/projects/${projectId}/data`);
+    return { ok: `Removed ${r.removed} dataset(s) and deleted ${r.filesDeleted} stored file(s).` };
   } catch (e) {
     return toState(e);
   }
