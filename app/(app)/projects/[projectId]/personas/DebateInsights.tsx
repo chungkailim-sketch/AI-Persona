@@ -58,6 +58,7 @@ export function DebateInsights({
   isMock,
   personas,
   artifacts,
+  panelOptions,
 }: {
   projectId: string;
   debateId: string;
@@ -66,6 +67,7 @@ export function DebateInsights({
   isMock: boolean;
   personas: InsightPersonaView[];
   artifacts: InsightArtifactView[];
+  panelOptions: { groups: string[]; markets: string[] };
 }) {
   const [tab, setTab] = useState<Tab>('panel');
   const pending = artifacts.some((a) => a.status === 'QUEUED' || a.status === 'RUNNING');
@@ -106,7 +108,7 @@ export function DebateInsights({
           </button>
         ))}
       </div>
-      {tab === 'panel' && <PanelTab projectId={projectId} debateId={debateId} canRun={canRun} artifacts={artifacts.filter((a) => a.kind === 'PANEL_QUESTION')} />}
+      {tab === 'panel' && <PanelTab projectId={projectId} debateId={debateId} canRun={canRun} debatePanelSize={personas.length} panelOptions={panelOptions} artifacts={artifacts.filter((a) => a.kind === 'PANEL_QUESTION')} />}
       {tab === 'report' && <ReportTab projectId={projectId} debateId={debateId} canRun={canRun} artifacts={artifacts.filter((a) => a.kind === 'COMMS_REPORT')} />}
       {tab === 'personas' && <PersonaTab projectId={projectId} debateId={debateId} canRun={canRun} personas={personas} artifacts={artifacts} />}
     </div>
@@ -136,8 +138,23 @@ function Ids({ ids }: { ids?: string[] }) {
 
 // ── Ask the panel ─────────────────────────────────────────────────────────────
 
-function PanelTab({ projectId, debateId, canRun, artifacts }: { projectId: string; debateId: string; canRun: boolean; artifacts: InsightArtifactView[] }) {
+function PanelTab({
+  projectId,
+  debateId,
+  canRun,
+  debatePanelSize,
+  panelOptions,
+  artifacts,
+}: {
+  projectId: string;
+  debateId: string;
+  canRun: boolean;
+  debatePanelSize: number;
+  panelOptions: { groups: string[]; markets: string[] };
+  artifacts: InsightArtifactView[];
+}) {
   const [state, action] = useActionState(debateInsightAction, empty);
+  const [source, setSource] = useState<'debate' | 'data'>('debate');
   const [selected, setSelected] = useState<string | null>(null);
   const shown = artifacts.find((a) => a.id === selected) ?? artifacts[artifacts.length - 1] ?? null;
   return (
@@ -148,6 +165,48 @@ function PanelTab({ projectId, debateId, canRun, artifacts }: { projectId: strin
           <Field id="panel-q" label="Question for every persona" required hint="Each persona agent answers alone, from the historical data and what it said in the debate.">
             <TextArea id="panel-q" name="prompt" defaultValue={DEFAULT_QUESTION} rows={2} required />
           </Field>
+          <fieldset className="flex flex-col gap-2">
+            <legend className="text-sm font-medium text-ink">Who answers</legend>
+            <label className="flex items-center gap-2 text-sm text-ink-muted">
+              <input type="radio" name="panel" value="debate" checked={source === 'debate'} onChange={() => setSource('debate')} />
+              {`The debate's personas (${debatePanelSize}, built on age and gender)`}
+            </label>
+            <label className="flex items-center gap-2 text-sm text-ink-muted">
+              <input type="radio" name="panel" value="data" checked={source === 'data'} onChange={() => setSource('data')} disabled={panelOptions.groups.length === 0} />
+              A panel built from the data on other segment groups
+            </label>
+            {source === 'data' && (
+              <div className="ml-6 flex flex-col gap-3 rounded border border-line px-3 py-2">
+                <div>
+                  <p className="text-xs font-medium text-ink">Segment groups (one persona per published segment, per market)</p>
+                  <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                    {panelOptions.groups.map((g) => (
+                      <label key={g} className="flex items-center gap-1.5 text-xs text-ink-muted">
+                        <input type="checkbox" name="segmentGroups" value={g} defaultChecked={!/^(age|gender)/i.test(g)} />
+                        {g}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                {panelOptions.markets.length > 0 && (
+                  <div>
+                    <p className="text-xs font-medium text-ink">Markets (none ticked means all)</p>
+                    <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                      {panelOptions.markets.map((m) => (
+                        <label key={m} className="flex items-center gap-1.5 text-xs text-ink-muted">
+                          <input type="checkbox" name="markets" value={m} />
+                          {m}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                <Field id="panel-max" label="Most personas to ask" hint="Each persona is one model call. Up to 40.">
+                  <TextInput id="panel-max" name="maxPersonas" type="number" min={2} max={40} defaultValue={24} />
+                </Field>
+              </div>
+            )}
+          </fieldset>
           <Field id="panel-cats" label="Categories to rate" hint="One per line. Personas rate each one so answers can be counted; they may add up to two of their own.">
             <TextArea id="panel-cats" name="categories" defaultValue={DEFAULT_CATEGORIES.join('\n')} rows={5} />
           </Field>
@@ -186,6 +245,11 @@ function PanelResult({ a }: { a: InsightArtifactView }) {
   return (
     <section className="flex flex-col gap-3" aria-label="Panel answers">
       <h4 className="text-sm font-medium text-ink">{c.question}</h4>
+      {(a.content as { panel?: { source: string; segmentGroups?: string[]; markets?: string[] } }).panel?.source === 'data' && (
+        <p className="font-mono text-[10.5px] text-ink-subtle">
+          {`Panel built from the data · ${((a.content as { panel: { segmentGroups: string[] } }).panel.segmentGroups ?? []).join(', ')}${(a.content as { panel: { markets: string[] } }).panel.markets?.length ? ` · ${(a.content as { panel: { markets: string[] } }).panel.markets.join(', ')}` : ' · all markets'}`}
+        </p>
+      )}
       <p className="text-xs text-ink-subtle">
         {answered} of {answers.length} personas answered. &ldquo;Willing&rdquo; counts very likely and likely, as a share of personas that answered.
         Counted in code from the personas&rsquo; ratings; the personas are simulations of published segments, not respondents.

@@ -1407,4 +1407,11 @@ export const ZH: Record<string, string> = {
   "Queued. The result appears below when it finishes.": "已排队。完成后结果将显示在下方。",
   "This debate ran on the mock provider, so anything made from it is placeholder text.": "本次辩论使用了模拟提供方，因此由其生成的内容均为占位文本。",
   "This debate has no persona agents.": "本次辩论没有画像智能体。",
+  "Who answers": "谁来回答",
+  "A panel built from the data on other segment groups": "基于数据中其他细分维度构建的小组",
+  "Segment groups (one persona per published segment, per market)": "细分维度（每个市场的每个已发布细分群体对应一个画像）",
+  "Markets (none ticked means all)": "市场（不勾选表示全部）",
+  "Most personas to ask": "最多询问的画像数",
+  "Each persona is one model call. Up to 40.": "每个画像对应一次模型调用。最多 40 个。",
+  "Choose at least one segment group for the panel.": "请为小组至少选择一个细分维度。",
 };

@@ -68,7 +68,15 @@ export function traitPhrase(statement: string, response: string): string {
 
 export function generateLongTableCohort(
   table: { headers: string[]; rows: string[][] },
-  opts: { datasetName: string; seed: number; maxPersonas?: number },
+  opts: {
+    datasetName: string;
+    seed: number;
+    maxPersonas?: number;
+    /** Segment groups to build personas from (e.g. Income, Region). Default: age and gender. */
+    groups?: string[];
+    /** Only these markets. Default: all. */
+    markets?: string[];
+  },
 ): { personas: GeneratedPersona[]; note: string } | null {
   const all = rowsOf(table.headers, table.rows);
   if (all.length === 0) return null;
@@ -81,9 +89,12 @@ export function generateLongTableCohort(
   const overall = new Map<string, number>();
   for (const r of current) if (r.group.toLowerCase() === 'all') overall.set(`${r.market}|${r.statement}|${r.response}`, r.share);
 
+  const wantGroups = opts.groups?.length ? new Set(opts.groups.map((g) => g.trim().toLowerCase())) : null;
+  const wantMarkets = opts.markets?.length ? new Set(opts.markets.map((m) => m.trim().toLowerCase())) : null;
   const cells = new Map<string, { market: string; group: string; segment: string; wave: string; base: number | null; rows: Row[] }>();
   for (const r of current) {
-    if (!PERSONA_GROUPS.test(r.group)) continue;
+    if (wantGroups ? !wantGroups.has(r.group.toLowerCase()) : !PERSONA_GROUPS.test(r.group)) continue;
+    if (wantMarkets && !wantMarkets.has(r.market.toLowerCase())) continue;
     const key = `${r.market}|${r.group}|${r.segment}`;
     const cell = cells.get(key) ?? { market: r.market, group: r.group, segment: r.segment, wave: r.wave, base: null, rows: [] };
     cell.base = Math.max(cell.base ?? 0, r.base ?? 0) || cell.base;
@@ -176,7 +187,7 @@ export function generateLongTableCohort(
 
   const markets = new Set(ordered.map((c) => c.market)).size;
   const note =
-    `One persona per published age and gender segment in each market (${personas.length} across ${markets} market(s)), ` +
+    `One persona per published ${opts.groups?.length ? opts.groups.join(', ') : 'age and gender'} segment in each market (${personas.length} across ${markets} market(s)), ` +
     `from the latest wave in ${opts.datasetName}. Each is described by the statements where it differs most from its market as a whole.` +
     (ordered.length > limit ? ` ${ordered.length - limit} further segment(s) were not included (limit ${limit}).` : '');
   return { personas, note };
