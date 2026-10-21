@@ -1414,4 +1414,5 @@ export const ZH: Record<string, string> = {
   "Most personas to ask": "最多询问的画像数",
   "Each persona is one model call. Up to 40.": "每个画像对应一次模型调用。最多 40 个。",
   "Choose at least one segment group for the panel.": "请为小组至少选择一个细分维度。",
+  "Cohorts": "群组列表",
 };

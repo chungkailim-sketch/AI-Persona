@@ -17,6 +17,7 @@ import { getDebate, listDebates, listInsights } from '@/debate/service';
 import { DebateDetail, DebateForm, type DebateView } from './DebatePanel';
 import { DebateInsights, type InsightArtifactView } from './DebateInsights';
 import { MarketFilter } from './MarketFilter';
+import { CohortPicker } from './CohortPicker';
 import { PagedList, PagedTable } from '@/ui/Pager';
 import {
   ApproveCohortForm,
@@ -203,6 +204,8 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
   const allMarkets = [...new Set([...cohortMarkets.values()].flat())].sort();
   const marketFilter = typeof search.market === 'string' && allMarkets.includes(search.market) ? search.market : '';
   const shownCohorts = marketFilter ? cohorts.filter((c) => cohortMarkets.get(c.id)!.includes(marketFilter)) : cohorts;
+  const requestedCohort = typeof search.cohort === 'string' ? search.cohort : '';
+  const selectedCohort = shownCohorts.find((c) => c.id === requestedCohort) ?? shownCohorts[0] ?? null;
   const readyPersonas = shownCohorts.flatMap((c) =>
     c.personas
       .filter((p) => p.versions[0]?.approval === 'APPROVED')
@@ -288,7 +291,21 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
           No cohort has been generated yet.
         </p>
       ) : (
-        shownCohorts.map((cohort) => {
+        <div id="cohort" className="mt-8 flex scroll-mt-48 flex-col gap-2 border-t border-line pt-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-lg">Cohorts <span className="font-mono text-base text-ink-muted">{shownCohorts.length}</span></h2>
+            <CohortPicker
+              current={selectedCohort!.id}
+              cohorts={shownCohorts.map((c) => ({
+                id: c.id,
+                label: `${c.name} · ${c.personas.length} personas · ${fmtDate(c.generatedAt)}`,
+              }))}
+            />
+          </div>
+        </div>
+      )}
+      {selectedCohort && (
+        [selectedCohort].map((cohort) => {
           const personas: PersonaRow[] = cohort.personas.map((p) => {
             const v = p.versions[0];
             return {
