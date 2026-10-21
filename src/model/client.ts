@@ -163,8 +163,14 @@ export async function callModel<T>(options: CallOptions<T>): Promise<CallResult<
       try {
         parsed = options.schema.parse(extractJson(response.text));
         schemaValid = true;
-      } catch {
+      } catch (e) {
         schemaValid = false;
+        // Field paths and rule codes only: never the answer itself, which can quote data.
+        const issues =
+          e instanceof z.ZodError
+            ? e.issues.slice(0, 8).map((i) => `${i.path.join('.') || '(root)'}: ${i.code}`).join('; ')
+            : 'the answer was not a complete JSON object (it may have been cut off at the output limit)';
+        console.warn(`[model] ${options.schemaName} answer did not fit its schema (attempt ${attempt}, ${response.outputTokens} output tokens): ${issues}`);
       }
     }
 

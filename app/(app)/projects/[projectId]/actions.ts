@@ -486,6 +486,13 @@ export async function debateInsightAction(_prev: FormState, formData: FormData):
     if (kind === 'PANEL_QUESTION') {
       const cats = text('categories').split(/[\n;]/).map((s) => s.trim()).filter(Boolean);
       if (cats.length) options.categories = cats;
+      if (text('panel') === 'data') {
+        options.panel = 'data';
+        options.segmentGroups = formData.getAll('segmentGroups').map(String).filter(Boolean);
+        options.markets = formData.getAll('markets').map(String).filter(Boolean);
+        options.maxPersonas = text('maxPersonas') || '24';
+        if (!(options.segmentGroups as string[]).length) return { problems: ['Choose at least one segment group for the panel.'] };
+      }
     }
     if (kind === 'COMMS_REPORT') for (const k of ['brand', 'category', 'markets', 'objective']) options[k] = text(k);
     const { artifactIds } = await requestInsight(user, projectId, debateId, {

@@ -6,7 +6,28 @@
  */
 import { z } from 'zod';
 
-const evidenceIds = z.array(z.string().max(12)).max(12).default([]);
+/**
+ * Lenient field types. A long report that runs a little over a length, returns seven items where
+ * six were asked for, or writes "Medium" for "medium" is still a good report: it is trimmed and
+ * normalised rather than thrown away. Only an answer with no usable shape at all is rejected.
+ */
+const toText = (v: unknown): string =>
+  v == null ? '' : typeof v === 'string' ? v : Array.isArray(v) ? v.map(toText).join('; ') : typeof v === 'object' ? Object.values(v as object).map(toText).join(' — ') : String(v);
+const text = (max: number) => z.preprocess(toText, z.string()).transform((s) => s.trim().slice(0, max));
+const list = <T extends z.ZodTypeAny>(item: T, max: number) =>
+  z.preprocess((v) => (v == null ? [] : Array.isArray(v) ? v : [v]), z.array(item)).transform((a) => a.slice(0, max));
+const strings = (max: number, each: number) => list(text(each), max).transform((a) => a.filter(Boolean));
+const unit = z.preprocess((v) => {
+  const n = typeof v === 'string' ? Number(v) : v;
+  return typeof n === 'number' && Number.isFinite(n) ? Math.min(1, Math.max(0, n > 1 ? n / 100 : n)) : 0.5;
+}, z.number());
+const oneOf = <T extends readonly [string, ...string[]]>(values: T, fallback: T[number]) =>
+  z.preprocess((v) => {
+    const k = toText(v).trim().toLowerCase().replace(/[\s-]+/g, '_');
+    return (values as readonly string[]).includes(k) ? k : fallback;
+  }, z.enum(values));
+
+const evidenceIds = strings(12, 12);
 
 /** Product categories offered to the panel, so answers can be counted across personas. */
 export const DEFAULT_CATEGORIES = [
@@ -36,74 +57,57 @@ export const LIKELIHOOD_LABEL: Record<Likelihood, string> = {
 
 /** One persona agent answering a question put to the whole panel. */
 export const PanelAnswer = z.object({
-  answer: z.string().min(1).max(2000),
-  categories: z
-    .array(
-      z.object({
-        category: z.string().min(1).max(80),
-        likelihood: z.enum(LIKELIHOODS),
-        reason: z.string().max(500),
-        evidenceIds,
-      }),
-    )
-    .max(16)
-    .default([]),
-  conditions: z.array(z.string().max(300)).max(6).default([]),
-  barriers: z.array(z.string().max(300)).max(6).default([]),
-  confidence: z.number().min(0).max(1),
+  answer: text(3000),
+  categories: list(
+    z.object({
+      category: text(80),
+      likelihood: oneOf(LIKELIHOODS, 'unlikely'),
+      reason: text(800),
+      evidenceIds,
+    }),
+    20,
+  ).transform((a) => a.filter((c) => c.category)),
+  conditions: strings(8, 400),
+  barriers: strings(8, 400),
+  confidence: unit,
 });
 export type PanelAnswer = z.infer<typeof PanelAnswer>;
 
 /** A market-entry public relations and communications strategy, from the focus group. */
 export const CommsReport = z.object({
-  title: z.string().min(1).max(200),
-  executiveSummary: z.string().min(1).max(3000),
-  situation: z.string().max(2500),
-  objectives: z.array(z.string().max(400)).max(6).default([]),
-  audienceInsights: z
-    .array(z.object({ segment: z.string().max(160), insight: z.string().max(800), implication: z.string().max(800), evidenceIds }))
-    .max(10)
-    .default([]),
-  positioning: z.string().max(1500),
-  keyMessages: z
-    .array(z.object({ message: z.string().max(400), audience: z.string().max(200), proofPoints: z.array(z.string().max(300)).max(4).default([]) }))
-    .max(8)
-    .default([]),
-  channels: z
-    .array(z.object({ channel: z.string().max(120), role: z.string().max(400), rationale: z.string().max(600) }))
-    .max(10)
-    .default([]),
-  voices: z.array(z.object({ voice: z.string().max(160), why: z.string().max(500) })).max(8).default([]),
-  phasedPlan: z
-    .array(z.object({ phase: z.string().max(120), timing: z.string().max(120), objective: z.string().max(400), activities: z.array(z.string().max(300)).max(6).default([]) }))
-    .max(6)
-    .default([]),
-  risks: z
-    .array(z.object({ risk: z.string().max(400), likelihood: z.enum(['high', 'medium', 'low']), mitigation: z.string().max(600) }))
-    .max(10)
-    .default([]),
-  kpis: z.array(z.object({ kpi: z.string().max(200), target: z.string().max(200), measurement: z.string().max(300) })).max(10).default([]),
-  limitations: z.array(z.string().max(500)).max(6).default([]),
-});
+  title: text(200).transform((t) => t || 'Market entry communications strategy'),
+  executiveSummary: text(5000),
+  situation: text(4000),
+  objectives: strings(8, 600),
+  audienceInsights: list(z.object({ segment: text(200), insight: text(1200), implication: text(1200), evidenceIds }), 12),
+  positioning: text(2500),
+  keyMessages: list(z.object({ message: text(600), audience: text(300), proofPoints: strings(6, 500) }), 10),
+  channels: list(z.object({ channel: text(200), role: text(600), rationale: text(900) }), 12),
+  voices: list(z.object({ voice: text(200), why: text(800) }), 10),
+  phasedPlan: list(z.object({ phase: text(200), timing: text(200), objective: text(600), activities: strings(8, 500) }), 8),
+  risks: list(z.object({ risk: text(600), likelihood: oneOf(['high', 'medium', 'low'] as const, 'medium'), mitigation: text(900) }), 12),
+  kpis: list(z.object({ kpi: text(300), target: text(300), measurement: text(500) }), 12),
+  limitations: strings(8, 800),
+}).refine((r) => r.executiveSummary.length > 0, { message: 'The report has no executive summary.' });
 export type CommsReport = z.infer<typeof CommsReport>;
 
 /** A persona agent introducing itself, in the first person. */
 export const SelfIntro = z.object({
-  headline: z.string().min(1).max(160),
-  introduction: z.string().min(1).max(2000),
-  aboutMe: z.array(z.string().max(300)).max(6).default([]),
-  whatIValue: z.array(z.string().max(300)).max(6).default([]),
-  viewOnTheTopic: z.string().max(1200),
-  howToReachMe: z.array(z.string().max(300)).max(5).default([]),
+  headline: text(200),
+  introduction: text(3000),
+  aboutMe: strings(8, 500),
+  whatIValue: strings(8, 500),
+  viewOnTheTopic: text(2000),
+  howToReachMe: strings(6, 500),
   evidenceIds,
-});
+}).refine((r) => r.introduction.length > 0, { message: 'No introduction.' });
 export type SelfIntro = z.infer<typeof SelfIntro>;
 
 /** A persona agent answering one strategist question. */
 export const InterviewAnswer = z.object({
-  answer: z.string().min(1).max(2500),
-  confidence: z.number().min(0).max(1),
+  answer: text(4000),
+  confidence: unit,
   evidenceIds,
-  outsideEvidence: z.boolean().default(false),
-});
+  outsideEvidence: z.preprocess((v) => v === true || v === 'true', z.boolean()),
+}).refine((r) => r.answer.length > 0, { message: 'No answer.' });
 export type InterviewAnswer = z.infer<typeof InterviewAnswer>;

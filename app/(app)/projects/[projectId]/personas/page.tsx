@@ -116,6 +116,26 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
     failureReason: a.failureReason,
     createdAt: a.createdAt.toISOString(),
   }));
+  // What a panel can be built on: the segment groups and markets published in the cleared data,
+  // read from the field profiles so no data file has to be opened to render the page.
+  const panelOptions = await (async () => {
+    if (!debateRow) return { groups: [] as string[], markets: [] as string[] };
+    const fields = await prisma.datasetField.findMany({
+      where: {
+        datasetVersion: { dataset: { deletedAt: null, projects: { some: { projectId } } } },
+        OR: [{ name: { endsWith: 'segment_group', mode: 'insensitive' } }, { name: { endsWith: 'market', mode: 'insensitive' } }],
+      },
+      select: { name: true, profile: true },
+    });
+    const groups = new Set<string>();
+    const markets = new Set<string>();
+    for (const f of fields) {
+      const top = ((f.profile ?? {}) as { topValues?: { value: string }[] }).topValues ?? [];
+      const into = f.name.toLowerCase().endsWith('segment_group') ? groups : markets;
+      for (const t of top) if (t.value && t.value.toLowerCase() !== 'all') into.add(t.value);
+    }
+    return { groups: [...groups].sort(), markets: [...markets].sort() };
+  })();
   const insightPersonas = debateRow
     ? ((debateRow.agents ?? []) as { key: string; name: string; kind: string; segment?: string | null }[])
         .filter((a) => a.kind === 'persona')
@@ -432,6 +452,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
                 isMock={debateView.isMock}
                 personas={insightPersonas}
                 artifacts={insights}
+                panelOptions={panelOptions}
               />
             </div>
           </div>

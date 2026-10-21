@@ -242,6 +242,28 @@ describe('using a completed debate', () => {
     expect(calls).toHaveLength(2);
     expect((await db.debateArtifact.findUniqueOrThrow({ where: { id: q2.artifactIds[0]! } })).status).toBe('COMPLETED');
 
+    // A panel built from the data on a chosen segment group and market, instead of the debate's personas
+    const { artifactIds: [dataPanelId] } = await requestInsight(owner, projectId, debateId, {
+      kind: 'PANEL_QUESTION',
+      prompt: 'Which categories would you try a new brand in?',
+      options: { panel: 'data', segmentGroups: ['Age groups'], markets: ['China'], maxPersonas: '2' },
+    });
+    expect((await executeInsight(dataPanelId!)).status).toBe('COMPLETED');
+    const dp = (await db.debateArtifact.findUniqueOrThrow({ where: { id: dataPanelId! } })).content as { panel: { source: string }; answers: { agentKey: string; ok: boolean }[] };
+    expect(dp.panel.source).toBe('data');
+    expect(dp.answers.map((a) => a.agentKey)).toEqual(['D1', 'D2']);
+    expect(dp.answers.every((a) => a.ok)).toBe(true);
+
+    // A segment group the data does not publish fails with a reason
+    const { artifactIds: [noneId] } = await requestInsight(owner, projectId, debateId, {
+      kind: 'PANEL_QUESTION',
+      prompt: 'Which categories would you try a new brand in?',
+      options: { panel: 'data', segmentGroups: ['Household income'] },
+    });
+    const none = await executeInsight(noneId!);
+    expect(none.status).toBe('FAILED');
+    expect(none.reason).toMatch(/No published segment/);
+
     // An unknown persona is refused
     await expect(requestInsight(owner, projectId, debateId, { kind: 'INTERVIEW', agentKey: 'P99', prompt: 'Hello there, persona?' })).rejects.toBeInstanceOf(DebateRequestRefused);
   });

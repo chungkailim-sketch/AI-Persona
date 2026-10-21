@@ -23,6 +23,11 @@ import type { DebateAgent } from './crew';
 import { renderEvidenceItems, type EvidenceItem } from './evidence';
 import { gatherDebateEvidence } from './sources';
 import { describeFailure } from './engine';
+import { assessUsability } from '@/ingest/pipeline';
+import { buildEvidenceContext } from '@/model/context';
+import { readVersionTables } from '@/ingest/structured';
+import { isLongSurveyTable } from '@/forecast/series';
+import { generateLongTableCohort } from '@/server/longCohort';
 import {
   CommsReport,
   DEFAULT_CATEGORIES,
@@ -58,9 +63,11 @@ interface Attribute {
   baseSize: number | null;
 }
 
+type PanelPersona = DebateAgent & { attributes: Attribute[] };
+
 interface Loaded {
   debate: NonNullable<Awaited<ReturnType<typeof loadDebate>>>;
-  personas: (DebateAgent & { attributes: Attribute[] })[];
+  personas: PanelPersona[];
   items: EvidenceItem[];
   verdictText: string;
 }
@@ -123,7 +130,7 @@ function debateRecord(l: Loaded, agentKey: string): string {
   return lines.length ? lines.join('\n') : '- (no recorded contribution)';
 }
 
-function personaSystem(agent: Loaded['personas'][number], l: Loaded, extraEvidence: EvidenceItem[] = []): string {
+function personaSystem(agent: PanelPersona, l: Loaded, extraEvidence: EvidenceItem[] = [], inDebate = true): string {
   return [
     `You are "${agent.name}", a simulated consumer persona built from published survey data for a market-entry study.`,
     'Speak in the first person, as a typical member of the segment you represent — not as an assistant, and not as',
@@ -138,8 +145,9 @@ function personaSystem(agent: Loaded['personas'][number], l: Loaded, extraEviden
     '',
     '## The focus group you took part in',
     wrapUntrusted('debate motion', l.debate.topic),
-    'What you said:',
-    debateRecord(l, agent.key),
+    ...(inDebate
+      ? ['What you said:', debateRecord(l, agent.key)]
+      : ['You were not on this panel, but you have read its conclusion and represent a segment of the same data.']),
     '',
     "The judge's reference conclusion:",
     l.verdictText,
@@ -221,6 +229,56 @@ export function tallyCategories(
     .sort((a, b) => b.willingShare - a.willingShare || b.counts.very_likely - a.counts.very_likely || a.category.localeCompare(b.category));
 }
 
+const MAX_DATA_PANEL = 40;
+
+/**
+ * A panel built from the cleared data on the segment groups chosen (income, region, …) rather than
+ * the debate's age and gender personas. One persona per published segment per market; when several
+ * datasets publish the same segment, their attributes are pooled into one persona.
+ */
+async function dataPanel(projectId: string, o: { groups: string[]; markets: string[]; max: number; seed: number }): Promise<PanelPersona[]> {
+  const links = await prisma.projectDataset.findMany({
+    where: { projectId, dataset: { deletedAt: null } },
+    include: { dataset: { include: { versions: { orderBy: { versionNo: 'desc' }, take: 1 } } } },
+  });
+  const merged = new Map<string, PanelPersona>();
+  for (const link of links) {
+    const v = link.dataset.versions[0];
+    if (!v || !(await assessUsability(v.id)).usable) continue;
+    try {
+      await buildEvidenceContext(v.id); // the governance gate: throws if not cleared for model use
+    } catch {
+      continue;
+    }
+    const table = (await readVersionTables(v.id)).find((t) => isLongSurveyTable(t.headers));
+    if (!table) continue;
+    const built = generateLongTableCohort(table, { datasetName: link.dataset.name, seed: o.seed, groups: o.groups, markets: o.markets, maxPersonas: o.max });
+    for (const p of built?.personas ?? []) {
+      const existing = merged.get(p.segment);
+      const attrs = p.attributes.map((a) => ({ label: a.label, value: a.value, origin: a.origin, baseSize: a.baseSize }));
+      if (existing) {
+        const have = new Set(existing.attributes.map((a) => a.label));
+        existing.attributes.push(...attrs.filter((a) => !have.has(a.label)));
+        existing.attributes = existing.attributes.slice(0, 20);
+        continue;
+      }
+      if (merged.size >= o.max) continue;
+      merged.set(p.segment, {
+        key: `D${merged.size + 1}`,
+        name: p.name,
+        kind: 'persona',
+        segment: p.segment,
+        baseSize: p.baseSize,
+        role: `Consumer segment persona: ${p.segment}`,
+        goal: 'Answer as this segment would, grounded in what the data shows about it.',
+        backstory: p.summary,
+        attributes: attrs,
+      });
+    }
+  }
+  return [...merged.values()];
+}
+
 // ── Execution ─────────────────────────────────────────────────────────────────
 
 export async function executeInsight(artifactId: string): Promise<{ artifactId: string; status: string; reason?: string }> {
@@ -242,11 +300,22 @@ export async function executeInsight(artifactId: string): Promise<{ artifactId: 
 
     if (artifact.kind === 'PANEL_QUESTION') {
       const question = artifact.prompt ?? '';
+      // Who answers: the debate's persona agents, or a panel built from the data on other breaks.
+      const fromData = opts.panel === 'data';
+      const panel = fromData
+        ? await dataPanel(l.debate.projectId, {
+            groups: Array.isArray(opts.segmentGroups) ? (opts.segmentGroups as string[]) : [],
+            markets: Array.isArray(opts.markets) ? (opts.markets as string[]) : [],
+            max: Math.min(MAX_DATA_PANEL, Math.max(2, Number(opts.maxPersonas) || 24)),
+            seed: l.debate.seed,
+          })
+        : l.personas;
+      if (panel.length === 0) throw new InsightFailed('No published segment matches that choice of segment groups and markets in the cleared data.');
       const offered = Array.isArray(opts.categories) && opts.categories.length ? (opts.categories as string[]) : [...DEFAULT_CATEGORIES];
       // Evidence chosen for this question, in addition to what the debate was shown. Re-labelled Q1…
       let extra: EvidenceItem[] = [];
       try {
-        const g = await gatherDebateEvidence(l.debate.projectId, `${question} ${offered.join(' ')}`, l.debate.focusSegments);
+        const g = await gatherDebateEvidence(l.debate.projectId, `${question} ${offered.join(' ')}`, fromData ? [] : l.debate.focusSegments);
         extra = g.selected.items.map((e, i) => ({ ...e, id: `Q${i + 1}` }));
       } catch {
         extra = [];
@@ -254,12 +323,12 @@ export async function executeInsight(artifactId: string): Promise<{ artifactId: 
       evidence = { items: extra };
       const cite = citeFilter(new Set([...l.items, ...extra].map((e) => e.id)));
       const answers = [];
-      for (const p of l.personas) {
+      for (const p of panel) {
         const r = await callModel({
           debateId: l.debate.id,
           stage: 'INSIGHT_PANEL_QUESTION',
           personaKey: p.key,
-          system: personaSystem(p, l, extra),
+          system: personaSystem(p, l, extra, !fromData),
           messages: [
             {
               role: 'user',
@@ -297,7 +366,15 @@ export async function executeInsight(artifactId: string): Promise<{ artifactId: 
           answers.push({ ...base, ok: false, outcome: r.outcome });
         }
       }
-      content = { question, categories: offered, answers, tally: tallyCategories(answers) };
+      content = {
+        question,
+        categories: offered,
+        panel: fromData
+          ? { source: 'data', segmentGroups: opts.segmentGroups ?? [], markets: opts.markets ?? [] }
+          : { source: 'debate' },
+        answers,
+        tally: tallyCategories(answers),
+      };
     } else if (artifact.kind === 'COMMS_REPORT') {
       const panel = await prisma.debateArtifact.findFirst({
         where: { debateId: l.debate.id, kind: 'PANEL_QUESTION', status: 'COMPLETED' },
@@ -361,6 +438,9 @@ export async function executeInsight(artifactId: string): Promise<{ artifactId: 
               '## Evidence items',
               renderEvidenceItems(l.items),
               '',
+              'Keep it tight so the whole report fits in one answer: each text field under about 150 words, and at most',
+              '6 items in any list. Fill every field; use an empty list rather than leaving a field out.',
+              '',
               `Respond with JSON: ${SHAPE.report}`,
             ].join('\n'),
           },
@@ -369,7 +449,7 @@ export async function executeInsight(artifactId: string): Promise<{ artifactId: 
         schema: CommsReport,
         seed: seedFor('report'),
         budgetCapUsd: cap,
-        maxTokens: 12_000,
+        maxTokens: 16_000,
         promptTemplate: 'insight.comms_report',
         promptVersion: INSIGHT_PROMPT_VERSION,
       });
