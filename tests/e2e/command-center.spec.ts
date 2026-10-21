@@ -100,10 +100,13 @@ test.describe('ingestion command center', () => {
 
     // An email column (sensitive), an empty column (a warning finding) and one duplicate row.
     const rows = ['market,age_band,email,score,notes', ...Array.from({ length: 40 }, (_, i) => `Indonesia,${i % 2 ? '25-34' : '35-44'},p${i}@example.com,${(i % 5) + 1},`), 'Indonesia,25-34,p1@example.com,2,'];
-    await page.getByLabel('Dataset name').fill('Demonstration upload');
+    // By default each file becomes its own dataset, named exactly as the file.
+    await expect(page.getByLabel(/One dataset per file/)).toBeChecked();
+    await expect(page.getByLabel('Dataset name')).toHaveCount(0);
     await page.getByLabel('Files').setInputFiles({ name: 'demo_indonesia.csv', mimeType: 'text/csv', buffer: Buffer.from(rows.join('\n')) });
     await page.getByRole('button', { name: 'Upload and ingest' }).click();
 
+    await expect(page.getByRole('region', { name: 'Attached datasets' }).getByText('demo_indonesia.csv')).toBeVisible({ timeout: 30_000 });
     const pipeline = page.getByRole('region', { name: 'Processing pipeline' });
     await expect(pipeline.locator('li', { hasText: 'Upload received' })).toHaveAttribute('data-stage-status', 'completed', { timeout: 30_000 });
     await expect(pipeline.locator('li', { hasText: 'Safety scan' })).toHaveCount(0);

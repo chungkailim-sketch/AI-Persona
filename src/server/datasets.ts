@@ -329,3 +329,65 @@ export async function getDatasetVersion(
     canSeeSensitive,
   };
 }
+
+/**
+ * Remove source data from a project: the named datasets, or every dataset attached to it.
+ *
+ * The dataset is marked deleted and detached, so nothing new (evidence, cohorts, debates, panels)
+ * can be built from it, and its stored files are deleted from object storage. The version, field
+ * and governance rows stay, so cohorts and runs already built from it keep their lineage and audit
+ * trail. Recorded in the audit log, one entry per dataset.
+ */
+export async function removeDatasets(
+  user: SessionUser,
+  projectId: string,
+  which: { all: true } | { datasetIds: string[] },
+): Promise<{ removed: number; filesDeleted: number }> {
+  const ctx = await authContextFor(user, projectId);
+  if (!can(ctx, 'dataset.delete', projectId)) throw new AuthorizationError('dataset.delete', projectId);
+
+  const links = await prisma.projectDataset.findMany({
+    where: {
+      projectId,
+      dataset: { deletedAt: null },
+      ...('datasetIds' in which ? { datasetId: { in: which.datasetIds } } : {}),
+    },
+    include: {
+      dataset: {
+        select: {
+          id: true,
+          name: true,
+          versions: { select: { id: true, files: { select: { storageKey: true } }, structured: { select: { storageKey: true } } } },
+        },
+      },
+    },
+  });
+
+  let filesDeleted = 0;
+  for (const l of links) {
+    await prisma.$transaction([
+      prisma.dataset.update({ where: { id: l.dataset.id }, data: { deletedAt: new Date() } }),
+      prisma.projectDataset.delete({ where: { id: l.id } }),
+    ]);
+    const keys = l.dataset.versions.flatMap((v) => [...v.files.map((f) => f.storageKey), ...v.structured.map((t) => t.storageKey)]);
+    for (const key of keys) {
+      try {
+        await storage().remove(key);
+        filesDeleted += 1;
+      } catch {
+        // Already gone, or storage unreachable: the dataset is detached either way. Logged by key only.
+        console.warn(`[datasets] could not delete stored object ${key}`);
+      }
+    }
+    await recordAudit({
+      action: 'dataset.deleted',
+      targetType: 'dataset',
+      targetId: l.dataset.id,
+      projectId,
+      actorUserId: user.userId,
+      actorEmail: user.email,
+      reason: `Removed "${l.dataset.name}" (${keys.length} stored file(s) deleted)`,
+    });
+  }
+  return { removed: links.length, filesDeleted };
+}
