@@ -227,12 +227,16 @@ async function ingestStages(
     let bytes: Buffer;
     try {
       bytes = await storage().get(file.storageKey);
-    } catch {
+    } catch (e) {
+      // The error's class, code and HTTP status say why (missing object, denied, unreachable)
+      // without quoting anything from the file.
+      const why = storageFailure(e);
+      console.error(`[ingest] could not read stored file for version ${datasetVersionId} (${storage().name}): ${why}`);
       await prisma.sourceFile.update({
         where: { id: file.id },
-        data: { extractionStatus: 'FAILED', parseError: 'The stored file could not be read.' },
+        data: { extractionStatus: 'FAILED', parseError: `The stored file could not be read (${why}).` },
       });
-      notes.push(`${file.originalName}: the stored file could not be read.`);
+      notes.push(`${file.originalName}: the stored file could not be read (${why}).`);
       failedFiles += 1;
       filesDone += 1;
       await emit({
@@ -252,7 +256,10 @@ async function ingestStages(
     // A databook is a report of cross-tabs, not a table. Recognise it first and flatten it, rather
     // than profiling fifty sheets of stacked headers as if each were data.
     if (kind === 'xlsx') {
-      const book = await readMintelBuffer(bytes, file.originalName).catch(() => null);
+      const book = await readMintelBuffer(bytes, file.originalName).catch((e: unknown) => {
+        console.warn(`[ingest] not read as a Mintel databook (version ${datasetVersionId}): ${e instanceof Error ? e.name : 'unknown error'}; trying it as a plain spreadsheet`);
+        return null;
+      });
       if (book && book.rows.length > 0) {
         const kept = book.rows.filter(keepForAnalysis);
         mintelDropped += book.rows.length - kept.length;
@@ -310,6 +317,7 @@ async function ingestStages(
       });
     } catch (e) {
       const message = e instanceof Error ? e.message : 'The file could not be parsed.';
+      console.error(`[ingest] could not parse a ${kind} file for version ${datasetVersionId}: ${e instanceof Error ? e.name : 'unknown error'}`);
       await prisma.sourceFile.update({
         where: { id: file.id },
         data: { extractionStatus: 'FAILED', parseError: message.slice(0, 500) },
@@ -353,6 +361,7 @@ async function ingestStages(
   }
 
   if (!anyParsed) {
+    console.error(`[ingest] version ${datasetVersionId}: no file could be parsed (${failedFiles} of ${version.files.length} failed)`);
     await prisma.datasetVersion.update({
       where: { id: datasetVersionId },
       data: { status: 'FAILED', parseReport: { notes } },
@@ -771,4 +780,13 @@ export async function assessUsability(datasetVersionId: string): Promise<Usabili
   }
 
   return { usable: blockers.length === 0, blockers };
+}
+
+/** "NoSuchKey", "AccessDenied (HTTP 403)", "ECONNREFUSED" — enough to act on, nothing from the data. */
+export function storageFailure(e: unknown): string {
+  const o = (typeof e === 'object' && e !== null ? e : {}) as { name?: unknown; code?: unknown; Code?: unknown; $metadata?: { httpStatusCode?: unknown } };
+  const name = typeof o.Code === 'string' ? o.Code : typeof o.name === 'string' && o.name !== 'Error' ? o.name : null;
+  const code = typeof o.code === 'string' ? o.code : null;
+  const status = typeof o.$metadata?.httpStatusCode === 'number' ? `HTTP ${o.$metadata.httpStatusCode}` : null;
+  return [name, code, status].filter(Boolean).join(', ') || 'unknown error';
 }
