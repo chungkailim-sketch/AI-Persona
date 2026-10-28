@@ -22,7 +22,9 @@ export function CollapsibleSideNavigation({ isAdmin, collapsed, onNavigate }: { 
     <Tooltip.Provider delayDuration={200}>
       <nav aria-label="Sections" className="w-full">
         <ul className="flex flex-col gap-0.5">
-          {items.map((s) => {
+          {items.map((s, i) => {
+            const advanced = (x: (typeof items)[number] | undefined) => Boolean(x && 'group' in x && x.group === 'advanced');
+            const startsAdvanced = advanced(s) && !advanced(items[i - 1]);
             const active = isActive(pathname, s.href);
             const link = (
               <Link
@@ -42,6 +44,12 @@ export function CollapsibleSideNavigation({ isAdmin, collapsed, onNavigate }: { 
             );
             return (
               <li key={s.href}>
+                {startsAdvanced &&
+                  (collapsed ? (
+                    <span aria-hidden className="my-2 block h-px bg-line" />
+                  ) : (
+                    <span className="eyebrow mb-1 mt-4 block px-2.5">Advanced</span>
+                  ))}
                 {collapsed ? (
                   <Tooltip.Root>
                     <Tooltip.Trigger asChild>{link}</Tooltip.Trigger>

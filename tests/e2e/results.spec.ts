@@ -22,7 +22,7 @@ test.describe('step 5 — results', () => {
   test('says plainly that nothing has run, rather than showing an empty report', async ({ page }) => {
     await signInAs(page, 'e2e-results-empty@example.com', 'STANDARD_USER');
     const id = await createProject(page, `No results ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/results`);
+    await goAndHydrate(page, `/projects/${id}/advanced/results`);
 
     await expect(page.getByRole('heading', { name: 'Results' })).toBeVisible();
     await expect(page.getByText(/No run has completed in this project yet/)).toBeVisible();
@@ -68,7 +68,7 @@ test.describe('the results page of a completed run', () => {
   test('puts the simulation notice above the findings, and shows the support statistics', async ({ page }) => {
     await signInAs(page, 'e2e-results-read@example.com', 'STANDARD_USER');
     const { projectId } = await seedCompletedRun('e2e-results-read@example.com');
-    await goAndHydrate(page, `/projects/${projectId}/results`);
+    await goAndHydrate(page, `/projects/${projectId}/advanced/results`);
 
     const notice = page.getByRole('complementary', { name: 'Simulation notice' }).first();
     const findings = page.getByRole('heading', { name: 'Findings', exact: true });
@@ -84,7 +84,7 @@ test.describe('the results page of a completed run', () => {
   test('states the simulation caveat without any interaction', async ({ page }) => {
     await signInAs(page, 'e2e-results-caveat@example.com', 'STANDARD_USER');
     const { projectId } = await seedCompletedRun('e2e-results-caveat@example.com');
-    await goAndHydrate(page, `/projects/${projectId}/results`);
+    await goAndHydrate(page, `/projects/${projectId}/advanced/results`);
 
     // Visible on load, not behind a disclosure.
     await expect(
@@ -96,7 +96,7 @@ test.describe('the results page of a completed run', () => {
   test('opens an evidence drawer showing each persona before and after', async ({ page }) => {
     await signInAs(page, 'e2e-results-drawer@example.com', 'STANDARD_USER');
     const { projectId } = await seedCompletedRun('e2e-results-drawer@example.com');
-    await goAndHydrate(page, `/projects/${projectId}/results`);
+    await goAndHydrate(page, `/projects/${projectId}/advanced/results`);
 
     const toggle = page.getByRole('button', { name: /Show what each persona said/ });
     await expect(toggle).toBeVisible();
@@ -112,7 +112,7 @@ test.describe('the results page of a completed run', () => {
   test('reports the evidence grade on the finding itself', async ({ page }) => {
     await signInAs(page, 'e2e-results-grade@example.com', 'STANDARD_USER');
     const { projectId } = await seedCompletedRun('e2e-results-grade@example.com');
-    await goAndHydrate(page, `/projects/${projectId}/results`);
+    await goAndHydrate(page, `/projects/${projectId}/advanced/results`);
 
     await expect(page.getByText('L3 simulation').first()).toBeVisible();
     await expect(
@@ -123,7 +123,7 @@ test.describe('the results page of a completed run', () => {
   test('says what the claim check can and cannot do', async ({ page }) => {
     await signInAs(page, 'e2e-results-check@example.com', 'STANDARD_USER');
     const { projectId } = await seedCompletedRun('e2e-results-check@example.com');
-    await goAndHydrate(page, `/projects/${projectId}/results`);
+    await goAndHydrate(page, `/projects/${projectId}/advanced/results`);
 
     await expect(page.getByRole('heading', { name: 'Claim check' })).toBeVisible();
     await expect(page.getByText(/cannot tell you whether a claim is true/i)).toBeVisible();
@@ -133,7 +133,7 @@ test.describe('the results page of a completed run', () => {
   test('offers no way to export without the limitations attached', async ({ page }) => {
     await signInAs(page, 'e2e-results-export@example.com', 'STANDARD_USER');
     const { projectId } = await seedCompletedRun('e2e-results-export@example.com');
-    await goAndHydrate(page, `/projects/${projectId}/results`);
+    await goAndHydrate(page, `/projects/${projectId}/advanced/results`);
 
     await expect(page.getByRole('heading', { name: 'Export', exact: true })).toBeVisible();
     await expect(page.getByText(/no setting that removes it/i)).toBeVisible();
@@ -144,7 +144,7 @@ test.describe('the results page of a completed run', () => {
   test('refuses to export a mock run, and says why', async ({ page }) => {
     await signInAs(page, 'e2e-results-block@example.com', 'STANDARD_USER');
     const { projectId } = await seedCompletedRun('e2e-results-block@example.com');
-    await goAndHydrate(page, `/projects/${projectId}/results`);
+    await goAndHydrate(page, `/projects/${projectId}/advanced/results`);
 
     await page.getByRole('button', { name: 'Export', exact: true }).click();
     await expect(page.getByText(/The export was refused/)).toBeVisible();
@@ -154,7 +154,7 @@ test.describe('the results page of a completed run', () => {
   test('requires a substantial written reason to override a block', async ({ page }) => {
     await signInAs(page, 'e2e-results-override@example.com', 'STANDARD_USER');
     const { projectId } = await seedCompletedRun('e2e-results-override@example.com');
-    await goAndHydrate(page, `/projects/${projectId}/results`);
+    await goAndHydrate(page, `/projects/${projectId}/advanced/results`);
 
     await page.getByRole('button', { name: /Export anyway, with a recorded reason/ }).click();
     await expect(

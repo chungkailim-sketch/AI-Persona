@@ -26,6 +26,7 @@
   --color-brand-soft: #e4f4e8;      /* RF pale green panels */
   --color-brand-mark: #2ba24c;      /* logo green: rules, marks, chart fills — never text */
   --color-brand-deep: #0b4f2b;      /* table heads, cover fills */
+  --color-brand-deep-ink: #ffffff;
   --color-highlight: #f8b010;       /* logo yellow dot — decorative accent only */
   --font-display: 'Figtree Variable', 'Noto Sans SC Variable', 'Helvetica Neue', Arial, sans-serif;
   --font-sans: 'Figtree Variable', 'Noto Sans SC Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
@@ -97,7 +98,7 @@
   :root:not([data-theme='light']) {
     color-scheme: dark;
     --color-brand: #5cc77a; --color-brand-ink: #062611; --color-brand-soft: #12301c;
-    --color-brand-mark: #43b764; --color-brand-deep: #0e3a22; --color-highlight: #f8b010;
+    --color-brand-mark: #43b764; --color-brand-deep: #0e3a22; --color-brand-deep-ink: #ffffff; --color-highlight: #f8b010;
     --color-bg: #0e1012; --color-elevated: #14171a; --color-surface: #191c20; --color-surface-raised: #22262b;
     --color-input: #111417; --color-telemetry: #0b0d0f; --color-overlay: rgb(0 0 0 / 62%);
     --color-ink: #e9ebe7; --color-ink-muted: #bcc2c7; --color-ink-subtle: #939aa1;
@@ -120,7 +121,7 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
   --color-brand: #5cc77a; --color-brand-ink: #062611; --color-brand-soft: #12301c;
-  --color-brand-mark: #43b764; --color-brand-deep: #0e3a22; --color-highlight: #f8b010;
+  --color-brand-mark: #43b764; --color-brand-deep: #0e3a22; --color-brand-deep-ink: #ffffff; --color-highlight: #f8b010;
   --color-bg: #0e1012; --color-elevated: #14171a; --color-surface: #191c20; --color-surface-raised: #22262b;
   --color-input: #111417; --color-telemetry: #0b0d0f; --color-overlay: rgb(0 0 0 / 62%);
   --color-ink: #e9ebe7; --color-ink-muted: #bcc2c7; --color-ink-subtle: #939aa1;
@@ -230,6 +231,42 @@
 :root[data-motion='reduce'] *, :root[data-motion='reduce'] *::before, :root[data-motion='reduce'] *::after {
   animation: none !important;
   transition-duration: 0.01ms !important;
+}
+
+/* Slides: always paper — the same light palette on screen in either theme and in print, so the
+   report reads as a document. 1280 × 720 px is 13.333 × 7.5 in: one slide per PDF page. */
+.slide-deck {
+  color-scheme: light;
+  --color-bg: #f6f7f5; --color-surface: #ffffff; --color-elevated: #ffffff; --color-surface-raised: #ffffff;
+  --color-ink: #111111; --color-ink-muted: #3f454a; --color-ink-subtle: #5d646b;
+  --color-line: #e0e3df; --color-line-strong: #80878d;
+  --color-brand: #00703c; --color-brand-ink: #ffffff; --color-brand-soft: #e4f4e8;
+  --color-brand-mark: #2ba24c; --color-brand-deep: #0b4f2b; --color-brand-deep-ink: #ffffff; --color-highlight: #f8b010;
+  --color-ok: #1b6630; --color-ok-soft: #e2f2e6; --color-warn: #7f4b00; --color-warn-soft: #faedd8;
+  --color-pending: #535b63; --color-pending-soft: #eceeee; --chart-track: #e7e9e5;
+  --slide-paper: #ffffff;
+  /* heat: ≥60 willing · 40–59 depends · <40 unlikely */
+  --heat-high: #0b6b35; --heat-high-ink: #ffffff;
+  --heat-mid: #fbe7a6; --heat-mid-ink: #4a3500;
+  --heat-low: #e6e8e5; --heat-low-ink: #3f454a;
+  /* market tiers */
+  --tier-priority: #0b6b35; --tier-build: #2ba24c; --tier-selective: #e39c00; --tier-watch: #9aa1a6;
+  --map-sea: #f4f8f5; --map-land: #dfe6e0; --map-border: #ffffff;
+  color: var(--color-ink);
+}
+.slide-frame { width: 100%; overflow: hidden; }
+.slide {
+  width: 1280px; height: 720px; position: relative; overflow: hidden;
+  background: var(--slide-paper); color: var(--color-ink); transform-origin: top left;
+  font-family: var(--font-sans);
+}
+@media print {
+  @page { size: 13.333in 7.5in; margin: 0; }
+  .slide-frame { height: auto !important; overflow: visible; }
+  .slide { transform: none !important; break-after: page; box-shadow: none !important; }
+  .slide-frame:last-child .slide { break-after: auto; }
+  .slide-deck { gap: 0 !important; }
+  html, body { background: #ffffff !important; }
 }
 
 /* Print: always the light palette, no chrome, nothing interactive. */

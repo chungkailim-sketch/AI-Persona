@@ -58,12 +58,12 @@ export async function generateCohortAction(
         const r = await createCohort(user, projectId, { datasetVersionId: id, personaCount, seed: s }, { ip: clientIp(h) });
         total += r.personaCount;
       }
-      revalidatePath(`/projects/${projectId}/personas`);
+      revalidatePath(`/projects/${projectId}/advanced/personas`);
       return { ok: `${total} personas generated across ${ids.length} dataset(s). Review and approve each cohort below.` };
     }
     const result = await createCohort(user, projectId, { datasetVersionId, personaCount, seed: s }, { ip: clientIp(h) });
 
-    revalidatePath(`/projects/${projectId}/personas`);
+    revalidatePath(`/projects/${projectId}/advanced/personas`);
     return {
       ok: `${result.personaCount} personas generated.${result.note ? ` ${result.note}` : ''}`,
     };
@@ -84,8 +84,8 @@ export async function approveCohortAction(
 
     const h = await headers();
     const { approved } = await approveCohort(user, projectId, cohortId, { ip: clientIp(h) });
-    revalidatePath(`/projects/${projectId}/personas`);
-    revalidatePath(`/projects/${projectId}/simulate`);
+    revalidatePath(`/projects/${projectId}/advanced/personas`);
+    revalidatePath(`/projects/${projectId}/advanced/simulate`);
     return {
       ok:
         `${approved} persona version(s) approved and now immutable. Changing one creates a new ` +
@@ -112,7 +112,7 @@ export async function planRunAction(_prev: RunFormState, formData: FormData): Pr
 
     const h = await headers();
     await createRun(user, projectId, plan, { ip: clientIp(h) });
-    revalidatePath(`/projects/${projectId}/simulate`);
+    revalidatePath(`/projects/${projectId}/advanced/simulate`);
     return {
       ok: 'Plan prepared. Nothing has run yet — review the estimate below and confirm to start.',
     };
@@ -134,7 +134,7 @@ export async function confirmRunAction(
 
     const h = await headers();
     await confirmRun(user, projectId, runId, planHash, { ip: clientIp(h) });
-    revalidatePath(`/projects/${projectId}/simulate`);
+    revalidatePath(`/projects/${projectId}/advanced/simulate`);
     return { ok: 'Confirmed and queued. Progress appears below as each stage completes.' };
   } catch (e) {
     return toState(e);
@@ -148,5 +148,5 @@ export async function cancelRunAction(formData: FormData): Promise<void> {
   if (!projectId || !runId) return;
   const h = await headers();
   await requestCancel(user, projectId, runId, { ip: clientIp(h) });
-  revalidatePath(`/projects/${projectId}/simulate`);
+  revalidatePath(`/projects/${projectId}/advanced/simulate`);
 }

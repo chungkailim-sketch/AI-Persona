@@ -324,7 +324,7 @@ export async function saveBriefAction(_prev: FormState, formData: FormData): Pro
       { ip: clientIp(h) },
     );
 
-    revalidatePath(`/projects/${projectId}/brief`);
+    revalidatePath(`/projects/${projectId}/advanced/brief`);
     return { ok: 'Brief saved.' };
   } catch (e) {
     return toState(e);
@@ -357,7 +357,7 @@ export async function addHypothesisAction(
       { ip: clientIp(h) },
     );
 
-    revalidatePath(`/projects/${projectId}/brief`);
+    revalidatePath(`/projects/${projectId}/advanced/brief`);
     return { ok: 'Hypothesis added.' };
   } catch (e) {
     return toState(e);
@@ -371,7 +371,7 @@ export async function removeHypothesisAction(formData: FormData): Promise<void> 
   if (!projectId || !hypothesisId) return;
   const h = await headers();
   await removeHypothesis(user, projectId, hypothesisId, { ip: clientIp(h) });
-  revalidatePath(`/projects/${projectId}/brief`);
+  revalidatePath(`/projects/${projectId}/advanced/brief`);
 }
 
 export async function addStimulusAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -394,7 +394,7 @@ export async function addStimulusAction(_prev: FormState, formData: FormData): P
       { ip: clientIp(h) },
     );
 
-    revalidatePath(`/projects/${projectId}/brief`);
+    revalidatePath(`/projects/${projectId}/advanced/brief`);
     return { ok: 'Stimulus added.' };
   } catch (e) {
     return toState(e);
@@ -434,7 +434,7 @@ export async function buildPopulationAction(_prev: FormState, formData: FormData
       primaryGroup: String(formData.get('primaryGroup') ?? '').trim(),
       secondaryGroup: secondary || null,
     });
-    revalidatePath(`/projects/${projectId}/personas`);
+    revalidatePath(`/projects/${projectId}/advanced/personas`);
     return { ok: `Built ${result.members.toLocaleString()} simulated members from ${result.wave}.` };
   } catch (e) {
     return toState(e);
@@ -451,7 +451,7 @@ export async function cohortFromPopulationAction(_prev: FormState, formData: For
       personaCount: Number(formData.get('personaCount') ?? 0),
       name: String(formData.get('name') ?? ''),
     });
-    revalidatePath(`/projects/${projectId}/personas`);
+    revalidatePath(`/projects/${projectId}/advanced/personas`);
     return { ok: `Cohort created with ${r.personaCount} candidate personas covering ${Math.round(r.coveredShare * 100)}% of the population. Review and approve it below.` };
   } catch (e) {
     if (e instanceof EvidenceRefused) return { problems: e.reasons };
@@ -466,7 +466,7 @@ export async function adherenceCheckAction(_prev: FormState, formData: FormData)
     const cohortId = String(formData.get('cohortId') ?? '');
     if (!projectId || !cohortId) return { error: 'Invalid request.' };
     const r = await runAdherenceCheck(user, projectId, cohortId);
-    revalidatePath(`/projects/${projectId}/personas`);
+    revalidatePath(`/projects/${projectId}/advanced/personas`);
     return r.status === 'pass' ? { ok: r.reason } : { problems: [r.reason] };
   } catch (e) {
     if (e instanceof EvidenceRefused) return { problems: e.reasons };
@@ -498,7 +498,7 @@ export async function startDebateAction(_prev: FormState, formData: FormData): P
     return toState(e);
   }
   // Outside the try: a redirect is thrown, and must not be caught as a failure.
-  redirect(`/projects/${projectId}/personas?debate=${debateId}#debate`);
+  redirect(`/projects/${projectId}/advanced/personas?debate=${debateId}#debate`);
 }
 
 /**
@@ -534,7 +534,7 @@ export async function debateInsightAction(_prev: FormState, formData: FormData):
       agentKey: text('agentKey') || null,
       options,
     });
-    revalidatePath(`/projects/${projectId}/personas`);
+    revalidatePath(`/projects/${projectId}/advanced/personas`);
     return { ok: artifactIds.length > 1 ? `Queued ${artifactIds.length}. Results appear below as they finish.` : 'Queued. The result appears below when it finishes.' };
   } catch (e) {
     return toState(e);

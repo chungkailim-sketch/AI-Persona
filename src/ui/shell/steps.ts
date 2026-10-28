@@ -1,10 +1,14 @@
-/** The five-step workflow. Order and identity live here so nav, indicator and guards agree. */
+/**
+ * The five-step journey: data → brief → cast → roundtable → report. The URLs predate the journey and
+ * are kept; the earlier research tools for each step live under /advanced. Order and identity live
+ * here so nav, indicator and guards agree.
+ */
 export const WORKFLOW_STEPS = [
-  { key: 'DATA', index: 1, label: 'Source data', href: 'data', description: 'Ingest evidence and clear it for use' },
-  { key: 'BRIEF', index: 2, label: 'Brief', href: 'brief', description: 'State the question and what is being tested' },
-  { key: 'PERSONAS', index: 3, label: 'Personas', href: 'personas', description: 'Generate and approve the cohort' },
-  { key: 'SIMULATION', index: 4, label: 'Simulation', href: 'simulate', description: 'Configure, confirm and run' },
-  { key: 'RESULTS', index: 5, label: 'Results', href: 'results', description: 'Read findings and decide' },
+  { key: 'DATA', index: 1, label: 'Data', href: 'data', description: 'Upload the survey databooks' },
+  { key: 'BRIEF', index: 2, label: 'Brief', href: 'brief', description: 'Markets, question and categories' },
+  { key: 'PERSONAS', index: 3, label: 'Cast', href: 'personas', description: 'Markets × income tiers' },
+  { key: 'SIMULATION', index: 4, label: 'Roundtable', href: 'simulate', description: 'Every persona answers' },
+  { key: 'RESULTS', index: 5, label: 'Report', href: 'results', description: 'Slides and PDF' },
 ] as const;
 
 export type StepKey = (typeof WORKFLOW_STEPS)[number]['key'];
