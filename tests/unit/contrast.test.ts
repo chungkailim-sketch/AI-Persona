@@ -60,6 +60,10 @@ describe.each([
     expect(ratio(t['--color-brand-ink']!, t['--color-brand']!)).toBeGreaterThanOrEqual(4.5);
   });
 
+  it('text on the deep brand fill ≥ 4.5:1', () => {
+    expect(ratio(t['--color-brand-deep-ink']!, t['--color-brand-deep']!)).toBeGreaterThanOrEqual(4.5);
+  });
+
   it('telemetry ink on the telemetry well ≥ 4.5:1', () => {
     expect(ratio(t['--color-telemetry-ink']!, t['--color-telemetry']!)).toBeGreaterThanOrEqual(4.5);
     expect(ratio(t['--color-ink-subtle']!, t['--color-telemetry']!)).toBeGreaterThanOrEqual(4.5);

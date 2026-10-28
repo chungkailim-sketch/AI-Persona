@@ -1,13 +1,17 @@
-/** Navigation destinations, in order. Admin is added only for users who hold `admin.access`. */
+/**
+ * Navigation destinations, in order. The everyday journey lives inside a project; the earlier
+ * research tools are grouped under "Advanced". Admin is added only for users who hold `admin.access`.
+ */
 export const NAV_SECTIONS = [
   { href: '/dashboard', label: 'Home', icon: 'home' },
   { href: '/projects', label: 'Projects', icon: 'folder' },
-  { href: '/datasets', label: 'Datasets', icon: 'database' },
-  { href: '/briefs', label: 'Briefs', icon: 'doc' },
-  { href: '/personas', label: 'Personas', icon: 'users' },
-  { href: '/runs', label: 'Simulations', icon: 'play' },
-  { href: '/reports', label: 'Reports', icon: 'chart' },
-  { href: '/presets', label: 'Presets', icon: 'sliders', requires: 'admin' as const },
+  { href: '/datasets', label: 'Datasets', icon: 'database', group: 'advanced' as const },
+  { href: '/briefs', label: 'Briefs', icon: 'doc', group: 'advanced' as const },
+  { href: '/personas', label: 'Personas', icon: 'users', group: 'advanced' as const },
+  { href: '/runs', label: 'Simulations', icon: 'play', group: 'advanced' as const },
+  { href: '/reports', label: 'Reports', icon: 'chart', group: 'advanced' as const },
+  { href: '/presets', label: 'Presets', icon: 'sliders', requires: 'admin' as const, group: 'advanced' as const },
+  { href: '/methodology', label: 'Methodology', icon: 'help', group: 'advanced' as const },
   { href: '/settings', label: 'Settings', icon: 'gear' },
 ] as const;
 

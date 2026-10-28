@@ -24,12 +24,12 @@ const MAX_PERSONAS = 60;
 const TRAITS = 4;
 const AGREE = /^(agree|yes|strongly agree|somewhat agree|any agree|net agree|very likely|likely)$/i;
 
-interface Row {
+export interface Row {
   market: string; t: number; wave: string; statement: string; response: string;
   group: string; segment: string; base: number | null; share: number;
 }
 
-function rowsOf(headers: string[], rows: string[][]): Row[] {
+export function rowsOf(headers: string[], rows: string[][]): Row[] {
   const c = (n: string) => headers.findIndex((h) => h.trim().toLowerCase() === n);
   const ix = { market: c('market'), year: c('wave_year'), month: c('wave_month'), wave: c('wave'), statement: c('statement'), response: c('response'), group: c('segment_group'), segment: c('segment'), base: c('sample_base'), share: c('share') };
   const out: Row[] = [];

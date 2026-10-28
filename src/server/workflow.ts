@@ -1,5 +1,6 @@
 /**
- * The five-step workflow's state, computed from the tables of record on every render.
+ * The five-step journey's state (data → brief → cast → roundtable → report), computed from the
+ * tables of record on every render.
  *
  * Each step reports one status, a count of unresolved items and when it was last saved. A blocked
  * step always carries its reason (FR-83), and every step stays reachable — a blocked step explains
@@ -7,7 +8,7 @@
  */
 import { prisma } from '@/lib/prisma';
 import { assessUsability } from '@/ingest/pipeline';
-import { assessBrief } from '@/server/brief';
+import { studyBriefMissing } from '@/roundtable/service';
 import type { StepKey } from '@/ui/shell/steps';
 
 export type WorkflowStatus = 'complete' | 'running' | 'warning' | 'error' | 'blocked' | 'available';
@@ -22,30 +23,27 @@ export interface WorkflowStepState {
 export type WorkflowState = Record<StepKey, WorkflowStepState>;
 
 const INGESTING = ['UPLOADING', 'SCANNING', 'PARSING', 'PROFILING', 'MAPPING', 'VALIDATING', 'DETECTING_SENSITIVE'];
-const RUNNING = ['VALIDATING', 'QUEUED', 'PREPARING_CONTEXT', 'GENERATING_PERSONAS', 'INDEPENDENT_ASSESSMENT', 'CONSUMER_REACTION', 'CROSS_EXAMINATION', 'REVISION', 'SYNTHESIS', 'REPORT'];
 
 const iso = (d: Date | null | undefined) => (d ? d.toISOString() : null);
 const latest = (...ds: (Date | null | undefined)[]) =>
   ds.filter((d): d is Date => Boolean(d)).sort((a, b) => b.getTime() - a.getTime())[0] ?? null;
 
 export async function computeWorkflowState(projectId: string): Promise<WorkflowState> {
-  const [links, brief, briefReadiness, cohorts, runs] = await Promise.all([
+  const [links, brief, cast, roundtable] = await Promise.all([
     prisma.projectDataset.findMany({
       where: { projectId, dataset: { deletedAt: null } },
       include: { dataset: { include: { versions: { orderBy: { versionNo: 'desc' }, take: 1, include: { governance: true } } } } },
     }),
-    prisma.brief.findFirst({ where: { projectId }, orderBy: { versionNo: 'desc' }, select: { updatedAt: true } }),
-    assessBrief(projectId),
-    prisma.cohort.findMany({
-      where: { projectId },
+    prisma.brief.findFirst({ where: { projectId }, orderBy: { versionNo: 'desc' }, select: { updatedAt: true, markets: true, researchQuestion: true, categories: true } }),
+    prisma.cohort.findFirst({
+      where: { projectId, kind: 'cast' },
       orderBy: { generatedAt: 'desc' },
-      include: { personas: { include: { versions: { orderBy: { versionNo: 'desc' }, take: 1, select: { approval: true, confidence: true } } } } },
+      select: { generatedAt: true, buildStatus: true, buildError: true, personas: { select: { versions: { orderBy: { versionNo: 'desc' }, take: 1, select: { approval: true } } } } },
     }),
-    prisma.run.findMany({
+    prisma.roundtable.findFirst({
       where: { projectId },
       orderBy: { createdAt: 'desc' },
-      select: { status: true, createdAt: true, completedAt: true, failureReason: true },
-      take: 20,
+      select: { status: true, createdAt: true, completedAt: true, failureReason: true, total: true, _count: { select: { answers: true } } },
     }),
   ]);
 
@@ -53,69 +51,67 @@ export async function computeWorkflowState(projectId: string): Promise<WorkflowS
   const versions = links.map((l) => l.dataset.versions[0]).filter((v): v is NonNullable<typeof v> => Boolean(v));
   const verdicts = await Promise.all(versions.map((v) => assessUsability(v.id)));
   const usable = verdicts.filter((v) => v.usable).length;
-  const dataUnresolved = verdicts.filter((v) => !v.usable).reduce((s, v) => s + v.blockers.length, 0);
+  const failed = versions.filter((v) => v.status === 'FAILED').length;
   const dataSaved = latest(...versions.map((v) => v.createdAt), ...versions.map((v) => v.governance?.confirmedAt));
   let data: WorkflowStepState;
   if (versions.some((v) => INGESTING.includes(v.status))) {
-    data = { status: 'running', reason: 'Ingestion in progress.', unresolved: dataUnresolved, lastSavedAt: iso(dataSaved) };
-  } else if (versions.length > 0 && versions.every((v) => v.status === 'FAILED')) {
-    data = { status: 'error', reason: 'Ingestion failed for every attached dataset.', unresolved: dataUnresolved, lastSavedAt: iso(dataSaved) };
+    data = { status: 'running', reason: 'Importing files.', unresolved: failed, lastSavedAt: iso(dataSaved) };
+  } else if (versions.length > 0 && usable === 0 && failed === versions.length) {
+    data = { status: 'error', reason: 'Every file failed to import.', unresolved: failed, lastSavedAt: iso(dataSaved) };
   } else if (usable > 0) {
-    data = { status: 'complete', reason: null, unresolved: dataUnresolved, lastSavedAt: iso(dataSaved) };
+    data = { status: 'complete', reason: null, unresolved: failed, lastSavedAt: iso(dataSaved) };
   } else if (versions.length > 0) {
-    data = { status: 'warning', reason: `${dataUnresolved} item(s) to resolve before the data can be used.`, unresolved: dataUnresolved, lastSavedAt: iso(dataSaved) };
+    data = { status: 'warning', reason: 'No file is ready yet.', unresolved: versions.length, lastSavedAt: iso(dataSaved) };
   } else {
     data = { status: 'available', reason: 'Nothing uploaded yet.', unresolved: 0, lastSavedAt: null };
   }
 
   // ── 2. Brief ──
+  const missing = studyBriefMissing(brief);
   const briefState: WorkflowStepState = !brief
     ? { status: 'available', reason: 'Not started.', unresolved: 0, lastSavedAt: null }
-    : briefReadiness.ready
+    : missing.length === 0
       ? { status: 'complete', reason: null, unresolved: 0, lastSavedAt: iso(brief.updatedAt) }
-      : { status: 'warning', reason: briefReadiness.missing[0] ?? 'Incomplete.', unresolved: briefReadiness.missing.length, lastSavedAt: iso(brief.updatedAt) };
+      : { status: 'warning', reason: missing[0] ?? 'Incomplete.', unresolved: missing.length, lastSavedAt: iso(brief.updatedAt) };
 
-  // ── 3. Personas ──
-  const newest = cohorts[0];
-  const pendingApproval = newest ? newest.personas.filter((p) => p.versions[0]?.approval !== 'APPROVED').length : 0;
-  const lowConfidence = newest ? newest.personas.filter((p) => p.versions[0]?.confidence === 'LOW').length : 0;
-  const anyApproved = cohorts.some((c) => c.personas.length > 0 && c.personas.every((p) => p.versions[0]?.approval === 'APPROVED'));
-  let personas: WorkflowStepState;
-  if (usable === 0 && cohorts.length === 0) {
-    personas = { status: 'blocked', reason: 'Needs a dataset cleared for use in step 1.', unresolved: 0, lastSavedAt: null };
-  } else if (anyApproved) {
-    personas = { status: 'complete', reason: null, unresolved: lowConfidence, lastSavedAt: iso(newest?.generatedAt) };
-  } else if (newest) {
-    personas = { status: 'warning', reason: `${pendingApproval} persona(s) awaiting approval.`, unresolved: pendingApproval, lastSavedAt: iso(newest.generatedAt) };
+  // ── 3. Cast ──
+  const pending = cast ? cast.personas.filter((p) => p.versions[0]?.approval !== 'APPROVED').length : 0;
+  let castState: WorkflowStepState;
+  if (!cast) {
+    const needs = [usable === 0 && 'data that is ready', missing.length > 0 && 'a complete brief'].filter(Boolean) as string[];
+    castState = needs.length
+      ? { status: 'blocked', reason: `Needs ${needs.join(' and ')}.`, unresolved: 0, lastSavedAt: null }
+      : { status: 'available', reason: 'No cast built yet.', unresolved: 0, lastSavedAt: null };
+  } else if (cast.buildStatus === 'QUEUED' || cast.buildStatus === 'RUNNING') {
+    castState = { status: 'running', reason: 'Building the cast.', unresolved: 0, lastSavedAt: iso(cast.generatedAt) };
+  } else if (cast.buildStatus === 'FAILED') {
+    castState = { status: 'error', reason: cast.buildError ?? 'The cast could not be built.', unresolved: 1, lastSavedAt: iso(cast.generatedAt) };
+  } else if (pending > 0) {
+    castState = { status: 'warning', reason: 'Review and approve the cast.', unresolved: 0, lastSavedAt: iso(cast.generatedAt) };
   } else {
-    personas = { status: 'available', reason: 'No cohort generated yet.', unresolved: 0, lastSavedAt: null };
+    castState = { status: 'complete', reason: null, unresolved: 0, lastSavedAt: iso(cast.generatedAt) };
   }
 
-  // ── 4. Simulation ──
-  const lastRun = runs[0];
-  let simulation: WorkflowStepState;
-  const prerequisites = [usable === 0 && 'a cleared dataset', !briefReadiness.ready && 'a complete brief', !anyApproved && 'an approved cohort'].filter(Boolean) as string[];
-  if (runs.some((r) => RUNNING.includes(r.status))) {
-    simulation = { status: 'running', reason: 'A run is in progress.', unresolved: 0, lastSavedAt: iso(lastRun?.createdAt) };
-  } else if (lastRun?.status === 'FAILED') {
-    simulation = { status: 'error', reason: 'The most recent run failed.', unresolved: 1, lastSavedAt: iso(lastRun.completedAt ?? lastRun.createdAt) };
-  } else if (runs.some((r) => r.status === 'COMPLETED' || r.status === 'COMPLETED_WITH_WARNINGS')) {
-    simulation = { status: lastRun?.status === 'COMPLETED_WITH_WARNINGS' ? 'warning' : 'complete', reason: lastRun?.status === 'COMPLETED_WITH_WARNINGS' ? 'Latest run completed with warnings.' : null, unresolved: 0, lastSavedAt: iso(lastRun?.completedAt ?? lastRun?.createdAt) };
-  } else if (prerequisites.length > 0) {
-    simulation = { status: 'blocked', reason: `Needs ${prerequisites.join(', ')}.`, unresolved: prerequisites.length, lastSavedAt: null };
-  } else if (lastRun?.status === 'DRAFT') {
-    simulation = { status: 'warning', reason: 'A planned run is waiting for confirmation.', unresolved: 1, lastSavedAt: iso(lastRun.createdAt) };
+  // ── 4. Roundtable ──
+  let rtState: WorkflowStepState;
+  if (roundtable?.status === 'QUEUED' || roundtable?.status === 'RUNNING') {
+    rtState = { status: 'running', reason: `${roundtable._count.answers} of ${roundtable.total} personas have answered.`, unresolved: 0, lastSavedAt: iso(roundtable.createdAt) };
+  } else if (roundtable?.status === 'FAILED') {
+    rtState = { status: 'error', reason: roundtable.failureReason ?? 'The roundtable stopped.', unresolved: 1, lastSavedAt: iso(roundtable.completedAt ?? roundtable.createdAt) };
+  } else if (roundtable?.status === 'COMPLETED') {
+    rtState = { status: 'complete', reason: null, unresolved: 0, lastSavedAt: iso(roundtable.completedAt) };
+  } else if (castState.status !== 'complete') {
+    rtState = { status: 'blocked', reason: 'Needs an approved cast.', unresolved: 0, lastSavedAt: null };
   } else {
-    simulation = { status: 'available', reason: 'Ready to plan a run.', unresolved: 0, lastSavedAt: null };
+    rtState = { status: 'available', reason: 'Ready to start.', unresolved: 0, lastSavedAt: null };
   }
 
-  // ── 5. Results ──
-  const done = runs.find((r) => r.status === 'COMPLETED' || r.status === 'COMPLETED_WITH_WARNINGS');
-  const results: WorkflowStepState = done
-    ? { status: 'complete', reason: null, unresolved: 0, lastSavedAt: iso(done.completedAt) }
-    : { status: 'blocked', reason: 'No run has completed yet.', unresolved: 0, lastSavedAt: null };
+  // ── 5. Report ──
+  const results: WorkflowStepState = roundtable?.status === 'COMPLETED'
+    ? { status: 'complete', reason: null, unresolved: 0, lastSavedAt: iso(roundtable.completedAt) }
+    : { status: 'blocked', reason: 'No roundtable has completed yet.', unresolved: 0, lastSavedAt: null };
 
-  return { DATA: data, BRIEF: briefState, PERSONAS: personas, SIMULATION: simulation, RESULTS: results };
+  return { DATA: data, BRIEF: briefState, PERSONAS: castState, SIMULATION: rtState, RESULTS: results };
 }
 
 /**

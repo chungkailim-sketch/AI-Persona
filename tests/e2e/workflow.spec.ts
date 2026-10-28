@@ -47,7 +47,7 @@ test.describe('step 1 — source data', () => {
     const id = await createProject(page, `Steps ${Date.now()}`);
 
     const nav = page.getByRole('navigation', { name: 'Project workflow' });
-    await expect(nav.locator('[aria-current="step"]')).toHaveText(/Source data/);
+    await expect(nav.locator('[aria-current="step"]')).toHaveText(/Data/);
 
     // Every step is reachable — the workflow has an order, but it is not a trap.
     await nav.getByRole('link', { name: /Brief/ }).click();
@@ -59,7 +59,7 @@ test.describe('step 2 — brief', () => {
   test('refuses a hypothesis whose threshold is decided after the fact', async ({ page }) => {
     await signInAs(page, 'e2e-hyp@example.com', 'STANDARD_USER');
     const id = await createProject(page, `Hypothesis ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/brief`);
+    await goAndHydrate(page, `/projects/${id}/advanced/brief`);
 
     await page.getByRole('button', { name: 'Add a hypothesis' }).click();
     await page.getByLabel('The claim').fill('Premium buyers weigh provenance above price.');
@@ -72,7 +72,7 @@ test.describe('step 2 — brief', () => {
   test('accepts a hypothesis with a real threshold and shows it back', async ({ page }) => {
     await signInAs(page, 'e2e-hyp2@example.com', 'STANDARD_USER');
     const id = await createProject(page, `Hypothesis ok ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/brief`);
+    await goAndHydrate(page, `/projects/${id}/advanced/brief`);
 
     await page.getByRole('button', { name: 'Add a hypothesis' }).click();
     await page.getByLabel('The claim').fill('Premium buyers weigh provenance above price.');
@@ -89,7 +89,7 @@ test.describe('step 2 — brief', () => {
   test('says on the page that the desired outcome is withheld from the simulation', async ({ page }) => {
     await signInAs(page, 'e2e-withhold@example.com', 'STANDARD_USER');
     const id = await createProject(page, `Withhold ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/brief`);
+    await goAndHydrate(page, `/projects/${id}/advanced/brief`);
 
     await expect(page.getByText(/withheld from the simulation/i)).toBeVisible();
     await expect(page.getByText(/will tend to produce it/i)).toBeVisible();
@@ -98,7 +98,7 @@ test.describe('step 2 — brief', () => {
   test('says what the brief still needs, rather than just refusing later', async ({ page }) => {
     await signInAs(page, 'e2e-ready@example.com', 'STANDARD_USER');
     const id = await createProject(page, `Readiness ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/brief`);
+    await goAndHydrate(page, `/projects/${id}/advanced/brief`);
 
     await expect(page.getByRole('heading', { name: 'Is this ready to run?' })).toBeVisible();
     await expect(page.getByText('Not yet. Outstanding:')).toBeVisible();
@@ -108,7 +108,7 @@ test.describe('step 2 — brief', () => {
   test('refuses a brief with no decision behind it', async ({ page }) => {
     await signInAs(page, 'e2e-nodecision@example.com', 'STANDARD_USER');
     const id = await createProject(page, `No decision ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/brief`);
+    await goAndHydrate(page, `/projects/${id}/advanced/brief`);
 
     await page
       .getByLabel('What are you trying to find out?')
@@ -126,7 +126,7 @@ test.describe('step 2 — brief', () => {
   test('saves a complete brief and reports it ready', async ({ page }) => {
     await signInAs(page, 'e2e-complete@example.com', 'STANDARD_USER');
     const id = await createProject(page, `Complete ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/brief`);
+    await goAndHydrate(page, `/projects/${id}/advanced/brief`);
 
     await page.getByRole('button', { name: 'Add a hypothesis' }).click();
     await page.getByLabel('The claim').fill('Mid-tier buyers switch on price alone.');

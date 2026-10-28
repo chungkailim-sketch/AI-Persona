@@ -33,6 +33,7 @@ import { provisionDemoWorkspace } from './src/demo/provision';
 import { runForecastAnalysis } from './src/forecast/analysis';
 import { executeDebate } from './src/debate/engine';
 import { executeInsight } from './src/debate/insights';
+import { executeCast, executeRoundtable, type CastJobInput } from './src/roundtable/engine';
 
 const WORKER_ID = `${process.env.RAILWAY_REPLICA_ID ?? 'local'}-${randomUUID().slice(0, 8)}`;
 
@@ -97,6 +98,19 @@ async function handle(job: ClaimedJob): Promise<Record<string, unknown>> {
       if (!input.artifactId) throw new Error('Job input does not name a debate artifact.');
       // Records its own failure on the artifact and never throws for one.
       const outcome = await executeInsight(input.artifactId);
+      return outcome as unknown as Record<string, unknown>;
+    }
+    case 'cast': {
+      const input = job.input as Partial<CastJobInput>;
+      if (!input.cohortId) throw new Error('Job input does not name a cast.');
+      // Records its own failure on the cast and never throws for one.
+      const outcome = await executeCast({ cohortId: input.cohortId, markets: input.markets ?? [], language: input.language === 'zh' ? 'zh' : 'en', context: input.context ?? null, seed: Number(input.seed) || 1 });
+      return outcome as unknown as Record<string, unknown>;
+    }
+    case 'roundtable': {
+      const input = job.input as { roundtableId?: string };
+      if (!input.roundtableId) throw new Error('Job input does not name a roundtable.');
+      const outcome = await executeRoundtable(input.roundtableId);
       return outcome as unknown as Record<string, unknown>;
     }
     case 'demo_provision': {
@@ -207,7 +221,7 @@ async function loop(): Promise<void> {
     }
     let job: ClaimedJob | null = null;
     try {
-      job = await claimNext(WORKER_ID, ['ingest', 'simulate', 'export', 'demo_provision', 'trend_analysis', 'debate', 'debate_insight']);
+      job = await claimNext(WORKER_ID, ['ingest', 'simulate', 'export', 'demo_provision', 'trend_analysis', 'debate', 'debate_insight', 'cast', 'roundtable']);
     } catch (e) {
       log('could not reach the queue', { error: e instanceof Error ? e.message : String(e) });
       await new Promise((r) => setTimeout(r, 5_000));

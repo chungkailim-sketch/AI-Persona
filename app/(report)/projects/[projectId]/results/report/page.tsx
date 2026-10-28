@@ -23,7 +23,7 @@ const CLASS_WORD: Record<string, string> = {
 export default async function ReportModePage(props: PageProps<'/projects/[projectId]/results/report'>) {
   const { projectId } = await props.params;
   const search = await props.searchParams;
-  const user = await requireUser(`/projects/${projectId}/results`);
+  const user = await requireUser(`/projects/${projectId}/advanced/results`);
   const ctx = await authContextFor(user, projectId);
   if (!can(ctx, 'report.view', projectId)) notFound();
 
@@ -55,7 +55,7 @@ export default async function ReportModePage(props: PageProps<'/projects/[projec
       ]}
       actions={
         <>
-          <Link href={`/projects/${projectId}/results?run=${run.id}` as Route} className="text-sm text-link underline-offset-2 hover:underline">
+          <Link href={`/projects/${projectId}/advanced/results?run=${run.id}` as Route} className="text-sm text-link underline-offset-2 hover:underline">
             ← Back to results
           </Link>
           <PrintButton />

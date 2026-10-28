@@ -41,7 +41,7 @@ export function GlobalRunIndicator({ initial }: { initial: ActivitySummary }) {
     ? `${runs} run${runs === 1 ? '' : 's'}${data.ingesting ? ` · ${data.ingesting} ingesting` : ''}`
     : 'Nothing running';
   const first = data.activeRuns[0];
-  const href = first ? `/projects/${first.projectId}/simulate?run=${first.id}` : '/runs';
+  const href = first ? `/projects/${first.projectId}/advanced/simulate?run=${first.id}` : '/runs';
   return (
     <Link
       href={href as Route}
