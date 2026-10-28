@@ -28,7 +28,7 @@ import {
 } from './PersonaStep';
 import { fmtDate, fmtDateTime, TZ_LABEL } from '@/lib/time';
 
-export const metadata = { title: 'Personas · Persona Intelligence' };
+export const metadata = { title: 'Personas · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
 
 export default async function PersonaStepPage(props: PageProps<'/projects/[projectId]/personas'>) {

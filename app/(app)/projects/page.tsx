@@ -4,7 +4,7 @@ import { listProjectsForUser } from '@/server/projects';
 import { NewProjectForm } from './NewProjectForm';
 import { fmtDate } from '@/lib/time';
 
-export const metadata = { title: 'Projects · Persona Intelligence' };
+export const metadata = { title: 'Projects · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
 
 const STEP_LABEL: Record<string, string> = {

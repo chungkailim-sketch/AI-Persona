@@ -21,7 +21,7 @@ import {
 import { fmtDateTime } from '@/lib/time';
 import { FindingsDetailPanel } from './FindingsDetail';
 
-export const metadata = { title: 'Results · Persona Intelligence' };
+export const metadata = { title: 'Results · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
 
 export default async function ResultsStepPage(props: PageProps<'/projects/[projectId]/results'>) {

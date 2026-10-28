@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { SimulationNotice } from './SimulationNotice';
+import { BrandLogo } from '../shell/BrandLogo';
 
 /**
  * Report mode: the result without the operating chrome. Keeps what a reader two months later needs
@@ -31,11 +32,8 @@ export function ReportModeLayout({
       <article id="main" className="mx-auto max-w-[860px] px-5 py-8 print:max-w-none print:px-0 print:py-0" data-report-mode>
         <header className="border-b border-line pb-5">
           <div className="flex items-center gap-2">
-            {/* Logo slot — replace with the approved asset. Brand owner validation required. */}
-            <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-sm bg-brand">
-              <span className="h-2.5 w-2.5 rounded-full border-2 border-brand-ink" />
-            </span>
-            <span className="font-display text-sm font-semibold text-ink">Persona Intelligence</span>
+            <BrandLogo height={22} />
+            <span className="sr-only">RF AI Persona Intelligence</span>
             <span className="ml-auto font-mono text-[11px] text-ink-subtle">Generated {generatedAt}</span>
           </div>
           <p className="eyebrow mt-5">{projectName}</p>

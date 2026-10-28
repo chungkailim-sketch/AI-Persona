@@ -12,7 +12,7 @@ import {
   HypothesisList,
 } from './BriefStep';
 
-export const metadata = { title: 'Brief · Persona Intelligence' };
+export const metadata = { title: 'Brief · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
 
 export default async function BriefStepPage(props: PageProps<'/projects/[projectId]/brief'>) {

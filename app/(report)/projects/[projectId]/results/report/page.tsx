@@ -13,7 +13,7 @@ import { FindingSeverityBadge } from '@/ui/components/FindingSeverityBadge';
 import { findingSeverity } from '@/telemetry/status';
 import { fmtDateTime, TZ_LABEL } from '@/lib/time';
 
-export const metadata = { title: 'Report · Persona Intelligence' };
+export const metadata = { title: 'Report · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
 
 const CLASS_WORD: Record<string, string> = {

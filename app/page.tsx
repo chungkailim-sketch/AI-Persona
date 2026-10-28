@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { loadEnv, integrationStatus } from '@/lib/env';
+import { BrandLogo } from '@/ui/shell/BrandLogo';
 
 /**
  * Landing page. Renders without a database or a model key so the app never presents a blank
@@ -16,10 +17,9 @@ export default function Home() {
 
   return (
     <main id="main" className="mx-auto max-w-content px-6 py-16">
-      <p className="font-mono text-[11px] uppercase tracking-[0.12em] text-brand">
-        Evidence-grounded decision support
-      </p>
-      <h1 className="mt-2 max-w-prose text-4xl">Persona Intelligence</h1>
+      <BrandLogo height={36} />
+      <p className="eyebrow mt-8">Evidence-grounded decision support</p>
+      <h1 className="mt-2 max-w-prose text-4xl">RF AI Persona Intelligence</h1>
       <p className="mt-4 max-w-prose text-ink-muted">
         Ingest real audience data, state a brief, generate personas grounded in that data, run a
         structured adversarial simulation, and read findings that carry their evidence with them.

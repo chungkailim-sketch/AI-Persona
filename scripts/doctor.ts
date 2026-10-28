@@ -25,7 +25,7 @@ function report(ok: boolean, label: string, detail?: string, remedy?: string): v
 }
 
 async function main(): Promise<void> {
-  console.log('\nPersona Intelligence — sign-in diagnostics\n');
+  console.log('\nRF AI Persona Intelligence — sign-in diagnostics\n');
 
   // 1. Environment -----------------------------------------------------------
   let env;

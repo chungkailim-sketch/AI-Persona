@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 import { EmptyState } from '@/ui/components/States';
 import { fmtDateTime, TZ_LABEL } from '@/lib/time';
 
-export const metadata = { title: 'Briefs · Persona Intelligence' };
+export const metadata = { title: 'Briefs · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
 
 /** The latest brief of every project you belong to. Editing happens in the project's step 2. */

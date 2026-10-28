@@ -3,7 +3,7 @@ import { authContextFor } from '@/auth/session';
 import { permissionsFor } from '@/auth/permissions';
 import { prisma } from '@/lib/prisma';
 
-export const metadata = { title: 'Administration · Persona Intelligence' };
+export const metadata = { title: 'Administration · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
 
 export default async function AdminOverviewPage() {

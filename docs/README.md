@@ -1,4 +1,4 @@
-# RF Persona Intelligence
+# RF AI Persona Intelligence
 
 Evidence-grounded AI persona simulation and decision support. This repository implements the PRD in
 `../prd/prd.md` following the phased plan in `../plan/plan.md`.

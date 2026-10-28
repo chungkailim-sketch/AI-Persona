@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import type { ActivitySummary } from '@/server/activity';
 import { Icon } from '../components/Icon';
+import { BrandLogo } from './BrandLogo';
 import { GlobalRunIndicator } from './GlobalRunIndicator';
 import { ProjectSelector, type ProjectOption } from './ProjectSelector';
 import { ThemeSwitcher } from './ThemeSwitcher';
@@ -29,12 +30,9 @@ export function TopNavigation({ userEmail, userRole, isAdmin, projects, environm
         <button type="button" onClick={onOpenMenu} className="rounded p-1.5 text-ink-muted hover:text-ink md:hidden" aria-label="Open navigation">
           <Icon name="menu" size={18} />
         </button>
-        {/* Logo slot — replace with the approved asset. Brand owner validation required. */}
-        <Link href="/dashboard" className="flex shrink-0 items-center gap-2 font-display text-[15px] font-semibold text-ink">
-          <span aria-hidden className="inline-flex h-6 w-6 items-center justify-center rounded-sm bg-brand">
-            <span className="h-2.5 w-2.5 rounded-full border-2 border-brand-ink" />
-          </span>
-          <span className="hidden sm:inline">Persona Intelligence</span>
+        <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5 text-ink" aria-label="RF AI Persona Intelligence — home">
+          <BrandLogo height={20} />
+          <span className="hidden text-[13px] font-semibold uppercase tracking-[0.08em] text-ink-muted lg:inline">Intelligence</span>
         </Link>
         <span aria-hidden className="hidden h-5 w-px bg-line sm:block" />
         <div className="min-w-0 flex-1 sm:flex-none">

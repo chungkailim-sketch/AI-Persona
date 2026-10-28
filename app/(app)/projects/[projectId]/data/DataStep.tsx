@@ -55,7 +55,8 @@ function sizeProblem(files: FileList | null): string | null {
   return null;
 }
 
-export function UploadForm({ projectId }: { projectId: string }) {
+/** `simple` keeps only the file picker: one dataset per file, named as the file. */
+export function UploadForm({ projectId, simple = false }: { projectId: string; simple?: boolean }) {
   const [state, action] = useActionState(uploadDatasetAction, empty);
   const [tooBig, setTooBig] = useState<string | null>(null);
   const [perFile, setPerFile] = useState(true);
@@ -71,13 +72,13 @@ export function UploadForm({ projectId }: { projectId: string }) {
       className="mt-4 flex max-w-xl flex-col gap-4"
     >
       <input type="hidden" name="projectId" value={projectId} />
-      <label className="flex items-start gap-2 text-sm text-ink-muted">
+      {simple ? <input type="hidden" name="perFile" value="on" /> : <label className="flex items-start gap-2 text-sm text-ink-muted">
         <input type="checkbox" name="perFile" checked={perFile} onChange={(e) => setPerFile(e.target.checked)} className="mt-1" />
         <span>
           One dataset per file, named exactly as the file
           <span className="block text-xs text-ink-subtle">Untick to combine everything you select into one dataset under a name you choose.</span>
         </span>
-      </label>
+      </label>}
       {!perFile && (
         <Field id="ds-name" label="Dataset name" required>
           <TextInput id="ds-name" name="name" required maxLength={120} />
@@ -100,11 +101,6 @@ export function UploadForm({ projectId }: { projectId: string }) {
           className="w-full text-sm text-ink-muted file:mr-3 file:rounded file:border file:border-line file:bg-surface file:px-3 file:py-1.5 file:text-sm file:text-ink"
         />
       </Field>
-      <p className="rounded border border-warn bg-warn-soft px-3 py-2 text-xs text-warn">
-        No malware scanner is configured in this build. Every uploaded file is recorded as
-        <span className="font-mono"> NOT_SCANNED</span> so the gap is visible rather than assumed
-        away.
-      </p>
       {tooBig && <p role="alert" className="rounded border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">{tooBig}</p>}
       <FormMessages state={state} />
       <SubmitButton pendingLabel="Uploading…">Upload and ingest</SubmitButton>

@@ -6,7 +6,7 @@ import { ThemePreferenceControl } from '@/ui/shell/ThemeSwitcher';
 import { THEME_COOKIE, parseThemePreference } from '@/ui/theme/theme';
 import { fmtDateTime, TZ_LABEL } from '@/lib/time';
 
-export const metadata = { title: 'Settings · Persona Intelligence' };
+export const metadata = { title: 'Settings · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
 
 function when(d: Date): string {

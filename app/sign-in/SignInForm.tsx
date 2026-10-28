@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { OTP_CONFIG } from '@/auth/config';
+import { BrandLogo } from '@/ui/shell/BrandLogo';
 
 type Stage = 'email' | 'code';
 
@@ -104,7 +105,9 @@ export function SignInForm({ next }: { next: string }) {
 
   return (
     <div className="mx-auto w-full max-w-sm px-6 py-20">
-      <h1 className="text-2xl">Sign in</h1>
+      <BrandLogo height={30} />
+      <p className="eyebrow mt-6">RF AI Persona Intelligence</p>
+      <h1 className="mt-1 text-2xl">Sign in</h1>
       <p className="mt-2 text-sm text-ink-muted">
         {stage === 'email'
           ? 'Enter your work email address. We will send a one-time code — there is no password.'

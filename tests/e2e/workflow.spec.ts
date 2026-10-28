@@ -23,16 +23,23 @@ test.describe('step 1 — source data', () => {
     await signInAs(page, 'e2e-data@example.com', 'STANDARD_USER');
     await createProject(page, `Data step ${Date.now()}`);
 
-    await expect(page.getByRole('heading', { name: 'Source data' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
     await expect(page.getByText('No data attached yet.')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Attach data' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Upload', exact: true })).toBeVisible();
+    // No scanner notice: the upload step shows only what the user needs.
+    await expect(page.getByText(/malware/i)).toHaveCount(0);
   });
 
-  test('declares that no malware scanner ran, rather than implying a clean scan', async ({ page }) => {
-    await signInAs(page, 'e2e-scan@example.com', 'STANDARD_USER');
-    await createProject(page, `Scan notice ${Date.now()}`);
-    await expect(page.getByText(/No malware scanner is configured/)).toBeVisible();
-    await expect(page.getByText(/NOT_SCANNED/)).toBeVisible();
+  test('an uploaded file is listed under its own name and becomes ready', async ({ page }) => {
+    test.setTimeout(120_000);
+    await signInAs(page, `e2e-simple-upload-${Date.now()}@example.com`, 'STANDARD_USER');
+    await createProject(page, `Simple upload ${Date.now()}`);
+    const rows = ['market,age_band,score', ...Array.from({ length: 40 }, (_, i) => `Indonesia,${i % 2 ? '25-34' : '35-44'},${(i % 5) + 1}`)];
+    await page.locator('input[name="files"]').setInputFiles({ name: 'simple_upload.csv', mimeType: 'text/csv', buffer: Buffer.from(rows.join('\n')) });
+    await page.getByRole('button', { name: 'Upload and ingest' }).click();
+    const files = page.getByRole('region', { name: 'Your files' });
+    await expect(files.getByText('simple_upload.csv')).toBeVisible({ timeout: 30_000 });
+    await expect(files.getByText('Ready', { exact: true })).toBeVisible({ timeout: 90_000 });
   });
 
   test('the five-step indicator marks the current step for assistive technology', async ({ page }) => {
@@ -168,9 +175,9 @@ test.describe('permissions in the workflow', () => {
     await client.end();
 
     await goAndHydrate(viewer, `/projects/${id}/data`);
-    await expect(viewer.getByRole('heading', { name: 'Source data' })).toBeVisible();
+    await expect(viewer.getByRole('heading', { name: 'Data', exact: true })).toBeVisible();
     // The upload form is absent, and the reason is stated rather than left to be inferred.
-    await expect(viewer.getByRole('heading', { name: 'Attach data' })).toHaveCount(0);
+    await expect(viewer.getByRole('heading', { name: 'Upload', exact: true })).toHaveCount(0);
     await expect(viewer.getByText(/You can view this project.s data but not change it/)).toBeVisible();
     await viewer.close();
   });
