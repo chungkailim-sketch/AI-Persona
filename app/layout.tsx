@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
+import '@fontsource-variable/figtree';
+import '@fontsource-variable/noto-sans-sc';
 import './globals.css';
 import { HydrationMarker } from '@/ui/HydrationMarker';
 import { currentSession } from '@/auth/session';
@@ -9,8 +11,8 @@ import { LANG_COOKIE, parseLang } from '@/ui/i18n/translate';
 import { LanguageRuntime } from '@/ui/i18n/LanguageRuntime';
 
 export const metadata: Metadata = {
-  title: 'Persona Intelligence',
-  description: 'Evidence-grounded AI persona simulation and decision support',
+  title: 'RF AI Persona Intelligence',
+  description: 'Ruder Finn — evidence-grounded AI personas, roundtables and market-entry insight',
 };
 
 /**

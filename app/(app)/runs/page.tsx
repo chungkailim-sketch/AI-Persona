@@ -8,7 +8,7 @@ import { NODE_STATUS_META } from '@/telemetry/status';
 import { isTerminalRunStatus } from '@/telemetry/contract';
 import { fmtDateTime } from '@/lib/time';
 
-export const metadata = { title: 'Simulations · Persona Intelligence' };
+export const metadata = { title: 'Simulations · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
 
 function meta(status: string) {

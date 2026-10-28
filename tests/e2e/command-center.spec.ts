@@ -96,7 +96,7 @@ test.describe('ingestion command center', () => {
     test.setTimeout(120_000);
     await signInAs(page, `e2e-ingest-${Date.now()}@example.com`, 'STANDARD_USER' as Role);
     const id = await createProject(page, `Ingest ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/data`);
+    await goAndHydrate(page, `/projects/${id}/advanced/data`);
 
     // An email column (sensitive), an empty column (a warning finding) and one duplicate row.
     const rows = ['market,age_band,email,score,notes', ...Array.from({ length: 40 }, (_, i) => `Indonesia,${i % 2 ? '25-34' : '35-44'},p${i}@example.com,${(i % 5) + 1},`), 'Indonesia,25-34,p1@example.com,2,'];

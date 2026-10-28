@@ -125,7 +125,7 @@ describe('ReportModeLayout', () => {
         <p>Body</p>
       </ReportModeLayout>,
     );
-    expect(screen.getByText('Persona Intelligence')).toBeInTheDocument();
+    expect(screen.getByText('RF AI Persona Intelligence')).toBeInTheDocument();
     expect(screen.getByText(/Generated 2026-09-21/)).toBeInTheDocument();
     expect(screen.getByText('Seeds')).toBeInTheDocument();
     expect(screen.getByRole('complementary', { name: 'Simulation notice' })).toHaveTextContent(/Mock provider/);

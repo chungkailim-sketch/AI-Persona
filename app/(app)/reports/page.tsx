@@ -1,6 +1,6 @@
 import { NotYetBuilt } from '@/ui/BuildStatus';
 
-export const metadata = { title: 'Reports · Persona Intelligence' };
+export const metadata = { title: 'Reports · RF AI Persona Intelligence' };
 
 export default function Page() {
   return (

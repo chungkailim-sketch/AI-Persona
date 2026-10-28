@@ -236,6 +236,19 @@ export async function retryIngestion(
   return { jobId };
 }
 
+/** One readable line on why an ingest failed, from the version's report or its files' parse errors. */
+function failureReason(report: unknown, files: { parseError: string | null }[]): string {
+  const r = (report ?? {}) as { error?: unknown; notes?: unknown };
+  if (typeof r.error === 'string' && r.error) return r.error;
+  const fileError = files.map((f) => f.parseError).find(Boolean);
+  if (fileError) return fileError;
+  if (Array.isArray(r.notes)) {
+    const note = r.notes.map((n) => (typeof n === 'string' ? n : (n as { message?: unknown })?.message)).find((n) => typeof n === 'string' && n);
+    if (typeof note === 'string') return note;
+  }
+  return 'The file could not be imported.';
+}
+
 export async function listProjectDatasets(user: SessionUser, projectId: string) {
   const ctx = await authContextFor(user, projectId);
   if (!can(ctx, 'project.view', projectId)) throw new AuthorizationError('project.view', projectId);
@@ -251,6 +264,7 @@ export async function listProjectDatasets(user: SessionUser, projectId: string) 
               _count: { select: { fields: true, integrity: true } },
               integrity: { select: { severity: true, acknowledgedAt: true } },
               governance: { select: { allowModelProcessing: true, sensitiveConfirmed: true } },
+              files: { select: { parseError: true } },
             },
           },
         },
@@ -282,6 +296,7 @@ export async function listProjectDatasets(user: SessionUser, projectId: string) 
             ).length,
             governed: Boolean(latest.governance?.sensitiveConfirmed),
             modelProcessingAllowed: Boolean(latest.governance?.allowModelProcessing),
+            failure: latest.status === 'FAILED' ? failureReason(latest.parseReport, latest.files) : null,
           }
         : null,
     };

@@ -1,4 +1,4 @@
-# Running Persona Intelligence on your laptop
+# Running RF AI Persona Intelligence on your laptop
 
 Two commands, then `http://localhost:3000`.
 

@@ -85,7 +85,7 @@ export const config = {
     // prefetched document would otherwise be cached with a nonce that the real request will not
     // match.
     {
-      source: '/((?!_next/static|_next/image|favicon.ico).*)',
+      source: '/((?!_next/static|_next/image|favicon.ico|icon.png|apple-icon.png|brand/).*)',
       missing: [
         { type: 'header', key: 'next-router-prefetch' },
         { type: 'header', key: 'purpose', value: 'prefetch' },

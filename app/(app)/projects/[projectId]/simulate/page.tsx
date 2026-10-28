@@ -12,7 +12,7 @@ import { SimulationControlRoom } from './SimulationControlRoom';
 import { countEvents, readRecentEvents, readSnapshot } from '@/telemetry/read';
 import { fmtDateTime } from '@/lib/time';
 
-export const metadata = { title: 'Simulation · Persona Intelligence' };
+export const metadata = { title: 'Simulation · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
 
 export default async function SimulateStepPage(props: PageProps<'/projects/[projectId]/simulate'>) {

@@ -4,7 +4,7 @@ import { currentSession } from '@/auth/session';
 import { safeInternalPath } from '@/lib/safeRedirect';
 import { loadEnv } from '@/lib/env';
 
-export const metadata = { title: 'Sign in · Persona Intelligence' };
+export const metadata = { title: 'Sign in · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
 
 export default async function SignInPage(props: PageProps<'/sign-in'>) {

@@ -9,7 +9,7 @@ test.describe('unauthenticated visitors', () => {
 
   test('can read the public landing page', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'Persona Intelligence' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'RF AI Persona Intelligence' })).toBeVisible();
     // Integration state is declared, not hidden.
     await expect(page.getByRole('heading', { name: 'Integration status' })).toBeVisible();
   });

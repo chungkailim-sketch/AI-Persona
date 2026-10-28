@@ -132,7 +132,7 @@ export function setEmailAdapter(a: EmailAdapter | null): void {
 
 export function signInEmail(code: string, ttlMinutes: number): Omit<EmailMessage, 'to'> {
   return {
-    subject: 'Your Persona Intelligence sign-in code',
+    subject: 'Your RF AI Persona Intelligence sign-in code',
     text: [
       `Your sign-in code is ${code}`,
       '',

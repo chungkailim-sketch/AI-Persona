@@ -5,7 +5,7 @@ import { authContextFor } from '@/auth/session';
 import { can } from '@/auth/permissions';
 import { fmtDate } from '@/lib/time';
 
-export const metadata = { title: 'Home · Persona Intelligence' };
+export const metadata = { title: 'Home · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
