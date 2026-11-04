@@ -22,7 +22,7 @@ test.describe('step 3 — personas', () => {
   test('explains what each provenance label means before showing any persona', async ({ page }) => {
     await signInAs(page, 'e2e-persona-key@example.com', 'STANDARD_USER');
     const id = await createProject(page, `Persona key ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/personas`);
+    await goAndHydrate(page, `/projects/${id}/advanced/personas`);
 
     await expect(page.getByRole('heading', { name: 'What the labels mean' })).toBeVisible();
     await expect(page.getByText('Measured directly in the data.')).toBeVisible();
@@ -32,7 +32,7 @@ test.describe('step 3 — personas', () => {
   test('says a cohort cannot be built before any data is attached', async ({ page }) => {
     await signInAs(page, 'e2e-persona-nodata@example.com', 'STANDARD_USER');
     const id = await createProject(page, `No data ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/personas`);
+    await goAndHydrate(page, `/projects/${id}/advanced/personas`);
 
     await expect(page.getByText(/No dataset is attached to this project yet/)).toBeVisible();
     await expect(page.getByText(/A cohort describes segments in real data/)).toBeVisible();
@@ -41,7 +41,7 @@ test.describe('step 3 — personas', () => {
   test('states that the persona is a summary of a segment, not a character', async ({ page }) => {
     await signInAs(page, 'e2e-persona-frame@example.com', 'STANDARD_USER');
     const id = await createProject(page, `Framing ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/personas`);
+    await goAndHydrate(page, `/projects/${id}/advanced/personas`);
 
     await expect(
       page.getByText(/summary of a segment in your data, not an invented character/),
@@ -53,7 +53,7 @@ test.describe('step 4 — simulation', () => {
   test('says plainly that nothing runs until a plan is confirmed', async ({ page }) => {
     await signInAs(page, 'e2e-sim-gate@example.com', 'STANDARD_USER');
     const id = await createProject(page, `Gate ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/simulate`);
+    await goAndHydrate(page, `/projects/${id}/advanced/simulate`);
 
     await expect(page.getByRole('heading', { name: 'Simulation' })).toBeVisible();
     await expect(page.getByText(/Nothing runs until you confirm a plan/)).toBeVisible();
@@ -62,7 +62,7 @@ test.describe('step 4 — simulation', () => {
   test('lists every prerequisite at once rather than one at a time', async ({ page }) => {
     await signInAs(page, 'e2e-sim-blockers@example.com', 'STANDARD_USER');
     const id = await createProject(page, `Blockers ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/simulate`);
+    await goAndHydrate(page, `/projects/${id}/advanced/simulate`);
 
     await expect(page.getByText('Not yet. Outstanding:')).toBeVisible();
     await expect(page.getByText(/No cohort has been generated/)).toBeVisible();
@@ -71,7 +71,7 @@ test.describe('step 4 — simulation', () => {
   test('describes the method, including that half the panel must argue against', async ({ page }) => {
     await signInAs(page, 'e2e-sim-method@example.com', 'STANDARD_USER');
     const id = await createProject(page, `Method ${Date.now()}`);
-    await goAndHydrate(page, `/projects/${id}/simulate`);
+    await goAndHydrate(page, `/projects/${id}/advanced/simulate`);
 
     await expect(page.getByText(/at least half.*argue against/is)).toBeVisible();
     await expect(page.getByText(/how much of the agreement survived that pressure/)).toBeVisible();
@@ -101,11 +101,11 @@ test.describe('permissions in steps 3 and 4', () => {
     );
     await client.end();
 
-    await goAndHydrate(viewer, `/projects/${id}/personas`);
+    await goAndHydrate(viewer, `/projects/${id}/advanced/personas`);
     await expect(viewer.getByRole('heading', { name: 'Generate a cohort' })).toHaveCount(0);
     await expect(viewer.getByText(/You can read this cohort but not change it/)).toBeVisible();
 
-    await goAndHydrate(viewer, `/projects/${id}/simulate`);
+    await goAndHydrate(viewer, `/projects/${id}/advanced/simulate`);
     await expect(viewer.getByRole('heading', { name: 'Plan a run' })).toHaveCount(0);
     await expect(viewer.getByText(/You can watch runs in this project but not start one/)).toBeVisible();
 

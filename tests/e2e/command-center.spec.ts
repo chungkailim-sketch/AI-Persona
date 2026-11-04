@@ -28,6 +28,7 @@ async function joinReadyProject(email: string, role = 'OWNER'): Promise<string> 
     `SELECT c."projectId" FROM "Cohort" c
        JOIN "Persona" p ON p."cohortId" = c.id
        JOIN "PersonaVersion" v ON v."personaId" = p.id AND v.approval = 'APPROVED'
+     WHERE c.kind = 'cohort'
      GROUP BY c."projectId" HAVING count(*) >= 3 LIMIT 1`,
   );
   const projectId = rows[0]?.projectId;
@@ -50,7 +51,7 @@ async function createProject(page: Page, name: string): Promise<string> {
 }
 
 async function startRun(page: Page, projectId: string) {
-  await goAndHydrate(page, `/projects/${projectId}/simulate`);
+  await goAndHydrate(page, `/projects/${projectId}/advanced/simulate`);
   if (await page.getByRole('button', { name: 'Prepare a plan' }).count()) {
     await page.getByRole('button', { name: 'Prepare a plan' }).click();
   }
@@ -169,7 +170,7 @@ test.describe('simulation control room', () => {
     await signInAs(page, email, 'STANDARD_USER' as Role);
     const projectId = await joinReadyProject(email);
     await page.emulateMedia({ reducedMotion: 'reduce' });
-    await goAndHydrate(page, `/projects/${projectId}/simulate`);
+    await goAndHydrate(page, `/projects/${projectId}/advanced/simulate`);
     const animated = await page.evaluate(() =>
       [...document.querySelectorAll('*')].filter((el) => {
         const s = getComputedStyle(el);
@@ -183,7 +184,7 @@ test.describe('simulation control room', () => {
     const email = `e2e-keys-${Date.now()}@example.com`;
     await signInAs(page, email, 'STANDARD_USER' as Role);
     const projectId = await joinReadyProject(email);
-    await goAndHydrate(page, `/projects/${projectId}/simulate`);
+    await goAndHydrate(page, `/projects/${projectId}/advanced/simulate`);
     test.skip((await page.locator('[data-run-status]').count()) === 0, 'No run exists yet to monitor.');
 
     const autoscroll = page.getByRole('checkbox', { name: 'Auto-scroll' });

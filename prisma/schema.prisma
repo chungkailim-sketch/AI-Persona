@@ -137,6 +137,10 @@ model Project {
   status      ProjectStatus @default(DRAFT)
   currentStep WorkflowStep  @default(DATA)
   isDemo      Boolean       @default(false) // drives the "Demonstration data" label
+  /// The use case the project is set up for (market_entry, campaign, brand_health, crisis, custom),
+  /// and the modules switched on for it. See src/modules/registry.ts.
+  useCase     String        @default("market_entry")
+  modules     String[]      @default([])
   createdById String
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
@@ -148,6 +152,11 @@ model Project {
   cohorts      Cohort[]
   runs         Run[]
   debates      Debate[]
+  roundtables  Roundtable[]
+  marketInputs MarketInput[]
+  decisionChecks DecisionCheck[]
+  personaChats PersonaChat[]
+  advice       Advice[]
 
   @@index([workspaceId, status])
   @@index([createdById])
@@ -439,6 +448,8 @@ model Brief {
   resultFormat      String?
   reportAudience    String?
   coverageAcknowledged Boolean @default(false)
+  /// The categories each persona scores in the roundtable (the simplified journey).
+  categories        String[]  @default([])
 
   createdById String
   createdAt   DateTime @default(now())
@@ -513,9 +524,18 @@ model Cohort {
   generationNote String?
   /// Set when the cohort was built from a population sample; its cells are the personas.
   populationSampleId String?
+  /// "cohort" (any generated cohort) or "cast" (markets × income tiers for the roundtable).
+  kind       String   @default("cohort")
+  /// For a cast: QUEUED | RUNNING | COMPLETED | FAILED while identities are written.
+  buildStatus String?
+  buildError  String?
+  /// For a cast: the markets and the segment groups (parameters) it was built on.
+  parameters  Json?
   personas   Persona[]
   runConfigs RunConfig[]
   debates    Debate[]
+  roundtables Roundtable[]
+  modelCalls ModelCall[]
 
   @@index([projectId])
 }
@@ -558,6 +578,9 @@ model PersonaVersion {
   isMandatory  Boolean       @default(false)
   enabled      Boolean       @default(true)
   diffFromId   String?
+  /// Cast card: illustrative identity (name, age, occupation, city, life stage, decision logic,
+  /// key stats with base). Marked illustrative wherever it is shown.
+  profile      Json?
   createdById  String?
   createdAt    DateTime      @default(now())
 
@@ -766,6 +789,12 @@ model ModelCall {
   run            Run?     @relation(fields: [runId], references: [id], onDelete: Cascade)
   debateId       String?
   debate         Debate?  @relation(fields: [debateId], references: [id], onDelete: Cascade)
+  cohortId       String?
+  cohort         Cohort?  @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  roundtableId   String?
+  roundtable     Roundtable? @relation(fields: [roundtableId], references: [id], onDelete: Cascade)
+  adviceId       String?
+  advice         Advice?  @relation(fields: [adviceId], references: [id], onDelete: Cascade)
   stage          String
   personaKey     String?
   provider       String
@@ -786,6 +815,9 @@ model ModelCall {
 
   @@index([runId, stage])
   @@index([debateId])
+  @@index([cohortId])
+  @@index([roundtableId])
+  @@index([adviceId])
   @@index([createdAt])
 }
 
@@ -1321,4 +1353,137 @@ model DebateTurn {
   createdAt   DateTime @default(now())
 
   @@unique([debateId, seq])
+}
+
+/// One question put to every persona of a cast, each scoring the categories 0–100 alone.
+model Roundtable {
+  id            String    @id @default(cuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cohortId      String
+  cohort        Cohort    @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  question      String
+  categories    String[]
+  context       String?
+  language      String    @default("en") // en | zh — the language the personas answer in
+  seed          Int
+  status        String    @default("QUEUED") // QUEUED | RUNNING | COMPLETED | FAILED
+  phase         String?
+  total         Int       @default(0)
+  isMock        Boolean   @default(true)
+  /// Model-written: consensus, takeaways, communications recommendation, market reading.
+  summary       Json?
+  spendUsd      Float     @default(0)
+  failureReason String?
+  createdById   String
+  createdAt     DateTime  @default(now())
+  startedAt     DateTime?
+  completedAt   DateTime?
+
+  answers    RoundtableAnswer[]
+  modelCalls ModelCall[]
+
+  @@index([projectId, createdAt])
+}
+
+model RoundtableAnswer {
+  id           String     @id @default(cuid())
+  roundtableId String
+  roundtable   Roundtable @relation(fields: [roundtableId], references: [id], onDelete: Cascade)
+  personaId    String
+  market       String
+  tier         Int
+  ok           Boolean    @default(true)
+  /// Mean of the category scores, computed in code.
+  overall      Float?
+  quote        String?
+  /// [{ category, score 0–100, reason }]
+  scores       Json?
+  conditions   String[]
+  barriers     String[]
+  /// Profile page: mindset, how to reach, what holds back, comms advice.
+  profile      Json?
+  createdAt    DateTime   @default(now())
+
+  @@unique([roundtableId, personaId])
+}
+
+/// Market-level pillars for the market potential and entry indices, 0–100 each (higher = easier
+/// entry). Entered by the team with a source; blank pillars are left out and the weights rescaled.
+model MarketInput {
+  id             String   @id @default(cuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  market         String
+  brand          Float?
+  geoTrade       Float?
+  spending       Float?
+  categoryDemand Float?
+  scrutiny       Float?
+  digital        Float?
+  source         String?
+  updatedById    String?
+  updatedAt      DateTime @updatedAt
+
+  @@unique([projectId, market])
+}
+
+/// A call to the OpenAI Decisions API at a checkpoint of the journey: the material it judged, the
+/// questions asked and the answers with their probabilities. Guidance only; nothing is gated on it.
+model DecisionCheck {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  checkpoint  String // DATA | BRIEF | CAST | DEBATE | ROUNDTABLE | REPORT
+  subjectId   String?
+  input       String
+  questions   Json
+  answers     Json?
+  status      String   @default("COMPLETED") // COMPLETED | FAILED
+  isMock      Boolean  @default(true)
+  modelId     String?
+  error       String?
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([projectId, checkpoint, createdAt])
+}
+
+/// One question put to one persona, and its answer.
+model PersonaChat {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  personaId   String
+  question    String
+  answer      Json?
+  ok          Boolean  @default(true)
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([personaId, createdAt])
+}
+
+/// Something written for the team from the study: a PR, communications and marketing plan
+/// answering a question, grounded in the survey data and the curated knowledge bases.
+model Advice {
+  id            String    @id @default(cuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kind          String    @default("COMMS_PLAN")
+  question      String
+  options       Json?
+  status        String    @default("QUEUED") // QUEUED | RUNNING | COMPLETED | FAILED
+  content       Json?
+  sources       Json?
+  isMock        Boolean   @default(true)
+  spendUsd      Float     @default(0)
+  failureReason String?
+  createdById   String
+  createdAt     DateTime  @default(now())
+  completedAt   DateTime?
+
+  modelCalls ModelCall[]
+
+  @@index([projectId, createdAt])
 }

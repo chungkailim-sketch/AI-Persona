@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { Route } from 'next';
-import { WORKFLOW_STEPS, type StepKey } from '@/ui/shell/steps';
+import { WORKFLOW_STEPS, stepByKey, type StepKey } from '@/ui/shell/steps';
 import { WorkflowStepper } from '@/ui/shell/WorkflowStepper';
 import { computeWorkflowState } from '@/server/workflow';
 import { prisma } from '@/lib/prisma';
@@ -13,7 +13,7 @@ import { cn } from '@/ui/cn';
  * cover most of a phone screen, so the pinned summary bar carries a compact row of step links instead.
  * State is computed from the tables of record on each render, never cached client-side.
  */
-export async function WorkflowNav({ projectId, projectName, current }: { projectId: string; projectName: string; current: StepKey }) {
+export async function WorkflowNav({ projectId, projectName, current, advanced = false }: { projectId: string; projectName: string; current: StepKey; advanced?: boolean }) {
   const [state, project] = await Promise.all([
     computeWorkflowState(projectId),
     prisma.project.findUnique({ where: { id: projectId }, select: { status: true, isDemo: true } }),
@@ -68,6 +68,15 @@ export async function WorkflowNav({ projectId, projectName, current }: { project
         </div>
         <WorkflowStepper projectId={projectId} current={current} state={state} />
       </div>
+      {advanced && (
+        <p className="no-print flex flex-wrap items-center gap-2 rounded border border-line bg-surface px-3 py-2 text-sm text-ink-muted">
+          <span className="eyebrow">Advanced</span>
+          <span>The full research tools behind this step.</span>
+          <Link href={`/projects/${projectId}/${stepByKey(current).href}` as Route} className="ml-auto text-link underline-offset-2 hover:underline">
+            ← Back to {stepByKey(current).label}
+          </Link>
+        </p>
+      )}
     </>
   );
 }

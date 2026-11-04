@@ -99,8 +99,7 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
 
   return (
     <div className="flex flex-col gap-6">
-      <WorkflowNav projectId={projectId} projectName={project.name} current="DATA" />
-      <Link href={`/projects/${projectId}/data` as Route} className="text-sm text-link underline-offset-2 hover:underline">← Back to Data</Link>
+      <WorkflowNav projectId={projectId} projectName={project.name} current="DATA" advanced />
 
       <header>
         <p className="eyebrow">Advanced</p>

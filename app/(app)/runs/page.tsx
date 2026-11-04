@@ -47,7 +47,7 @@ export default async function RunsPage() {
               {runs.map((r) => (
                 <tr key={r.id} className="border-b border-line/70">
                   <th scope="row" className="px-3 py-2 font-normal">
-                    <Link href={`/projects/${r.projectId}/simulate?run=${r.id}` as Route} className="font-mono text-link underline-offset-2 hover:underline">
+                    <Link href={`/projects/${r.projectId}/advanced/simulate?run=${r.id}` as Route} className="font-mono text-link underline-offset-2 hover:underline">
                       {fmtDateTime(r.createdAt)}
                     </Link>
                   </th>

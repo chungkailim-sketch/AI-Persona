@@ -41,8 +41,80 @@ function round(n: number, dp = 2): number {
  * Each branch matches a schema the orchestrator validates, so a change to a schema that this does
  * not follow shows up as a validation failure in the tests rather than as a silent mismatch later.
  */
-function body(schemaName: string, rng: () => number, personaKey: string): unknown {
+/** A `LABEL: a | b | c` line from the prompt, so the mock can answer in the caller's own terms. */
+function listed(request: ModelRequest | undefined, label: string): string[] {
+  const text = (request?.messages ?? []).map((m) => m.content).join('\n');
+  const line = new RegExp(`^${label}:\\s*(.+)$`, 'm').exec(text)?.[1] ?? '';
+  return line.split('|').map((x) => x.trim()).filter(Boolean);
+}
+
+function body(schemaName: string, rng: () => number, personaKey: string, request?: ModelRequest): unknown {
   switch (schemaName) {
+    case 'cast_identity':
+      return {
+        name: `[MOCK] ${pick(rng, ['Alex', 'Sam', 'Jordan', 'Taylor', 'Morgan', 'Casey'])}`,
+        age: 22 + Math.floor(rng() * 40),
+        gender: pick(rng, ['Female', 'Male']),
+        occupation: '[MOCK] Office professional',
+        city: '[MOCK] Capital city',
+        lifeStage: pick(rng, ['Single, renting', 'Married, young children', 'Married, children at school']),
+        decisionLogic: ['Quality', 'Price', 'Convenience'],
+        drivers: ['Quality', 'Price', 'Convenience'].map((factor, i) => ({ factor, statId: listed(request, 'STAT IDS')[i] ?? '' })),
+        keyStatIds: listed(request, 'STAT IDS').slice(0, 3),
+        oneLiner: '[MOCK] Placeholder persona produced locally; says nothing about the world.',
+      };
+
+    case 'roundtable_answer':
+      return {
+        quote: `[MOCK] Placeholder quote from ${personaKey}.`,
+        scores: listed(request, 'CATEGORIES').map((category) => ({ category, score: Math.round(15 + rng() * 75), reason: '[MOCK] Placeholder reason.' })),
+        conditions: ['[MOCK] Placeholder condition.'],
+        barriers: ['[MOCK] Placeholder barrier.'],
+        profile: {
+          mindset: [{ label: 'Brand loyalty', value: pick(rng, ['Low', 'Medium', 'High']) }, { label: 'Price sensitivity', value: pick(rng, ['Low', 'Medium', 'High']) }],
+          howToReach: ['[MOCK] Placeholder channel.'],
+          holdsBack: ['[MOCK] Placeholder barrier.'],
+          commsAdvice: ['[MOCK] Placeholder advice.'],
+        },
+      };
+
+    case 'persona_reply':
+      return {
+        answer: `[MOCK] Placeholder interview answer from ${personaKey}. Produced locally; says nothing about the world.`,
+        beyondData: false,
+        statIds: listed(request, 'STAT IDS').slice(0, 2),
+      };
+
+    case 'comms_plan':
+      return {
+        title: '[MOCK] Communications and marketing plan',
+        answer: '[MOCK] Placeholder answer produced by the mock provider. No model was consulted.',
+        situation: '[MOCK] Placeholder situation.',
+        objectives: ['[MOCK] Placeholder objective.'],
+        audienceInsights: [{ audience: '[MOCK] Audience', insight: '[MOCK] Insight.', refs: listed(request, 'DATA IDS').slice(0, 2) }],
+        positioning: '[MOCK] Placeholder positioning.',
+        keyMessages: [{ message: '[MOCK] Key message.', audience: '[MOCK] Audience', proofPoints: ['[MOCK] Proof point.'] }],
+        channels: [{ type: 'owned', channel: '[MOCK] Channel', role: '[MOCK] Role.' }, { type: 'earned', channel: '[MOCK] Media', role: '[MOCK] Role.' }],
+        phasedPlan: [{ phase: '[MOCK] Phase 1', timing: 'Months 1-3', activities: ['[MOCK] Activity.'] }],
+        kpis: [{ kpi: '[MOCK] KPI', target: '[MOCK] Target', measurement: '[MOCK] Measurement.' }],
+        risks: [{ risk: '[MOCK] Risk.', mitigation: '[MOCK] Mitigation.' }],
+        marketNotes: listed(request, 'MARKETS').map((market) => ({ market, note: '[MOCK] Placeholder note.' })),
+        frameworks: listed(request, 'KNOWLEDGE IDS').slice(0, 3).map((ref) => ({ ref, howApplied: '[MOCK] Placeholder.' })),
+        dataGaps: ['This plan used the mock provider.'],
+      };
+
+    case 'roundtable_summary':
+      return {
+        consensus: '[MOCK] Placeholder consensus produced by the mock provider. No model was consulted.',
+        takeaways: ['[MOCK] Placeholder takeaway one.', '[MOCK] Placeholder takeaway two.', '[MOCK] Placeholder takeaway three.'],
+        comms: {
+          headline: '[MOCK] Placeholder communications recommendation.',
+          pillars: [{ title: '[MOCK] Pillar', detail: '[MOCK] Placeholder detail.' }],
+          byMarket: listed(request, 'MARKETS').map((market) => ({ market, message: '[MOCK] Placeholder message.', channels: ['[MOCK] Channel'] })),
+        },
+        marketReading: { potential: ['[MOCK] Placeholder reading.'], entry: ['[MOCK] Placeholder reading.'], strategy: ['[MOCK] Placeholder strategy.'] },
+      };
+
     case 'independent_assessment':
       return {
         stance: pick(rng, STANCES),
@@ -235,7 +307,7 @@ export class MockProvider implements ModelProvider {
     const started = Date.now();
     if (delay > 0) await new Promise((r) => setTimeout(r, delay));
     const rng = seededRandom(request.seed ?? 1);
-    const text = JSON.stringify(body(request.schemaName, rng, request.personaKey ?? 'unknown'));
+    const text = JSON.stringify(body(request.schemaName, rng, request.personaKey ?? 'unknown', request));
 
     const inputTokens =
       approximateTokens(request.system) +

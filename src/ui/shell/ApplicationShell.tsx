@@ -6,6 +6,7 @@
  * width and nothing jumps on load) and localStorage. Below `md` the navigation becomes a drawer.
  */
 import { useState, type ReactNode } from 'react';
+import Link from 'next/link';
 import * as Dialog from '@radix-ui/react-dialog';
 import { CollapsibleSideNavigation } from './CollapsibleSideNavigation';
 import { TopNavigation, type TopNavigationProps } from './TopNavigation';
@@ -42,12 +43,21 @@ export function ApplicationShell({
       <div className="flex">
         <aside
           className={cn(
-            'no-print sticky top-[52px] hidden h-[calc(100dvh-52px)] shrink-0 flex-col justify-between border-r border-line bg-elevated p-2 transition-[width] duration-standard ease-standard md:flex',
-            collapsed ? 'w-[3.75rem]' : 'w-56',
+            'no-print sticky top-[52px] hidden h-[calc(100dvh-52px)] shrink-0 flex-col justify-between bg-sidebar px-3 py-4 transition-[width] duration-standard ease-standard md:flex',
+            collapsed ? 'w-[4.25rem]' : 'w-64',
           )}
           data-nav-state={collapsed ? 'collapsed' : 'expanded'}
         >
           <CollapsibleSideNavigation isAdmin={top.isAdmin} collapsed={collapsed} />
+          <div className="flex flex-col gap-3">
+            {!collapsed && (
+              <Link href="/projects" className="group flex items-center justify-between gap-2 rounded-full bg-brand-gradient py-2 pl-4 pr-2 text-sm font-bold text-ink shadow-card">
+                <span>Start a new study</span>
+                <span aria-hidden className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-surface text-brand transition-transform duration-fast group-hover:translate-x-0.5">
+                  <Icon name="chevronRight" size={15} />
+                </span>
+              </Link>
+            )}
           <button
             type="button"
             onClick={toggle}
@@ -58,12 +68,13 @@ export function ApplicationShell({
             <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={15} />
             {!collapsed && <span>Collapse</span>}
           </button>
+          </div>
         </aside>
 
         <Dialog.Root open={drawer} onOpenChange={setDrawer}>
           <Dialog.Portal>
             <Dialog.Overlay className="fixed inset-0 z-40 bg-overlay md:hidden" />
-            <Dialog.Content className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col gap-3 border-r border-line bg-elevated p-3 shadow-pop md:hidden">
+            <Dialog.Content className="fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col gap-3 bg-sidebar p-3 shadow-pop md:hidden">
               <div className="flex items-center justify-between">
                 <Dialog.Title className="font-display text-base text-ink">Navigation</Dialog.Title>
                 <Dialog.Close className="rounded p-1.5 text-ink-muted hover:text-ink" aria-label="Close navigation">
@@ -76,8 +87,8 @@ export function ApplicationShell({
           </Dialog.Portal>
         </Dialog.Root>
 
-        <main id="main" className="bg-grid min-h-[calc(100dvh-52px)] min-w-0 flex-1">
-          <div className="mx-auto max-w-wide px-4 py-5 lg:px-6">{children}</div>
+        <main id="main" className="min-h-[calc(100dvh-52px)] min-w-0 flex-1 bg-bg">
+          <div className="mx-auto max-w-wide px-4 py-6 lg:px-10">{children}</div>
         </main>
       </div>
     </div>

@@ -1,585 +1,235 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import type { Route } from 'next';
 import { requireUser } from '@/auth/guard';
 import { authContextFor } from '@/auth/session';
 import { can } from '@/auth/permissions';
 import { prisma } from '@/lib/prisma';
-import { listCohorts } from '@/server/personas';
-import { assessUsability } from '@/ingest/pipeline';
+import { availableMarkets, latestBrief, latestCast } from '@/roundtable/service';
+import { proposeParameters } from '@/roundtable/parameters';
+import type { CastProfile } from '@/roundtable/engine';
+import { getDebate, listDebates } from '@/debate/service';
+import { fmtDateTime } from '@/lib/time';
+import { MarketHeader, PersonaCard, TierHeader } from '@/ui/report/PersonaCard';
 import { WorkflowNav } from '../WorkflowNav';
-import { CohortDashboard } from './CohortDashboard';
-import { AdherencePanel, CohortFromPopulationForm, PopulationForm, type AdherenceView, type PopulationSourceView } from './PopulationPanel';
-import { latestAdherence } from '@/run/adherenceService';
-import { latestPopulationSample } from '@/population/service';
-import { readRecentEvents } from '@/telemetry/read';
-import type { TelemetryEvent } from '@/telemetry/contract';
-import { getDebate, listDebates, listInsights } from '@/debate/service';
-import { DebateDetail, DebateForm, type DebateView } from './DebatePanel';
-import { DebateInsights, type InsightArtifactView } from './DebateInsights';
-import { MarketFilter } from './MarketFilter';
-import { CohortPicker } from './CohortPicker';
-import { PagedList, PagedTable } from '@/ui/Pager';
-import {
-  ApproveCohortForm,
-  GenerateCohortForm,
-  OriginKey,
-  PersonaCard,
-  type PersonaRow,
-} from './PersonaStep';
-import { fmtDate, fmtDateTime, TZ_LABEL } from '@/lib/time';
+import { DecisionGuidance } from '../DecisionGuidance';
+import { RefreshWhileImporting } from '../data/RefreshWhileImporting';
+import { ApproveCastButton, BuildPersonasForm, RenamePersona } from './CastControls';
+import { DebateDetail, DebateForm } from './DebatePanel';
+import { toDebateView } from './debateView';
+import { projectModules } from '@/modules/project';
 
 export const metadata = { title: 'Personas · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
 
-export default async function PersonaStepPage(props: PageProps<'/projects/[projectId]/personas'>) {
+/**
+ * Step 3 — personas built from every file uploaded in step 1, on the markets and parameters the user
+ * chooses; each card opens the persona for an interview. The agent-swarm debate runs on them here.
+ * Cohort lists and population samples are in the Advanced persona tools.
+ */
+export default async function PersonasStepPage(props: PageProps<'/projects/[projectId]/personas'>) {
   const { projectId } = await props.params;
   const search = await props.searchParams;
   const user = await requireUser(`/projects/${projectId}/personas`);
-
   const ctx = await authContextFor(user, projectId);
   if (!can(ctx, 'project.view', projectId)) notFound();
-
-  const project = await prisma.project.findUnique({
-    where: { id: projectId },
-    select: { id: true, name: true },
-  });
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });
   if (!project) notFound();
 
-  const canCreate = can(ctx, 'persona.create', projectId);
+  const [brief, cast, markets, parameters, fileCount] = await Promise.all([
+    latestBrief(projectId),
+    latestCast(projectId),
+    availableMarkets(projectId),
+    proposeParameters(projectId),
+    prisma.projectDataset.count({ where: { projectId, dataset: { deletedAt: null } } }),
+  ]);
+  const modules = await projectModules(projectId);
+  const canBuild = can(ctx, 'persona.create', projectId);
   const canApprove = can(ctx, 'persona.approve', projectId);
+  const canEdit = can(ctx, 'persona.edit', projectId);
   const canDebate = can(ctx, 'simulation.run', projectId);
-
-  const [links, cohorts, brief] = await Promise.all([
-    prisma.projectDataset.findMany({
-      where: { projectId, dataset: { deletedAt: null } },
-      include: { dataset: { include: { versions: { orderBy: { versionNo: 'desc' }, take: 1 } } } },
-    }),
-    listCohorts(user, projectId),
-    prisma.brief.findFirst({ where: { projectId }, orderBy: { versionNo: 'desc' } }),
-  ]);
-
-  const datasets = await Promise.all(
-    links
-      .map((l) => ({ name: l.dataset.name, version: l.dataset.versions[0] }))
-      .filter((d): d is { name: string; version: NonNullable<typeof d.version> } => Boolean(d.version))
-      .map(async (d) => {
-        const verdict = await assessUsability(d.version.id);
-        return {
-          id: d.version.id,
-          label: `${d.name} (v${d.version.versionNo}, ${d.version.rowCount ?? 0} rows)`,
-          usable: verdict.usable,
-          blockers: verdict.blockers,
-        };
-      }),
-  );
-
-  const popSources: PopulationSourceView[] = await Promise.all(
-    datasets.map(async (d) => {
-      const fields = await prisma.datasetField.findMany({ where: { datasetVersionId: d.id }, select: { name: true, profile: true } });
-      const names = new Set(fields.map((f) => f.name.trim().toLowerCase()));
-      const long = ['wave_year', 'wave_month', 'statement', 'response', 'segment', 'share'].every((c) => names.has(c));
-      const sg = fields.find((f) => f.name.trim().toLowerCase() === 'segment_group')?.profile as { withheld?: true; topValues?: { value: string }[] } | null | undefined;
-      return { id: d.id, label: d.label, usable: d.usable && long, groups: sg?.withheld ? [] : (sg?.topValues ?? []).map((v) => v.value) };
-    }),
-  );
-  const population = await latestPopulationSample(user, projectId);
-  const adherence = await latestAdherence(cohorts.filter((c) => c.populationSampleId).map((c) => c.id));
-  const adherenceView = (id: string): AdherenceView | null => {
-    const a = adherence.get(id);
-    if (!a) return null;
-    return {
-      verdict: a.verdict,
-      when: fmtDateTime(a.createdAt),
-      model: a.model,
-      statement: a.detail.statement,
-      reason: a.detail.reason,
-      withTrait: a.detail.withTrait,
-      withoutTrait: a.detail.withoutTrait,
-    };
-  };
-  const popSpec = (population?.spec ?? null) as { wave?: string; members?: number; rejectedDraws?: number; removedCells?: string[]; segments?: { primary: string[]; secondary: string[] }; statements?: string[] } | null;
-  const popQuotas = (population?.quotas ?? []) as { cell: string; weight: number; members: number }[];
-  const popCal = (population?.calibration ?? []) as { dimension: string; maxAbsErrorPp: number; worstValue: string }[];
-  const popExamples = (population?.examples ?? []) as { id: string; text: string }[];
-
-  // ── Swarm debate ──
-  const debates = await listDebates(user, projectId);
-  const requestedDebate = typeof search.debate === 'string' ? search.debate : debates[0]?.id;
-  const debateRow = requestedDebate ? await getDebate(user, projectId, requestedDebate) : null;
-  const insightRows = debateRow ? await listInsights(user, projectId, debateRow.id) : [];
-  const insights: InsightArtifactView[] = insightRows.map((a) => ({
-    id: a.id,
-    kind: a.kind as InsightArtifactView['kind'],
-    agentKey: a.agentKey,
-    prompt: a.prompt,
-    status: a.status,
-    content: a.content,
-    failureReason: a.failureReason,
-    createdAt: a.createdAt.toISOString(),
-  }));
-  // What a panel can be built on: the segment groups and markets published in the cleared data,
-  // read from the field profiles so no data file has to be opened to render the page.
-  const panelOptions = await (async () => {
-    if (!debateRow) return { groups: [] as string[], markets: [] as string[] };
-    const fields = await prisma.datasetField.findMany({
-      where: {
-        datasetVersion: { dataset: { deletedAt: null, projects: { some: { projectId } } } },
-        OR: [{ name: { endsWith: 'segment_group', mode: 'insensitive' } }, { name: { endsWith: 'market', mode: 'insensitive' } }],
-      },
-      select: { name: true, profile: true },
-    });
-    const groups = new Set<string>();
-    const markets = new Set<string>();
-    for (const f of fields) {
-      const top = ((f.profile ?? {}) as { topValues?: { value: string }[] }).topValues ?? [];
-      const into = f.name.toLowerCase().endsWith('segment_group') ? groups : markets;
-      for (const t of top) if (t.value && t.value.toLowerCase() !== 'all') into.add(t.value);
-    }
-    return { groups: [...groups].sort(), markets: [...markets].sort() };
-  })();
-  const insightPersonas = debateRow
-    ? ((debateRow.agents ?? []) as { key: string; name: string; kind: string; segment?: string | null }[])
-        .filter((a) => a.kind === 'persona')
-        .map((a) => ({ key: a.key, name: a.name, segment: a.segment ?? null }))
-    : [];
-  const debateView: DebateView | null = debateRow
-    ? {
-        id: debateRow.id,
-        topic: debateRow.topic,
-        hypothesis: debateRow.hypothesis,
-        status: debateRow.status,
-        phase: debateRow.phase,
-        isMock: debateRow.isMock,
-        rounds: debateRow.rounds,
-        seed: debateRow.seed,
-        cohortName: debateRow.cohort.name,
-        createdAt: debateRow.createdAt.toISOString(),
-        completedAt: debateRow.completedAt?.toISOString() ?? null,
-        spendUsd: debateRow.spendUsd,
-        failureReason: debateRow.failureReason,
-        agents: (debateRow.agents ?? []) as unknown as DebateView['agents'],
-        evidence: (debateRow.evidence ?? null) as unknown as DebateView['evidence'],
-        metrics: (debateRow.metrics ?? null) as unknown as DebateView['metrics'],
-        conclusion: (debateRow.conclusion ?? null) as unknown as DebateView['conclusion'],
-        turns: debateRow.turns.map((t) => ({
-          seq: t.seq,
-          round: t.round,
-          phase: t.phase,
-          agentKey: t.agentKey,
-          agentName: t.agentName,
-          agentRole: t.agentRole,
-          stance: t.stance,
-          confidence: t.confidence,
-          addressedTo: t.addressedTo,
-          content: t.content as Record<string, unknown>,
-          ok: t.ok,
-        })),
-      }
-    : null;
-  const debateCohorts = cohorts
-    .map((c) => ({ id: c.id, name: c.name, approved: c.personas.filter((p) => p.versions[0]?.approval === 'APPROVED').length }))
-    .filter((c) => c.approved >= 2);
-  const [completedRuns, hypotheses] = await Promise.all([
-    prisma.run.findMany({
-      where: { projectId, status: { in: ['COMPLETED', 'COMPLETED_WITH_WARNINGS'] }, synthesis: { isNot: null } },
-      orderBy: { completedAt: 'desc' },
-      take: 5,
-      select: { id: true, completedAt: true, isMock: true },
-    }),
-    brief ? prisma.hypothesis.findMany({ where: { briefId: brief.id }, select: { statement: true } }) : Promise.resolve([]),
-  ]);
-
-  // ── Markets: from each persona's market attribute (survey cohorts) or its segment label. ──
-  const marketOf = (attrs: { key: string; value: string }[], segment: string | null): string | null => {
-    const a = attrs.find((x) => x.key.toLowerCase() === 'market');
-    if (a) return a.value.replace(/^most common across the sample:\s*/i, '').split(',')[0]!.trim();
-    return segment?.includes(' · ') ? segment.split(' · ')[0]! : null;
-  };
-  const cohortMarkets = new Map(
-    cohorts.map((c) => [
-      c.id,
-      [...new Set(c.personas.map((p) => marketOf(p.versions[0]?.attributes ?? [], p.versions[0]?.segment ?? null)).filter((m): m is string => Boolean(m)))].sort(),
-    ]),
-  );
-  const allMarkets = [...new Set([...cohortMarkets.values()].flat())].sort();
-  const marketFilter = typeof search.market === 'string' && allMarkets.includes(search.market) ? search.market : '';
-  const shownCohorts = marketFilter ? cohorts.filter((c) => cohortMarkets.get(c.id)!.includes(marketFilter)) : cohorts;
-  const requestedCohort = typeof search.cohort === 'string' ? search.cohort : '';
-  const selectedCohort = shownCohorts.find((c) => c.id === requestedCohort) ?? shownCohorts[0] ?? null;
-  const readyPersonas = shownCohorts.flatMap((c) =>
-    c.personas
-      .filter((p) => p.versions[0]?.approval === 'APPROVED')
-      .map((p) => ({
-        id: p.id,
-        name: p.name,
-        cohort: c.name,
-        market: marketOf(p.versions[0]!.attributes, p.versions[0]!.segment),
-        segment: p.versions[0]!.segment,
-        base: p.versions[0]!.baseSize,
-        confidence: p.versions[0]!.confidence,
-        grounded: p.versions[0]!.attributes.filter((a) => a.origin === 'OBSERVED' || a.origin === 'DERIVED').length,
-      }))
-      .filter((p) => !marketFilter || p.market === marketFilter),
-  );
-
-  const cohortEvents = new Map<string, TelemetryEvent[]>();
-  for (const c of cohorts.slice(0, 3)) {
-    cohortEvents.set(c.id, await readRecentEvents({ projectId, cohortId: c.id }, 300));
+  const building = cast?.buildStatus === 'QUEUED' || cast?.buildStatus === 'RUNNING';
+  const people = (cast?.personas ?? []).map((p) => ({ id: p.id, name: p.name, approval: p.versions[0]?.approval, profile: p.versions[0]?.profile as unknown as CastProfile | null }));
+  const named = people.filter((p) => p.profile?.identity).length;
+  const approved = people.length > 0 && people.every((p) => p.approval === 'APPROVED');
+  const nextStep = modules.has('roundtable') ? { href: 'simulate', label: 'Next: Roundtable →' } : { href: 'results', label: 'Next: Results →' };
+  const castMarkets = [...new Set(people.map((p) => p.profile?.market).filter((m): m is string => Boolean(m)))];
+  // Rows: one per parameter value (tier or segment), in the order the personas were built.
+  const rows: { key: string; group: string; tier: number; label: string }[] = [];
+  for (const p of people) {
+    if (!p.profile) continue;
+    const key = `${p.profile.group ?? ''}|${p.profile.tier}`;
+    if (!rows.some((r) => r.key === key)) rows.push({ key, group: p.profile.group ?? '', tier: p.profile.tier, label: p.profile.tierLabel });
   }
+  const params = (cast?.parameters ?? null) as { markets?: string[]; groups?: string[] } | null;
+  const chosenMarkets = params?.markets ?? brief?.markets ?? [];
+  const chosenParameters = params?.groups ?? parameters.filter((p) => p.recommended && p.kind === 'income').map((p) => p.name);
+
+  // The swarm debate runs on the approved personas.
+  const debates = (await listDebates(user, projectId)).filter((d) => d.cohortId === cast?.id).slice(0, 5);
+  const requested = typeof search.debate === 'string' ? search.debate : debates[0]?.id;
+  const debateRow = requested ? await getDebate(user, projectId, requested) : null;
+  const debate = debateRow ? toDebateView(debateRow) : null;
+  const debateRunning = debate?.status === 'QUEUED' || debate?.status === 'RUNNING';
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-6">
       <WorkflowNav projectId={projectId} projectName={project.name} current="PERSONAS" />
-
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl">Personas</h1>
-        {allMarkets.length > 0 && <MarketFilter markets={allMarkets} current={marketFilter} />}
-      </div>
-      <p className="mt-2 max-w-prose text-sm text-ink-muted">
-        A persona here is a summary of a segment in your data, not an invented character. Every
-        attribute says where it came from, and the difference matters: an attribute that was
-        measured supports a claim, and one that was generated does not.
-      </p>
-
-      <section aria-labelledby="key" className="mt-8">
-        <h2 id="key" className="text-lg">What the labels mean</h2>
-        <OriginKey />
-      </section>
-
-      <section aria-labelledby="ready" className="mt-8">
-        <h2 id="ready" className="text-lg">
-          Personas ready for simulation{marketFilter ? ` — ${marketFilter}` : ''}{' '}
-          <span className="font-mono text-base text-ink-muted">{readyPersonas.length}</span>
-        </h2>
-        {readyPersonas.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-muted">No approved personas{marketFilter ? ` in ${marketFilter}` : ''} yet. Generate a cohort below and approve it.</p>
-        ) : (
-          <div className="mt-2 overflow-x-auto">
-            <PagedTable
-              className="w-full text-left text-xs"
-              head={
-              <thead className="text-ink-subtle">
-                <tr>
-                  <th className="py-1 pr-3 font-normal">Persona</th>
-                  <th className="py-1 pr-3 font-normal">Market</th>
-                  <th className="py-1 pr-3 font-normal">Segment</th>
-                  <th className="py-1 pr-3 font-normal">Base</th>
-                  <th className="py-1 pr-3 font-normal">Confidence</th>
-                  <th className="py-1 pr-3 font-normal">Grounded attributes</th>
-                  <th className="py-1 font-normal">Cohort</th>
-                </tr>
-              </thead>
-              }
-              rows={readyPersonas.map((p) => (
-                  <tr key={p.id} className="border-t border-line align-top">
-                    <td className="max-w-[28rem] py-1.5 pr-3 text-ink">{p.name}</td>
-                    <td className="py-1.5 pr-3 text-ink-muted">{p.market ?? '—'}</td>
-                    <td className="py-1.5 pr-3 text-ink-muted">{p.segment?.split(' · ').pop() ?? '—'}</td>
-                    <td className="py-1.5 pr-3 font-mono">{p.base ?? '—'}</td>
-                    <td className="py-1.5 pr-3 font-mono">{p.confidence.toLowerCase()}</td>
-                    <td className="py-1.5 pr-3 font-mono">{p.grounded}</td>
-                    <td className="py-1.5 text-ink-muted">{p.cohort}</td>
-                  </tr>
-                ))}
-            />
-          </div>
-        )}
-      </section>
-
-      {shownCohorts.length === 0 ? (
-        <p className="panel mt-6 px-4 py-6 text-sm text-ink-muted">
-          No cohort has been generated yet.
-        </p>
-      ) : (
-        <div id="cohort" className="mt-8 flex scroll-mt-48 flex-col gap-2 border-t border-line pt-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="text-lg">Cohorts <span className="font-mono text-base text-ink-muted">{shownCohorts.length}</span></h2>
-            <CohortPicker
-              current={selectedCohort!.id}
-              cohorts={shownCohorts.map((c) => ({
-                id: c.id,
-                label: `${c.name} · ${c.personas.length} personas · ${fmtDate(c.generatedAt)}`,
-              }))}
-            />
-          </div>
-        </div>
-      )}
-      {selectedCohort && (
-        [selectedCohort].map((cohort) => {
-          const personas: PersonaRow[] = cohort.personas.map((p) => {
-            const v = p.versions[0];
-            return {
-              id: p.id,
-              name: p.name,
-              summary: v?.summary ?? null,
-              segment: v?.segment ?? null,
-              weight: v?.weight ?? 0,
-              baseSize: v?.baseSize ?? null,
-              confidence: v?.confidence ?? 'LOW',
-              coverageNote: v?.coverageNote ?? null,
-              approval: v?.approval ?? 'DRAFT',
-              attributes: (v?.attributes ?? []).map((a) => ({
-                id: a.id,
-                group: a.group,
-                label: a.label,
-                value: a.value,
-                origin: a.origin,
-                confidence: a.confidence,
-                baseSize: a.baseSize,
-              })),
-            };
-          });
-          const approved = personas.length > 0 && personas.every((p) => p.approval === 'APPROVED');
-          const statPersonas = cohort.personas.map((p) => {
-            const v = p.versions[0];
-            return {
-              name: p.name,
-              segment: v?.segment ?? null,
-              baseSize: v?.baseSize ?? null,
-              weight: v?.weight ?? 0,
-              confidence: v?.confidence ?? 'LOW',
-              approval: v?.approval ?? 'DRAFT',
-              contradictions: v?.contradictions.length ?? 0,
-              attributes: (v?.attributes ?? []).map((a) => ({ origin: a.origin, group: a.group })),
-            };
-          });
-          const segmentField =
-            cohort.personas[0]?.versions[0]?.attributes.find((a) => a.group === 'segment')?.label ?? null;
-
-          return (
-            <section
-              key={cohort.id}
-              aria-labelledby={`cohort-${cohort.id}`}
-              className="mt-10 border-t border-line pt-8"
-            >
-              <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <h2 id={`cohort-${cohort.id}`} className="text-lg">
-                  {cohort.name}
-                </h2>
-                <p className="font-mono text-xs text-ink-subtle">
-                  {personas.length} personas · generated{' '}
-                  {fmtDate(cohort.generatedAt)}
-                </p>
-              </div>
-
-              {cohort.generationNote && (
-                <p className="mt-2 max-w-prose rounded border border-line bg-surface px-3 py-2 text-xs text-ink-muted">
-                  {cohort.generationNote}
-                </p>
-              )}
-
-              <div className="mt-4">
-                <CohortDashboard personas={statPersonas} segmentField={segmentField} events={cohortEvents.get(cohort.id) ?? []} />
-              </div>
-
-              <h3 className="mt-6 font-sans text-sm font-medium text-ink">Personas</h3>
-              <PagedList
-                className="mt-2 grid gap-3 xl:grid-cols-2"
-                items={personas.map((p) => (
-                  <PersonaCard key={p.id} persona={p} />
-                ))}
-              />
-
-              {cohort.populationSampleId && (
-                <AdherencePanel projectId={projectId} cohortId={cohort.id} latest={adherenceView(cohort.id)} canRun={canCreate} />
-              )}
-
-              {canApprove && (
-                <ApproveCohortForm
-                  projectId={projectId}
-                  cohortId={cohort.id}
-                  alreadyApproved={approved}
-                />
-              )}
-            </section>
-          );
-        })
-      )}
-
-      <section aria-labelledby="debate-heading" id="debate" className="mt-12 scroll-mt-48 border-t border-line pt-8">
-        <h2 id="debate-heading" className="text-lg">Agent swarm debate</h2>
-        <p className="mt-1 max-w-prose text-xs text-ink-subtle">
-          Put a topic or hypothesis to a crew of agents: one per approved persona, plus a moderator who manages the debate and
-          hands the floor to named agents, an evidence analyst, a devil&rsquo;s advocate and a synthesis judge. Openings are
-          given in isolation, every claim cites the cleared data by id, and the judge&rsquo;s reference conclusion sits beside a
-          segment comparison computed in code. The agents are simulations of published segments; their agreement is not
-          evidence.
-        </p>
-        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-          <div className="flex flex-col gap-4">
-            <div className="panel px-3.5 py-3">
-              {!canDebate ? (
-                <p className="text-sm text-ink-muted">Running a debate needs the <span className="font-mono">simulation.run</span> permission.</p>
-              ) : debateCohorts.length === 0 ? (
-                <p className="text-sm text-ink-muted">Approve a cohort with at least two personas first. The debate runs on approved personas only.</p>
-              ) : (
-                <DebateForm
-                  projectId={projectId}
-                  cohorts={debateCohorts}
-                  runs={completedRuns.map((r) => ({ id: r.id, label: `Run ${r.id.slice(-8)} · ${r.completedAt ? fmtDate(r.completedAt) : ''}${r.isMock ? ' · mock' : ''}` }))}
-                  hypotheses={hypotheses.map((h) => h.statement)}
-                />
-              )}
-            </div>
-            {debates.length > 0 && (
-              <nav aria-label="Recent debates" className="panel">
-                <div className="panel-head"><h3 className="font-sans text-sm font-medium text-ink">Recent debates</h3></div>
-                <ul className="flex flex-col divide-y divide-line">
-                  {debates.map((d) => (
-                    <li key={d.id}>
-                      <Link
-                        href={`/projects/${projectId}/personas?debate=${d.id}#debate`}
-                        aria-current={d.id === debateView?.id ? 'true' : undefined}
-                        className={`block px-3.5 py-2 hover:bg-bg ${d.id === debateView?.id ? 'border-l-2 border-brand bg-brand-soft/40' : 'border-l-2 border-transparent'}`}
-                      >
-                        <span className="line-clamp-2 text-xs text-ink">{d.topic}</span>
-                        <span className="mt-0.5 block font-mono text-[10px] text-ink-subtle">
-                          {d.status.toLowerCase()} · {d.cohort.name} · {fmtDateTime(d.createdAt)}{d.isMock ? ' · mock' : ''}
-                        </span>
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            )}
-          </div>
-          <div className="min-w-0">
-            {debateView ? (
-              <DebateDetail debate={debateView} />
-            ) : (
-              <p className="rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">No debate yet. Enter a topic and run one.</p>
-            )}
-          </div>
-        </div>
-
-        {debateView && (
-          <div id="insights" className="mt-8 scroll-mt-48">
-            <h3 className="text-base">Use this debate</h3>
-            <p className="mt-1 max-w-prose text-xs text-ink-subtle">
-              Put a consumer question to every persona in the swarm, generate a market-entry PR and communications strategy from the focus
-              group, or meet each persona and interview it as a market strategist would. Answers are grounded in the historical data and in
-              what each persona said in the debate, and cite the evidence by id.
-            </p>
-            <div className="mt-3">
-              <DebateInsights
-                projectId={projectId}
-                debateId={debateView.id}
-                canRun={canDebate}
-                completed={debateView.status === 'COMPLETED'}
-                isMock={debateView.isMock}
-                personas={insightPersonas}
-                artifacts={insights}
-                panelOptions={panelOptions}
-              />
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section aria-labelledby="population" className="mt-12 border-t border-line pt-8">
-        <h2 id="population" className="text-lg">Population sample</h2>
-        <p className="mt-1 max-w-prose text-xs text-ink-subtle">
-          A seeded, quota-controlled population drawn from the cleared data&rsquo;s latest wave: cells sized by
-          largest-remainder quotas on the published bases, impossible combinations removed, and each member&rsquo;s
-          answers drawn from its segment&rsquo;s observed distribution. It shows what the segment shares imply at
-          scale and how closely a sample reproduces them. Every member is simulated; none is a respondent.
-        </p>
-        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-          <div className="panel px-3.5 py-3">
-            {canCreate ? <PopulationForm projectId={projectId} sources={popSources} /> : <p className="text-sm text-ink-muted">Building a sample needs the <span className="font-mono">persona.create</span> permission.</p>}
-          </div>
-          <div className="min-w-0">
-            {population && popSpec ? (
-              <div className="flex flex-col gap-4">
-                <p className="font-mono text-[11px] text-ink-subtle">
-                  {popSources.find((x) => x.id === population.datasetVersionId)?.label ?? 'Dataset'} · {population.size.toLocaleString()} members · seed {population.seed} · {population.primaryGroup}{population.secondaryGroup ? ` × ${population.secondaryGroup}` : ''} · {popSpec.wave} · built {fmtDateTime(population.createdAt)} {TZ_LABEL} · {popSpec.rejectedDraws ?? 0} redraws
-                </p>
-                {canCreate && (
-                  <CohortFromPopulationForm projectId={projectId} sampleId={population.id} cells={popQuotas.filter((q) => q.members > 0).length} defaultCount={Math.min(12, popQuotas.filter((q) => q.members > 0).length)} />
-                )}
-                <div>
-                  <h3 className="text-sm font-medium text-ink">Calibration — sampled against target, worst category per dimension</h3>
-                  <p className="text-xs text-ink-subtle">Sampling error alone is about {Math.round(100 / Math.sqrt(population.size) * 10) / 10} pp at this size; a larger gap would mean the sampler, not chance.</p>
-                  <table className="mt-2 w-full text-left text-xs">
-                    <thead className="text-ink-subtle"><tr><th className="py-1 pr-3 font-normal">Dimension</th><th className="py-1 pr-3 font-normal">Max error (pp)</th><th className="py-1 font-normal">Worst category</th></tr></thead>
-                    <tbody>
-                      {popCal.map((c) => (
-                        <tr key={c.dimension} className="border-t border-line">
-                          <td className="max-w-[28rem] py-1 pr-3 text-ink">{c.dimension}</td>
-                          <td className="py-1 pr-3 font-mono text-ink">{c.maxAbsErrorPp.toFixed(2)}</td>
-                          <td className="py-1 text-ink-muted">{c.worstValue}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <details>
-                  <summary className="cursor-pointer text-xs text-brand">Quotas for {popQuotas.length} cells{(popSpec.removedCells?.length ?? 0) > 0 ? ` (${popSpec.removedCells!.length} removed as impossible)` : ''}</summary>
-                  <table className="mt-2 w-full text-left text-xs">
-                    <thead className="text-ink-subtle"><tr><th className="py-1 pr-3 font-normal">Cell</th><th className="py-1 pr-3 font-normal">Weight</th><th className="py-1 font-normal">Members</th></tr></thead>
-                    <tbody className="font-mono">
-                      {popQuotas.map((q) => (
-                        <tr key={q.cell} className="border-t border-line"><td className="py-1 pr-3 font-sans text-ink">{q.cell}</td><td className="py-1 pr-3 text-ink-muted">{(q.weight * 100).toFixed(2)}%</td><td className="py-1 text-ink">{q.members}</td></tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {(popSpec.removedCells?.length ?? 0) > 0 && <p className="mt-1 text-[11px] text-ink-subtle">Removed: {popSpec.removedCells!.join('; ')}</p>}
-                </details>
-                <details>
-                  <summary className="cursor-pointer text-xs text-brand">Example members (rendered as a persona prompt would see them)</summary>
-                  <div className="mt-2 grid gap-2 md:grid-cols-2">
-                    {popExamples.map((e) => (
-                      <pre key={e.id} className="overflow-x-auto whitespace-pre-wrap rounded border border-line bg-code p-2 font-mono text-[10.5px] text-ink"><span className="text-simulated">SIMULATED · {e.id}</span>{'\n'}{e.text}</pre>
-                    ))}
-                  </div>
-                </details>
-                <div>
-                  <h3 className="text-sm font-medium text-ink">Assumptions</h3>
-                  <ul className="mt-1 flex flex-col gap-1">
-                    {population.assumptions.map((a) => (
-                      <li key={a} className="flex gap-2 text-xs text-ink-muted"><span aria-hidden className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-warn" /><span>{a}</span></li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            ) : (
-              <p className="rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">No population sample yet.</p>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {canCreate && (
-        <section aria-labelledby="generate" className="mt-12 border-t border-line pt-8">
-          <h2 id="generate" className="text-lg">Generate a cohort</h2>
-          <p className="mt-1 max-w-prose text-xs text-ink-subtle">
-            Only a dataset that has been cleared in step 1 can be used. Generation is deterministic:
-            the same data and the same seed produce the same cohort, so two runs remain comparable.
+      <RefreshWhileImporting active={building || debateRunning} />
+      <header className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl">Personas</h1>
+          <p className="mt-1 max-w-prose text-sm text-ink-muted">
+            Personas built from all the data uploaded in step 1, on the parameters you choose. Open a persona to interview it.
           </p>
-          <GenerateCohortForm
-            projectId={projectId}
-            datasets={datasets}
-            defaultCount={brief?.personaCount ?? 12}
-          />
+        </div>
+        <Link href={`/projects/${projectId}/advanced/personas` as Route} className="text-sm text-link underline-offset-2 hover:underline">
+          Advanced persona tools →
+        </Link>
+      </header>
+
+      {canBuild && !building && (
+        <details className="panel" open={!cast}>
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">{cast ? 'Rebuild the personas on other markets or parameters' : 'Build the personas'}</summary>
+          <div className="border-t border-line px-4 py-4">
+            {markets.length === 0 ? (
+              <p className="text-sm text-ink-muted">No market was found in the data yet. <Link href={`/projects/${projectId}/data` as Route} className="text-link underline">Upload data in step 1.</Link></p>
+            ) : (
+              <BuildPersonasForm
+                projectId={projectId}
+                markets={markets}
+                chosenMarkets={chosenMarkets.filter((m) => markets.includes(m))}
+                parameters={parameters}
+                chosenParameters={chosenParameters.filter((g) => parameters.some((p) => p.name === g))}
+                label={cast ? 'Rebuild personas' : 'Build personas'}
+                fileCount={fileCount}
+              />
+            )}
+          </div>
+        </details>
+      )}
+
+      {cast && building && (
+        <section className="panel max-w-2xl px-5 py-4" aria-live="polite">
+          <p className="text-sm font-semibold text-ink">Building the personas…</p>
+          <p className="mt-1 text-sm text-ink-muted">{people.length === 0 ? 'Reading the survey tables.' : `${named} of ${people.length} personas written.`}</p>
+          <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-track">
+            <div className="motion-progress h-full bg-brand-mark" style={{ width: `${people.length ? Math.round((named / people.length) * 100) : 5}%` }} />
+          </div>
         </section>
       )}
 
-      {!canCreate && (
-        <p className="mt-10 max-w-prose rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">
-          You can read this cohort but not change it.
-        </p>
+      {cast?.buildStatus === 'FAILED' && (
+        <p role="alert" className="max-w-2xl rounded border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">{cast.buildError ?? 'The personas could not be built.'}</p>
       )}
 
-      <p className="mt-10 text-sm text-ink-muted">
-        Next:{' '}
-        <Link
-          href={`/projects/${projectId}/simulate`}
-          className="text-brand underline-offset-2 hover:underline"
-        >
-          configure the simulation
-        </Link>
-        .
-      </p>
+      {cast && !building && people.length > 0 && (
+        <section aria-labelledby="personas-heading" className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <h2 id="personas-heading" className="text-lg">{`${people.length} personas`}</h2>
+            {approved ? (
+              <span className="rounded-sm border border-ok/40 bg-ok-soft px-2 py-1 text-sm font-medium text-ok">Approved</span>
+            ) : canApprove ? (
+              <ApproveCastButton projectId={projectId} cohortId={cast.id} />
+            ) : null}
+            {cast.generationNote && <p className="w-full max-w-prose text-xs text-ink-subtle">{cast.generationNote}</p>}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[720px] border-separate border-spacing-2">
+              <thead>
+                <tr>
+                  <th scope="col" className="w-36" />
+                  {castMarkets.map((m) => (
+                    <th key={m} scope="col" className="p-0 font-normal"><MarketHeader market={m} /></th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((row, ri) => (
+                  <tr key={row.key}>
+                    <th scope="row" className="h-px p-0 align-top font-normal">
+                      <TierHeader index={ri} group={row.group} label={row.label} />
+                    </th>
+                    {castMarkets.map((m) => {
+                      const p = people.find((x) => x.profile?.market === m && `${x.profile.group ?? ''}|${x.profile.tier}` === row.key);
+                      return (
+                        <td key={m} className="align-top">
+                          {p?.profile ? (
+                            <div className="flex h-full flex-col gap-1">
+                              <Link href={`/projects/${projectId}/personas/${p.id}` as Route} className="block h-full rounded outline-offset-2 hover:ring-2 hover:ring-brand-mark" aria-label={`Open ${p.name}`}>
+                                <PersonaCard name={p.name} profile={p.profile} portraitUrl={null} compact footer={modules.has('interviews') ? <span className="text-xs font-semibold text-link">Open and interview →</span> : undefined} />
+                              </Link>
+                              {canEdit && !approved && <RenamePersona projectId={projectId} personaId={p.id} name={p.name} />}
+                            </div>
+                          ) : (
+                            <p className="rounded border border-dashed border-line p-3 text-xs text-ink-subtle">Not published for this market.</p>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <DecisionGuidance projectId={projectId} checkpoint="CAST" subjectId={cast.id} canAsk={can(ctx, 'project.edit', projectId)} />
+        </section>
+      )}
+
+      {modules.has('debate') && cast && !building && people.length > 0 && (
+        <section aria-labelledby="debate-heading" id="debate" className="scroll-mt-48 border-t border-line pt-6">
+          <h2 id="debate-heading" className="text-lg">Agent swarm debate</h2>
+          <p className="mt-1 max-w-prose text-xs text-ink-subtle">
+            Put a topic or hypothesis to these personas as a crew of agents, with a moderator, an evidence analyst, a devil&rsquo;s advocate and a judge. When it ends, the OpenAI Decisions API weighs the outcome and recommends what to do next.
+          </p>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+            <div className="flex flex-col gap-4">
+              <div className="panel px-3.5 py-3">
+                {!canDebate ? (
+                  <p className="text-sm text-ink-muted">Running a debate needs the simulation.run permission.</p>
+                ) : !approved ? (
+                  <p className="text-sm text-ink-muted">Approve the personas first. The debate runs on approved personas only.</p>
+                ) : (
+                  <DebateForm projectId={projectId} cohorts={[{ id: cast.id, name: cast.name, approved: people.length }]} runs={[]} hypotheses={[]} returnTo="journey" />
+                )}
+              </div>
+              {debates.length > 0 && (
+                <nav aria-label="Recent debates" className="panel">
+                  <div className="panel-head"><h3 className="font-sans text-sm font-medium text-ink">Recent debates</h3></div>
+                  <ul className="flex flex-col divide-y divide-line">
+                    {debates.map((d) => (
+                      <li key={d.id}>
+                        <Link
+                          href={`/projects/${projectId}/personas?debate=${d.id}#debate` as Route}
+                          aria-current={d.id === debate?.id ? 'true' : undefined}
+                          className={`block px-3.5 py-2 hover:bg-bg ${d.id === debate?.id ? 'border-l-2 border-brand bg-brand-soft/40' : 'border-l-2 border-transparent'}`}
+                        >
+                          <span className="line-clamp-2 text-xs text-ink">{d.topic}</span>
+                          <span className="mt-0.5 block text-[10.5px] text-ink-subtle">{`${d.status.toLowerCase()} · ${fmtDateTime(d.createdAt)}${d.isMock ? ' · mock' : ''}`}</span>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                </nav>
+              )}
+            </div>
+            <div className="flex min-w-0 flex-col gap-4">
+              {debate?.status === 'COMPLETED' && (
+                <DecisionGuidance projectId={projectId} checkpoint="DEBATE" subjectId={debate.id} canAsk={can(ctx, 'project.edit', projectId)} title="Decision on the debate outcome" />
+              )}
+              {debate ? <DebateDetail debate={debate} /> : <p className="rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">No debate yet. Enter a topic and run one.</p>}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {approved && (
+        <div className="flex justify-end">
+          <Link href={`/projects/${projectId}/${nextStep.href}` as Route} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
+            {nextStep.label}
+          </Link>
+        </div>
+      )}
     </div>
   );
 }

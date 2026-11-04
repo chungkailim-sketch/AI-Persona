@@ -8,6 +8,7 @@ import { prisma } from '@/lib/prisma';
 import { listProjectDatasets } from '@/server/datasets';
 import { autoClearProject } from '@/ingest/autoClear';
 import { WorkflowNav } from '../WorkflowNav';
+import { DecisionGuidance } from '../DecisionGuidance';
 import { UploadForm } from './DataStep';
 import { RemoveAllData, RemoveDatasetButton } from './RemoveData';
 import { RefreshWhileImporting } from './RefreshWhileImporting';
@@ -120,9 +121,10 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
         )}
       </div>
 
+      {datasets.length > 0 && <DecisionGuidance projectId={projectId} checkpoint="DATA" canAsk={canEdit} />}
       {ready > 0 && (
         <div className="flex justify-end">
-          <Link href={`/projects/${projectId}/brief` as Route} className="rounded bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
+          <Link href={`/projects/${projectId}/brief` as Route} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
             Next: Brief →
           </Link>
         </div>

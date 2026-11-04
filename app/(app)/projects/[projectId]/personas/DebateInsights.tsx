@@ -273,7 +273,7 @@ function PanelResult({ a }: { a: InsightArtifactView }) {
                 <td className="py-1.5 pr-3 text-ink">{t.category}</td>
                 <td className="py-1.5 pr-3">
                   <span className="inline-flex items-center gap-2">
-                    <span className="inline-block h-1.5 w-16 rounded bg-line"><span className="block h-1.5 rounded bg-brand" style={{ width: `${Math.round(t.willingShare * 100)}%` }} /></span>
+                    <span className="inline-block h-1.5 w-16 rounded bg-line"><span className="block h-1.5 rounded-full bg-brand" style={{ width: `${Math.round(t.willingShare * 100)}%` }} /></span>
                     <span className="font-mono">{Math.round(t.willingShare * 100)}%</span>
                   </span>
                 </td>
@@ -519,7 +519,7 @@ function PersonaTab({
         <ol className="mt-3 flex flex-col gap-3">
           {thread.map((q) => (
             <li key={q.id} className="flex flex-col gap-1">
-              <p className="self-end rounded bg-brand-soft/50 px-3 py-1.5 text-xs text-ink">{q.prompt}</p>
+              <p className="self-end rounded-full bg-brand-soft/50 px-3 py-1.5 text-xs text-ink">{q.prompt}</p>
               {q.status === 'COMPLETED' ? (
                 <div className="rounded border border-line bg-surface px-3 py-2 text-xs text-ink-muted">
                   <p className="whitespace-pre-wrap">{q.content.answer}<Ids ids={q.content.evidenceIds} /></p>

@@ -91,7 +91,7 @@ for (const scheme of ['light', 'dark'] as const) {
     await c.end();
     await page.emulateMedia({ colorScheme: scheme });
     for (const step of WORKFLOW) await scan(page, `/projects/${target!.projectId}/${step}`);
-    await scan(page, `/projects/${target!.projectId}/simulate?run=${target!.id}`);
+    await scan(page, `/projects/${target!.projectId}/advanced/simulate?run=${target!.id}`);
     await scan(page, `/projects/${target!.projectId}/results/report?run=${target!.id}`);
   });
 }

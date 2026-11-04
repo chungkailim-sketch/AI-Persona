@@ -126,16 +126,20 @@ export function DebateForm({
   cohorts,
   runs,
   hypotheses,
+  returnTo,
 }: {
   projectId: string;
   cohorts: { id: string; name: string; approved: number }[];
   runs: { id: string; label: string }[];
   hypotheses: string[];
+  /** "journey" returns to the Personas step after starting; otherwise the Advanced persona tools. */
+  returnTo?: 'journey';
 }) {
   const [state, action] = useActionState(startDebateAction, empty);
   return (
     <form action={action} className="flex flex-col gap-3" aria-label="Start a swarm debate">
       <input type="hidden" name="projectId" value={projectId} />
+      {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
       <Field id="debate-topic" label="Topic or motion to debate" required hint="What the persona agents argue about. Phrase it as a question or a claim.">
         <TextArea
           id="debate-topic"

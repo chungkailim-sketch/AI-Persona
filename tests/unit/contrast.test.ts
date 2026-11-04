@@ -38,7 +38,7 @@ function ratio(a: string, b: string): number {
 }
 
 const TEXT = ['--color-ink', '--color-ink-muted', '--color-ink-subtle', '--color-link', '--color-ok', '--color-warn', '--color-danger', '--color-info', '--color-pending', '--color-brand', '--color-observed', '--color-derived', '--color-inferred', '--color-simulated'];
-const SURFACES = ['--color-bg', '--color-surface', '--color-elevated', '--color-input', '--color-surface-raised'];
+const SURFACES = ['--color-bg', '--color-surface', '--color-elevated', '--color-input', '--color-surface-raised', '--color-sidebar'];
 
 describe.each([
   ['light', light],
@@ -58,6 +58,10 @@ describe.each([
 
   it('text on the brand fill ≥ 4.5:1', () => {
     expect(ratio(t['--color-brand-ink']!, t['--color-brand']!)).toBeGreaterThanOrEqual(4.5);
+  });
+
+  it('text on the deep brand fill ≥ 4.5:1', () => {
+    expect(ratio(t['--color-brand-deep-ink']!, t['--color-brand-deep']!)).toBeGreaterThanOrEqual(4.5);
   });
 
   it('telemetry ink on the telemetry well ≥ 4.5:1', () => {

@@ -23,6 +23,10 @@ const schema = z.object({
   AI_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.7),
   AI_RUN_BUDGET_USD: z.coerce.number().nonnegative().default(5),
   AI_PROJECT_MONTHLY_BUDGET_USD: z.coerce.number().nonnegative().default(200),
+  /** OpenAI Decisions API — decision guidance at the checkpoints of the journey. Optional. */
+  OPENAI_API_KEY: z.string().optional(),
+  DECISIONS_MODEL: z.string().default('gpt-6-luna'),
+  DECISIONS_API_URL: z.string().url().default('https://api.openai.com/v1/decisions'),
   EMAIL_PROVIDER: z.enum(['dev', 'postmark', 'ses', 'sendgrid', 'smtp']).default('dev'),
   EMAIL_FROM: z.string().default('no-reply@example.com'),
   EMAIL_API_KEY: z.string().optional(),
@@ -177,6 +181,11 @@ export interface IntegrationStatus {
   note: string;
 }
 
+/** A real OpenAI key is set (a placeholder left in the variable does not count). */
+export function decisionsConfigured(e: AppEnv = env()): boolean {
+  return Boolean(e.OPENAI_API_KEY && /^sk-/.test(e.OPENAI_API_KEY.trim()));
+}
+
 export function integrationStatus(e: AppEnv): IntegrationStatus[] {
   return [
     {
@@ -187,6 +196,15 @@ export function integrationStatus(e: AppEnv): IntegrationStatus[] {
       note: e.MODEL_PROVIDER === 'mock'
         ? 'Mock provider. Outputs are generated locally and labelled as mock throughout the interface.'
         : 'Live provider. Calls are made server-side only.',
+    },
+    {
+      key: 'decisions',
+      label: 'Decision guidance (OpenAI Decisions API)',
+      mode: decisionsConfigured(e) ? e.DECISIONS_MODEL : 'off',
+      connected: decisionsConfigured(e),
+      note: decisionsConfigured(e)
+        ? 'Live. Guidance is requested server-side when someone asks for it at a checkpoint.'
+        : 'No OpenAI key. Guidance is produced by a local stand-in and labelled as such. Set OPENAI_API_KEY to turn it on.',
     },
     {
       key: 'email',

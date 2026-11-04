@@ -91,7 +91,7 @@ export async function listDebates(user: SessionUser, projectId: string) {
     where: { projectId },
     orderBy: { createdAt: 'desc' },
     take: 10,
-    select: { id: true, topic: true, status: true, phase: true, createdAt: true, isMock: true, cohort: { select: { name: true } } },
+    select: { id: true, topic: true, status: true, phase: true, createdAt: true, isMock: true, cohortId: true, cohort: { select: { name: true } } },
   });
 }
 

@@ -11,17 +11,17 @@ import { z } from 'zod';
  * six were asked for, or writes "Medium" for "medium" is still a good report: it is trimmed and
  * normalised rather than thrown away. Only an answer with no usable shape at all is rejected.
  */
-const toText = (v: unknown): string =>
+export const toText = (v: unknown): string =>
   v == null ? '' : typeof v === 'string' ? v : Array.isArray(v) ? v.map(toText).join('; ') : typeof v === 'object' ? Object.values(v as object).map(toText).join(' — ') : String(v);
-const text = (max: number) => z.preprocess(toText, z.string()).transform((s) => s.trim().slice(0, max));
-const list = <T extends z.ZodTypeAny>(item: T, max: number) =>
+export const text = (max: number) => z.preprocess(toText, z.string()).transform((s) => s.trim().slice(0, max));
+export const list = <T extends z.ZodTypeAny>(item: T, max: number) =>
   z.preprocess((v) => (v == null ? [] : Array.isArray(v) ? v : [v]), z.array(item)).transform((a) => a.slice(0, max));
-const strings = (max: number, each: number) => list(text(each), max).transform((a) => a.filter(Boolean));
-const unit = z.preprocess((v) => {
+export const strings = (max: number, each: number) => list(text(each), max).transform((a) => a.filter(Boolean));
+export const unit = z.preprocess((v) => {
   const n = typeof v === 'string' ? Number(v) : v;
   return typeof n === 'number' && Number.isFinite(n) ? Math.min(1, Math.max(0, n > 1 ? n / 100 : n)) : 0.5;
 }, z.number());
-const oneOf = <T extends readonly [string, ...string[]]>(values: T, fallback: T[number]) =>
+export const oneOf = <T extends readonly [string, ...string[]]>(values: T, fallback: T[number]) =>
   z.preprocess((v) => {
     const k = toText(v).trim().toLowerCase().replace(/[\s-]+/g, '_');
     return (values as readonly string[]).includes(k) ? k : fallback;
