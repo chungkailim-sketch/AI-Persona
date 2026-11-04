@@ -594,6 +594,15 @@ export async function executeDebate(debateId: string): Promise<DebateOutcome> {
       actorUserId: debate.createdById,
       reason: `Swarm debate completed: ${speakers.length} persona agents, ${debate.rounds} round(s), ${seq} turns${isMock ? ' (mock provider)' : ''}`,
     });
+    // Decision guidance on the outcome (OpenAI Decisions API). Recorded on its own; a failure here
+    // never fails a debate that has completed.
+    try {
+      const { recordCheckpoint } = await import('@/decision/checkpoints');
+      const { projectModules } = await import('@/modules/project');
+      if ((await projectModules(debate.projectId)).has('decisions')) await recordCheckpoint(debate.projectId, 'DEBATE', debate.createdById, debateId);
+    } catch (e) {
+      console.warn('[debate] decision guidance was not recorded', e instanceof Error ? e.message : e);
+    }
     return { debateId, status: 'COMPLETED', turns: seq, spendUsd };
   } catch (e) {
     if (e instanceof BudgetExceeded) return fail(debateId, e.message, debate.createdById, debate.projectId);

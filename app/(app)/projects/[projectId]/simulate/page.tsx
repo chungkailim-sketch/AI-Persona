@@ -11,8 +11,10 @@ import type { CastProfile } from '@/roundtable/engine';
 import { band, BAND_LABEL } from '@/roundtable/marketIndex';
 import { PersonaAvatar } from '@/ui/report/PersonaCard';
 import { WorkflowNav } from '../WorkflowNav';
+import { DecisionGuidance } from '../DecisionGuidance';
 import { RefreshWhileImporting } from '../data/RefreshWhileImporting';
 import { StartRoundtableButton } from './RoundtableControls';
+import { projectModules } from '@/modules/project';
 
 export const metadata = { title: 'Roundtable · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -29,7 +31,8 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
   if (!project) notFound();
 
   const [brief, cast, rt] = await Promise.all([latestBrief(projectId), latestCast(projectId), latestRoundtable(projectId)]);
-  const canRun = can(ctx, 'simulation.run', projectId);
+  const canRun = can(ctx, 'simulation.run', projectId) && (await projectModules(projectId)).has('roundtable');
+  const roundtableOn = (await projectModules(projectId)).has('roundtable');
   const castReady = Boolean(cast && cast.buildStatus === 'COMPLETED' && cast.personas.length > 0 && cast.personas.every((p) => p.versions[0]?.approval === 'APPROVED'));
   const running = rt?.status === 'QUEUED' || rt?.status === 'RUNNING';
   const personas = new Map((cast?.personas ?? []).map((p) => [p.id, { name: p.name, profile: p.versions[0]?.profile as unknown as CastProfile | null }]));
@@ -54,6 +57,11 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
         </Link>
       </header>
 
+      {!roundtableOn && (
+        <p className="max-w-3xl rounded border border-info/40 bg-info-soft px-4 py-3 text-sm text-ink">
+          The roundtable is switched off for this project&rsquo;s use case. Turn it on under Use case and modules in the Brief, or go straight to <Link href={`/projects/${projectId}/results` as Route} className="text-link underline">Results</Link>.
+        </p>
+      )}
       <section className="panel max-w-3xl px-5 py-5">
         <p className="eyebrow">The question</p>
         <p className="mt-1 text-lg font-semibold text-ink">{rt?.question ?? brief?.researchQuestion ?? '—'}</p>
@@ -66,7 +74,7 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
           <div className="mt-5 flex flex-col gap-2">
             {!castReady ? (
               <p className="text-sm text-ink-muted">
-                Approve the cast first. <Link href={`/projects/${projectId}/personas` as Route} className="text-link underline">Go to the cast</Link>
+                Approve the personas first. <Link href={`/projects/${projectId}/personas` as Route} className="text-link underline">Go to the personas</Link>
               </p>
             ) : (
               <>
@@ -77,7 +85,7 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
             )}
           </div>
         ) : null}
-        {stale && !running && <p className="mt-3 text-xs text-ink-subtle">The cast has been rebuilt since the last roundtable; run it again to use the new cast.</p>}
+        {stale && !running && <p className="mt-3 text-xs text-ink-subtle">The personas have been rebuilt since the last roundtable; run it again to use them.</p>}
       </section>
 
       {rt && (
@@ -102,7 +110,7 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
                     <PersonaAvatar name={p?.name ?? '?'} size={36} />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-ink">
-                        {p?.name ?? 'Persona'} <span className="font-normal text-ink-subtle">· {a.market} · Tier {a.tier}</span>
+                        {p?.name ?? 'Persona'} <span className="font-normal text-ink-subtle">· {a.market} · {p?.profile?.tierLabel ?? ''}</span>
                       </p>
                       {a.ok ? <p className="text-sm text-ink-muted">“{a.quote}”</p> : <p className="text-sm text-warn">No usable answer.</p>}
                     </div>
@@ -115,10 +123,11 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
         </section>
       )}
 
+      {rt?.status === 'COMPLETED' && <div className="max-w-3xl"><DecisionGuidance projectId={projectId} checkpoint="ROUNDTABLE" canAsk={can(ctx, 'project.edit', projectId)} /></div>}
       {rt?.status === 'COMPLETED' && (
         <div className="flex max-w-3xl justify-end">
           <Link href={`/projects/${projectId}/results` as Route} className="rounded bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
-            Next: Report →
+            Next: Results →
           </Link>
         </div>
       )}

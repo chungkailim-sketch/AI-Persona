@@ -1,5 +1,6 @@
 /**
- * The cast for the roundtable: in every chosen market, three income tiers.
+ * The cast for the roundtable: in every chosen market, personas cut on the parameters chosen —
+ * by default three income tiers.
  *
  * A market's published household-income bands are ordered low to high and split into three
  * contiguous tiers of roughly equal respondent base — tier 1 the highest incomes ("Premium
@@ -9,9 +10,14 @@
  * age and occupation are written later by the model and labelled as illustrative.
  *
  * A market that publishes no income break falls back to its age groups, and says so.
+ *
+ * Other parameters (segment groups) can be chosen instead. An ordered one — income, age, spending
+ * level — is split into three tiers the same way; any other (occupation, region, household…) gives
+ * one persona per published segment, the four largest by base.
  */
 import { BASE_RESPONSE } from '@/forecast/series';
 import { rowsOf, type Row } from './longCohort';
+import { baseGroupName, kindOf } from '@/roundtable/parameterNames';
 
 export const TIER_LABELS = ['Premium Pioneers', 'Quality Mainstream', 'Price-led Newcomers'] as const;
 export const AGE_TIER_LABELS = ['Younger adults', 'Mid-life adults', 'Older adults'] as const;
@@ -33,9 +39,11 @@ export interface CastStat {
 
 export interface CastSeed {
   market: string;
-  tier: 1 | 2 | 3;
+  tier: number;
   tierLabel: string;
-  basis: 'income' | 'age';
+  /** The parameter it was cut on, as offered to the user. */
+  group: string;
+  basis: 'income' | 'age' | 'ordered' | 'segment';
   bands: string[];
   base: number;
   stats: CastStat[];
@@ -117,9 +125,10 @@ export function splitTiers<T extends { base: number }>(ordered: T[]): T[][] {
 
 interface Band { label: string; base: number; rows: Row[] }
 
-function bandsOf(rows: Row[], groupTest: RegExp, rank: (l: string) => number | null): { bands: Band[]; group: string } | null {
+function bandsOf(rows: Row[], groupTest: RegExp | ((group: string) => boolean), rank: (l: string) => number | null): { bands: Band[]; group: string } | null {
   const groups = new Map<string, Row[]>();
-  for (const r of rows) if (groupTest.test(r.group)) groups.set(r.group, [...(groups.get(r.group) ?? []), r]);
+  const test = typeof groupTest === 'function' ? groupTest : (g: string) => groupTest.test(g);
+  for (const r of rows) if (test(r.group)) groups.set(r.group, [...(groups.get(r.group) ?? []), r]);
   if (groups.size === 0) return null;
   // Several income breaks (one per wave, say): take the one with the most rows.
   const [group, chosen] = [...groups.entries()].sort((a, b) => b[1].length - a[1].length)[0]!;
@@ -168,6 +177,8 @@ function tierStats(tier: Band[], overall: Map<string, number>): CastStat[] {
 export function buildCastSeeds(
   tables: { headers: string[]; rows: string[][] }[],
   markets: string[],
+  /** Parameters (segment group names, without wave suffix). Empty: income tiers, else age. */
+  groups: string[] = [],
 ): { seeds: CastSeed[]; notes: string[] } {
   const want = new Set(markets.map((m) => m.trim().toLowerCase()));
   const byMarket = new Map<string, Row[]>();
@@ -192,6 +203,14 @@ export function buildCastSeeds(
     }
     const overall = new Map<string, number>();
     for (const r of rows) if (r.group.toLowerCase() === 'all') overall.set(`${r.statement}|${r.response}`, r.share);
+    if (groups.length) {
+      for (const g of groups) {
+        const made = seedsForGroup(market, rows, overall, g);
+        if (made.length === 0) notes.push(`${market}: "${g}" is not published for this market.`);
+        seeds.push(...made);
+      }
+      continue;
+    }
     let basis: CastSeed['basis'] = 'income';
     let found = bandsOf(rows, INCOME_GROUP, incomeRank);
     if (!found) {
@@ -206,11 +225,12 @@ export function buildCastSeeds(
     // Age tiers run young → old as tier 1 → 3; income tiers run high → low.
     const tiers = basis === 'age' ? splitTiers(found.bands).reverse() : splitTiers(found.bands);
     tiers.forEach((bands, i) => {
-      const tier = (i + 1) as 1 | 2 | 3;
+      const tier = i + 1;
       seeds.push({
         market,
         tier,
         tierLabel: (basis === 'age' ? AGE_TIER_LABELS : TIER_LABELS)[i]!,
+        group: basis === 'age' ? 'Age' : 'Household income',
         basis,
         bands: bands.map((b) => b.label),
         base: bands.reduce((s, b) => s + b.base, 0),
@@ -218,5 +238,55 @@ export function buildCastSeeds(
       });
     });
   }
+  if (seeds.length > MAX_CAST) {
+    notes.push(`${seeds.length - MAX_CAST} further persona(s) were left out (limit ${MAX_CAST}). Choose fewer markets or parameters.`);
+    seeds.length = MAX_CAST;
+  }
   return { seeds, notes };
+}
+
+const MAX_CAST = 60;
+const MAX_SEGMENTS = 4;
+
+/** The personas one parameter gives in one market. */
+function seedsForGroup(market: string, rows: Row[], overall: Map<string, number>, group: string): CastSeed[] {
+  const want = baseGroupName(group).toLowerCase();
+  const test = (g: string) => baseGroupName(g).toLowerCase() === want;
+  const kind = kindOf(group);
+  const rank = kind === 'age' ? ageRank : incomeRank;
+  const labels = [...new Set(rows.filter((r) => test(r.group)).map((r) => r.segment))].filter((l) => !NO_ANSWER.test(l));
+  if (labels.length === 0) return [];
+  const rankable = labels.filter((l) => rank(l) !== null).length;
+  const ordered = (kind === 'income' || kind === 'age' || kind === 'spending') && rankable >= Math.max(2, Math.ceil(labels.length * 0.67));
+
+  if (ordered) {
+    const found = bandsOf(rows, test, rank);
+    if (!found) return [];
+    const tiers = kind === 'age' ? splitTiers(found.bands).reverse() : splitTiers(found.bands);
+    const names = kind === 'income' ? TIER_LABELS : kind === 'age' ? AGE_TIER_LABELS : [`Higher ${group.toLowerCase()}`, `Middle ${group.toLowerCase()}`, `Lower ${group.toLowerCase()}`];
+    return tiers.map((bands, i) => ({
+      market,
+      tier: i + 1,
+      tierLabel: names[i]!,
+      group,
+      basis: kind === 'income' ? 'income' : kind === 'age' ? 'age' : 'ordered',
+      bands: bands.map((b) => b.label),
+      base: bands.reduce((s, b) => s + b.base, 0),
+      stats: tierStats(bands, overall),
+    }));
+  }
+
+  // One persona per segment: the largest by base.
+  const bands = new Map<string, Band>();
+  for (const r of rows) {
+    if (!test(r.group) || NO_ANSWER.test(r.segment)) continue;
+    const b = bands.get(r.segment) ?? { label: r.segment, base: 0, rows: [] };
+    b.base = Math.max(b.base, r.base ?? 0);
+    b.rows.push(r);
+    bands.set(r.segment, b);
+  }
+  return [...bands.values()]
+    .sort((a, b) => b.base - a.base)
+    .slice(0, MAX_SEGMENTS)
+    .map((b, i) => ({ market, tier: i + 1, tierLabel: b.label, group, basis: 'segment' as const, bands: [b.label], base: b.base, stats: tierStats([b], overall) }));
 }

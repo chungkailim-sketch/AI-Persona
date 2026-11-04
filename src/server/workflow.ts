@@ -78,16 +78,16 @@ export async function computeWorkflowState(projectId: string): Promise<WorkflowS
   const pending = cast ? cast.personas.filter((p) => p.versions[0]?.approval !== 'APPROVED').length : 0;
   let castState: WorkflowStepState;
   if (!cast) {
-    const needs = [usable === 0 && 'data that is ready', missing.length > 0 && 'a complete brief'].filter(Boolean) as string[];
+    const needs = [usable === 0 && 'data that is ready'].filter(Boolean) as string[];
     castState = needs.length
       ? { status: 'blocked', reason: `Needs ${needs.join(' and ')}.`, unresolved: 0, lastSavedAt: null }
-      : { status: 'available', reason: 'No cast built yet.', unresolved: 0, lastSavedAt: null };
+      : { status: 'available', reason: 'No personas built yet.', unresolved: 0, lastSavedAt: null };
   } else if (cast.buildStatus === 'QUEUED' || cast.buildStatus === 'RUNNING') {
-    castState = { status: 'running', reason: 'Building the cast.', unresolved: 0, lastSavedAt: iso(cast.generatedAt) };
+    castState = { status: 'running', reason: 'Building the personas.', unresolved: 0, lastSavedAt: iso(cast.generatedAt) };
   } else if (cast.buildStatus === 'FAILED') {
-    castState = { status: 'error', reason: cast.buildError ?? 'The cast could not be built.', unresolved: 1, lastSavedAt: iso(cast.generatedAt) };
+    castState = { status: 'error', reason: cast.buildError ?? 'The personas could not be built.', unresolved: 1, lastSavedAt: iso(cast.generatedAt) };
   } else if (pending > 0) {
-    castState = { status: 'warning', reason: 'Review and approve the cast.', unresolved: 0, lastSavedAt: iso(cast.generatedAt) };
+    castState = { status: 'warning', reason: 'Review and approve the personas.', unresolved: 0, lastSavedAt: iso(cast.generatedAt) };
   } else {
     castState = { status: 'complete', reason: null, unresolved: 0, lastSavedAt: iso(cast.generatedAt) };
   }
@@ -101,7 +101,7 @@ export async function computeWorkflowState(projectId: string): Promise<WorkflowS
   } else if (roundtable?.status === 'COMPLETED') {
     rtState = { status: 'complete', reason: null, unresolved: 0, lastSavedAt: iso(roundtable.completedAt) };
   } else if (castState.status !== 'complete') {
-    rtState = { status: 'blocked', reason: 'Needs an approved cast.', unresolved: 0, lastSavedAt: null };
+    rtState = { status: 'blocked', reason: 'Needs approved personas.', unresolved: 0, lastSavedAt: null };
   } else {
     rtState = { status: 'available', reason: 'Ready to start.', unresolved: 0, lastSavedAt: null };
   }

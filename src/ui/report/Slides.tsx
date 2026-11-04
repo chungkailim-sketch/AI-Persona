@@ -261,17 +261,34 @@ function Entry({ r, page }: { r: Report; page: number }) {
 
 // ── 5 The cast ────────────────────────────────────────────────────────────────
 
+type CastRow = { key: string; group: string; label: string };
+
+/** Rows of the personas grid: one per parameter value (tier or segment), in build order. */
+function castRows(r: Report): CastRow[] {
+  const rows: CastRow[] = [];
+  for (const p of r.cast) {
+    const key = `${p.profile.group ?? ''}|${p.profile.tier}`;
+    if (!rows.some((x) => x.key === key)) rows.push({ key, group: p.profile.group ?? '', label: p.profile.tierLabel });
+  }
+  return rows;
+}
+
+/** The personas slides: at most five markets and four rows each. */
+function castPages(r: Report): { markets: string[]; rows: CastRow[] }[] {
+  return chunk(castRows(r), 4).flatMap((rows) => chunk(r.castMarkets, 5).map((markets) => ({ markets, rows })));
+}
+
 function CastSlides({ r, start }: { r: Report; start: number }) {
   return (
     <>
-      {chunk(r.castMarkets, 5).map((markets, i) => (
-        <Slide key={i} section="The cast" title={`${r.cast.length} personas across ${r.castMarkets.length} markets and three income tiers`} page={start + i}
-          source={`Identities are illustrative; statistics are the tier's published shares against all adults in the market. ${SOURCE}`}>
-          <div className="grid h-full gap-2" style={{ gridTemplateColumns: `120px repeat(${markets.length}, minmax(0, 1fr))`, gridTemplateRows: 'auto repeat(3, minmax(0, 1fr))' }}>
+      {castPages(r).map(({ markets, rows }, i) => (
+        <Slide key={i} section="The personas" title={`${r.cast.length} personas across ${r.castMarkets.length} markets`} page={start + i}
+          source={`Identities are illustrative; statistics are each segment's published shares against all adults in the market. ${SOURCE}`}>
+          <div className="grid h-full gap-2" style={{ gridTemplateColumns: `120px repeat(${markets.length}, minmax(0, 1fr))`, gridTemplateRows: `auto repeat(${rows.length}, minmax(0, 1fr))` }}>
             <span />
             {markets.map((m) => <p key={m} className="rounded-sm bg-brand-deep px-2 py-1 text-[14px] font-bold text-brand-deep-ink">{m}</p>)}
-            {[1, 2, 3].map((tier) => (
-              <Row key={tier} tier={tier} markets={markets} r={r} />
+            {rows.map((row) => (
+              <Row key={row.key} row={row} markets={markets} r={r} />
             ))}
           </div>
         </Slide>
@@ -280,16 +297,15 @@ function CastSlides({ r, start }: { r: Report; start: number }) {
   );
 }
 
-function Row({ tier, markets, r }: { tier: number; markets: string[]; r: Report }) {
-  const label = r.cast.find((p) => p.profile.tier === tier)?.profile.tierLabel ?? '';
+function Row({ row, markets, r }: { row: CastRow; markets: string[]; r: Report }) {
   return (
     <>
       <div className="flex flex-col justify-center">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-brand-mark">Tier {tier}</p>
-        <p className="text-[14px] font-bold leading-tight">{label}</p>
+        <p className="text-[11px] font-bold uppercase tracking-wide text-brand-mark">{row.group}</p>
+        <p className="text-[14px] font-bold leading-tight">{row.label}</p>
       </div>
       {markets.map((m) => {
-        const p = r.cast.find((x) => x.profile.market === m && x.profile.tier === tier);
+        const p = r.cast.find((x) => x.profile.market === m && `${x.profile.group ?? ''}|${x.profile.tier}` === row.key);
         return (
           <div key={m} className="min-h-0 overflow-hidden text-[12px]">
             {p ? <PersonaCard name={p.name} profile={p.profile} compact /> : <span className="text-ink-subtle">—</span>}
@@ -317,7 +333,7 @@ function Roundtable({ r, page }: { r: Report; page: number }) {
                   <PersonaAvatar name={p?.name ?? '?'} size={44} />
                   <div className="min-w-0">
                     <p className="truncate text-[14px] font-bold">{p?.name}</p>
-                    <p className="text-[11px] text-ink-subtle">{`${a.market} · Tier ${a.tier}`}</p>
+                    <p className="text-[11px] text-ink-subtle">{`${a.market} · ${p?.profile.tierLabel ?? ''}`}</p>
                   </div>
                 </div>
                 <p className="flex-1 text-[14px] leading-snug text-ink">“{a.quote}”</p>
@@ -363,7 +379,7 @@ function Heatmaps({ r, start }: { r: Report; start: number }) {
                   return (
                     <tr key={p.id} className={newMarket ? '[&>*]:border-t-2 [&>*]:border-brand-mark' : undefined}>
                       <th className="truncate px-2 py-0.5 text-left font-semibold">
-                        {p.name} <span className="font-normal text-ink-subtle">{`${p.profile.market} T${p.profile.tier}`}</span>
+                        {p.name} <span className="font-normal text-ink-subtle">{`${p.profile.market} · ${p.profile.tierLabel}`}</span>
                       </th>
                       {r.roundtable.categories.map((c) => {
                         const s = p.answer!.scores.find((x) => x.category === c)?.score;
@@ -408,7 +424,7 @@ function Profile({ p, r, page }: { p: ReportPersona; r: Report; page: number }) 
   const stats = keyStats(p.profile);
   const sorted = [...a.scores].sort((x, y) => y.score - x.score);
   return (
-    <Slide section={`Persona profile · ${p.profile.market} · Tier ${p.profile.tier} ${p.profile.tierLabel}`} title={`${p.name}${id ? `, ${id.age}` : ''}`} page={page}>
+    <Slide section={`Persona profile · ${p.profile.market} · ${p.profile.group ? `${p.profile.group}: ` : ''}${p.profile.tierLabel}`} title={`${p.name}${id ? `, ${id.age}` : ''}`} page={page}>
       <div className="grid h-full grid-cols-[300px_1fr_300px] gap-5">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
@@ -520,27 +536,34 @@ function Method({ r, page }: { r: Report; page: number }) {
   );
 }
 
-/** The whole deck. Page numbers are worked out first, since the cast and heatmap may run to several slides. */
-export function SlideDeck({ r }: { r: Report }) {
-  const profiled = r.cast.filter((p) => p.answer);
-  const castStart = 5;
-  const roundtablePage = castStart + chunk(r.castMarkets, 5).length;
-  const heatStart = roundtablePage + 1;
-  const profileStart = heatStart + chunk(profiled, 15).length;
-  const commsPage = profileStart + profiled.length;
+/** The whole deck. Page numbers are worked out first, since the personas and heatmap may run to several slides. */
+export function SlideDeck({ r, modules }: { r: Report; modules?: Set<string> }) {
+  const on = (m: string) => !modules || modules.has(m);
+  const profiled = on('persona_profiles') ? r.cast.filter((p) => p.answer) : [];
+  let page = 1;
+  const at = (n: number) => { const start = page + 1; page += n; return start; };
+  const about = on('about_slide') ? at(1) : 0;
+  const potential = on('market_potential') ? at(1) : 0;
+  const entry = on('market_entry') ? at(1) : 0;
+  const castStart = at(castPages(r).length);
+  const roundtablePage = at(1);
+  const heatStart = at(chunk(r.cast.filter((p) => p.answer), 15).length);
+  const profileStart = at(profiled.length);
+  const commsPage = at(1);
+  const methodPage = at(1);
   return (
     <div className="slide-deck flex flex-col gap-6">
       <MockBanner show={r.roundtable.isMock} />
       <Cover r={r} />
-      <About page={2} />
-      <Potential r={r} page={3} />
-      <Entry r={r} page={4} />
+      {about > 0 && <About page={about} />}
+      {potential > 0 && <Potential r={r} page={potential} />}
+      {entry > 0 && <Entry r={r} page={entry} />}
       <CastSlides r={r} start={castStart} />
       <Roundtable r={r} page={roundtablePage} />
       <Heatmaps r={r} start={heatStart} />
       {profiled.map((p, i) => <Profile key={p.id} p={p} r={r} page={profileStart + i} />)}
       <Comms r={r} page={commsPage} />
-      <Method r={r} page={commsPage + 1} />
+      <Method r={r} page={methodPage} />
     </div>
   );
 }

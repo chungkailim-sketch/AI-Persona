@@ -9,7 +9,10 @@ import { prisma } from '@/lib/prisma';
 import { LANG_COOKIE, parseLang } from '@/ui/i18n/translate';
 import { availableMarkets, DEFAULT_CATEGORIES, DEFAULT_QUESTION, latestBrief, studyBriefMissing } from '@/roundtable/service';
 import { WorkflowNav } from '../WorkflowNav';
+import { DecisionGuidance } from '../DecisionGuidance';
 import { StudyBriefForm } from './StudyBriefForm';
+import { ModulesForm } from './ModulesForm';
+import { activeModules, USE_CASES } from '@/modules/registry';
 
 export const metadata = { title: 'Brief · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -24,7 +27,7 @@ export default async function BriefStepPage(props: PageProps<'/projects/[project
   if (!project) notFound();
 
   const lang = parseLang((await cookies()).get(LANG_COOKIE)?.value);
-  const [brief, available] = await Promise.all([latestBrief(projectId), availableMarkets(projectId)]);
+  const [brief, available, setup] = await Promise.all([latestBrief(projectId), availableMarkets(projectId), prisma.project.findUnique({ where: { id: projectId }, select: { useCase: true, modules: true } })]);
   const missing = studyBriefMissing(brief);
   const view = {
     context: brief?.businessContext ?? '',
@@ -46,13 +49,22 @@ export default async function BriefStepPage(props: PageProps<'/projects/[project
           Advanced brief tools →
         </Link>
       </header>
+      <details className="panel max-w-3xl">
+        <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-ink">
+          {`Use case and modules · ${USE_CASES.find((u) => u.key === setup?.useCase)?.label ?? 'Market entry'}`}
+        </summary>
+        <div className="border-t border-line px-5 py-4">
+          <ModulesForm projectId={projectId} useCase={setup?.useCase ?? 'market_entry'} active={[...activeModules(setup ?? { useCase: 'market_entry', modules: [] })]} canEdit={can(ctx, 'project.edit', projectId)} />
+        </div>
+      </details>
       <section className="panel max-w-3xl px-5 py-5">
         <StudyBriefForm projectId={projectId} brief={view} available={available} canEdit={can(ctx, 'project.edit', projectId)} locked={brief?.status === 'LOCKED'} />
       </section>
+      {brief && <div className="max-w-3xl"><DecisionGuidance projectId={projectId} checkpoint="BRIEF" canAsk={can(ctx, 'project.edit', projectId)} /></div>}
       {brief && missing.length === 0 && (
         <div className="flex max-w-3xl justify-end">
           <Link href={`/projects/${projectId}/personas` as Route} className="rounded bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
-            Next: Cast →
+            Next: Personas →
           </Link>
         </div>
       )}

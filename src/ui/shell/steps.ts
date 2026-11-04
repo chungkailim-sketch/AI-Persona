@@ -6,9 +6,9 @@
 export const WORKFLOW_STEPS = [
   { key: 'DATA', index: 1, label: 'Data', href: 'data', description: 'Upload the survey databooks' },
   { key: 'BRIEF', index: 2, label: 'Brief', href: 'brief', description: 'Markets, question and categories' },
-  { key: 'PERSONAS', index: 3, label: 'Cast', href: 'personas', description: 'Markets × income tiers' },
+  { key: 'PERSONAS', index: 3, label: 'Personas', href: 'personas', description: 'Built from your data, on your parameters' },
   { key: 'SIMULATION', index: 4, label: 'Roundtable', href: 'simulate', description: 'Every persona answers' },
-  { key: 'RESULTS', index: 5, label: 'Report', href: 'results', description: 'Slides and PDF' },
+  { key: 'RESULTS', index: 5, label: 'Results', href: 'results', description: 'Report, plans and knowledge' },
 ] as const;
 
 export type StepKey = (typeof WORKFLOW_STEPS)[number]['key'];

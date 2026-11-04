@@ -29,9 +29,12 @@ export type Lang = 'en' | 'zh';
 
 export interface CastProfile {
   market: string;
-  tier: 1 | 2 | 3;
+  /** Position within its parameter: tier 1–3 for an ordered break, 1–n for segments. */
+  tier: number;
   tierLabel: string;
-  basis: 'income' | 'age';
+  /** The parameter (segment group) the persona was cut on, e.g. "Monthly household income". */
+  group?: string;
+  basis: 'income' | 'age' | 'ordered' | 'segment';
   bands: string[];
   base: number;
   stats: CastStat[];
@@ -48,6 +51,12 @@ function languageRule(lang: Lang): string {
   return lang === 'zh'
     ? 'Write every text value in Simplified Chinese. Personal and place names may stay in the local form of the market.'
     : 'Write every text value in English.';
+}
+
+/** "the Premium Pioneers tier of Household income (bands: …)" — how a persona's segment is described. */
+export function segmentLine(p: CastProfile): string {
+  const group = p.group ?? (p.basis === 'age' ? 'Age' : 'Household income');
+  return p.basis === 'segment' ? `${group}: ${p.tierLabel}` : `${group}: ${p.tierLabel} (${p.bands.join('; ')})`;
 }
 
 function statLine(s: CastStat): string {
@@ -81,6 +90,8 @@ export async function clearedLongTables(projectId: string): Promise<{ name: stri
 export interface CastJobInput {
   cohortId: string;
   markets: string[];
+  /** Parameters (segment groups) to cut personas on; empty means income tiers. */
+  groups?: string[];
   language: Lang;
   context?: string | null;
   seed: number;
@@ -98,7 +109,7 @@ export async function executeCast(input: CastJobInput): Promise<{ cohortId: stri
     if (cohort.personas.length === 0) {
       const tables = await clearedLongTables(cohort.projectId);
       if (tables.length === 0) throw new CastFailed('No cleared survey table (market × statement × segment × share) is attached to this project.');
-      const { seeds, notes } = buildCastSeeds(tables, input.markets);
+      const { seeds, notes } = buildCastSeeds(tables, input.markets, input.groups ?? []);
       if (seeds.length === 0) throw new CastFailed(notes.join(' ') || 'None of the chosen markets has an income or age break in the data.');
       await writeCast(cohortId, seeds, notes);
     }
@@ -121,7 +132,7 @@ export async function executeCast(input: CastJobInput): Promise<{ cohortId: stri
         personaKey: `P${index}`,
         system: [
           'You write the illustrative identity for one consumer persona in a market-entry study.',
-          'The persona stands for a whole income tier of a market, described only by the published survey statistics given.',
+          'The persona stands for a whole segment of a market (an income tier, an age band, an occupation…), described only by the published survey statistics given.',
           'Invent a plausible, ordinary person typical of that tier: a common local name for the market, an age, gender,',
           'occupation and city that fit the tier, a life stage, and the three things that drive their purchase decisions',
           'in order (e.g. "Quality", "Price", "Convenience"). Do not use the name of any real public figure.',
@@ -134,7 +145,7 @@ export async function executeCast(input: CastJobInput): Promise<{ cohortId: stri
             role: 'user',
             content: [
               `Market: ${profile.market}`,
-              `Tier ${profile.tier} of 3 — ${profile.tierLabel} (${profile.basis === 'income' ? 'household income' : 'age'} bands: ${profile.bands.join('; ')}), base ${profile.base}.`,
+              `Segment — ${segmentLine(profile)}, base ${profile.base}.`,
               input.context ? wrapUntrusted('study context', input.context) : '',
               'Published statistics for this tier:',
               ...profile.stats.map(statLine),
@@ -180,7 +191,7 @@ async function writeCast(cohortId: string, seeds: CastSeed[], notes: string[]): 
     for (const s of seeds) {
       const persona = await tx.persona.create({ data: { cohortId, type: 'CONSUMER', name: `${s.market} · ${s.tierLabel}` } });
       const confidence = s.base < 30 ? 'LOW' : s.base >= 150 ? 'HIGH' : 'MEDIUM';
-      const profile: CastProfile = { market: s.market, tier: s.tier, tierLabel: s.tierLabel, basis: s.basis, bands: s.bands, base: s.base, stats: s.stats };
+      const profile: CastProfile = { market: s.market, tier: s.tier, tierLabel: s.tierLabel, group: s.group, basis: s.basis, bands: s.bands, base: s.base, stats: s.stats };
       const version = await tx.personaVersion.create({
         data: {
           personaId: persona.id,
@@ -190,15 +201,15 @@ async function writeCast(cohortId: string, seeds: CastSeed[], notes: string[]): 
           segment: `${s.market} · ${s.tierLabel}`,
           baseSize: s.base,
           confidence,
-          coverageNote: s.base < 30 ? `This tier has ${s.base} respondents — too few to support a claim; treat it as illustrative.` : null,
-          summary: `Tier ${s.tier} (${s.tierLabel}) in ${s.market}: ${s.basis === 'income' ? 'household income' : 'age'} ${s.bands.join(', ')}; base ${s.base}.`,
+          coverageNote: s.base < 30 ? `This segment has ${s.base} respondents — too few to support a claim; treat it as illustrative.` : null,
+          summary: `${s.group}: ${s.tierLabel} in ${s.market}${s.basis === 'segment' ? '' : ` (${s.bands.join(', ')})`}; base ${s.base}.`,
           profile: profile as object,
         },
       });
       await tx.personaAttribute.createMany({
         data: [
           { personaVersionId: version.id, group: 'segment', key: 'market', label: 'Market', value: s.market, origin: 'OBSERVED', confidence, baseSize: s.base, locked: true },
-          { personaVersionId: version.id, group: 'segment', key: 'tier', label: s.basis === 'income' ? 'Household income' : 'Age', value: s.bands.join('; '), origin: 'OBSERVED', confidence, baseSize: s.base, locked: true },
+          { personaVersionId: version.id, group: 'segment', key: 'tier', label: s.group, value: s.bands.join('; '), origin: 'OBSERVED', confidence, baseSize: s.base, locked: true },
           ...s.stats.map((x) => ({
             personaVersionId: version.id,
             group: 'attitudes',
@@ -217,7 +228,7 @@ async function writeCast(cohortId: string, seeds: CastSeed[], notes: string[]): 
       where: { id: cohortId },
       data: {
         generationNote:
-          `Three ${seeds.some((x) => x.basis === 'income') ? 'income' : 'age'} tiers in each of ${new Set(seeds.map((x) => x.market)).size} market(s), ${seeds.length} personas, from the latest wave of the cleared survey tables.` +
+          `${seeds.length} personas across ${new Set(seeds.map((x) => x.market)).size} market(s), cut on ${[...new Set(seeds.map((x) => x.group))].join(', ')}, from the latest wave of the cleared survey tables.` +
           (notes.length ? ` ${notes.join(' ')}` : '') +
           (cohort.generationNote ? ` ${cohort.generationNote}` : ''),
       },
@@ -269,7 +280,7 @@ export async function executeRoundtable(roundtableId: string): Promise<{ roundta
         personaKey: `P${index}`,
         system: [
           `You are ${id ? `"${id.name}", ${id.age}, ${id.occupation} in ${id.city} (${id.lifeStage})` : `a consumer from ${profile.market}`} —`,
-          `an illustrative persona standing for tier ${profile.tier} of 3 in ${profile.market} (${profile.tierLabel}; ${profile.basis === 'income' ? 'household income' : 'age'} ${profile.bands.join(', ')}; base ${profile.base}).`,
+          `an illustrative persona standing for one segment of ${profile.market} — ${segmentLine(profile)}; base ${profile.base}.`,
           id ? `What drives your purchase decisions, in order: ${id.decisionLogic.join(' > ')}.` : '',
           'You are a simulation built from published survey statistics for decision support; nothing you say is evidence of',
           'what a real person thinks. Speak in the first person as a typical member of your tier.',

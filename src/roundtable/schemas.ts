@@ -72,3 +72,35 @@ export const RoundtableSummary = z
 export type RoundtableSummary = z.infer<typeof RoundtableSummary>;
 
 export { toText };
+
+/** A persona's answer in an interview. */
+export const PersonaReply = z
+  .object({
+    answer: text(2500),
+    /** True when the answer goes beyond the persona's statistics and is the persona's best guess. */
+    beyondData: z.preprocess((v) => v === true || v === 'true', z.boolean()),
+    statIds: strings(6, 6),
+  })
+  .refine((r) => r.answer.length > 0, { message: 'No answer.' });
+export type PersonaReply = z.infer<typeof PersonaReply>;
+
+/** A PR, communications and marketing plan answering one question, from the study's data. */
+export const CommsPlan = z
+  .object({
+    title: text(200),
+    answer: text(3000),
+    situation: text(2500),
+    objectives: strings(6, 400),
+    audienceInsights: list(z.object({ audience: text(200), insight: text(800), refs: strings(6, 8) }), 10),
+    positioning: text(1500),
+    keyMessages: list(z.object({ message: text(500), audience: text(200), proofPoints: strings(5, 400) }), 8),
+    channels: list(z.object({ type: text(20), channel: text(200), role: text(500) }), 14),
+    phasedPlan: list(z.object({ phase: text(120), timing: text(120), activities: strings(8, 400) }), 6),
+    kpis: list(z.object({ kpi: text(200), target: text(200), measurement: text(400) }), 10),
+    risks: list(z.object({ risk: text(400), mitigation: text(600) }), 8),
+    marketNotes: list(z.object({ market: text(80), note: text(800) }), 16),
+    frameworks: list(z.object({ ref: text(8), howApplied: text(600) }), 10),
+    dataGaps: strings(6, 400),
+  })
+  .refine((r) => r.answer.length > 0, { message: 'No answer.' });
+export type CommsPlan = z.infer<typeof CommsPlan>;

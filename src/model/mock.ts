@@ -77,6 +77,31 @@ function body(schemaName: string, rng: () => number, personaKey: string, request
         },
       };
 
+    case 'persona_reply':
+      return {
+        answer: `[MOCK] Placeholder interview answer from ${personaKey}. Produced locally; says nothing about the world.`,
+        beyondData: false,
+        statIds: listed(request, 'STAT IDS').slice(0, 2),
+      };
+
+    case 'comms_plan':
+      return {
+        title: '[MOCK] Communications and marketing plan',
+        answer: '[MOCK] Placeholder answer produced by the mock provider. No model was consulted.',
+        situation: '[MOCK] Placeholder situation.',
+        objectives: ['[MOCK] Placeholder objective.'],
+        audienceInsights: [{ audience: '[MOCK] Audience', insight: '[MOCK] Insight.', refs: listed(request, 'DATA IDS').slice(0, 2) }],
+        positioning: '[MOCK] Placeholder positioning.',
+        keyMessages: [{ message: '[MOCK] Key message.', audience: '[MOCK] Audience', proofPoints: ['[MOCK] Proof point.'] }],
+        channels: [{ type: 'owned', channel: '[MOCK] Channel', role: '[MOCK] Role.' }, { type: 'earned', channel: '[MOCK] Media', role: '[MOCK] Role.' }],
+        phasedPlan: [{ phase: '[MOCK] Phase 1', timing: 'Months 1-3', activities: ['[MOCK] Activity.'] }],
+        kpis: [{ kpi: '[MOCK] KPI', target: '[MOCK] Target', measurement: '[MOCK] Measurement.' }],
+        risks: [{ risk: '[MOCK] Risk.', mitigation: '[MOCK] Mitigation.' }],
+        marketNotes: listed(request, 'MARKETS').map((market) => ({ market, note: '[MOCK] Placeholder note.' })),
+        frameworks: listed(request, 'KNOWLEDGE IDS').slice(0, 3).map((ref) => ({ ref, howApplied: '[MOCK] Placeholder.' })),
+        dataGaps: ['This plan used the mock provider.'],
+      };
+
     case 'roundtable_summary':
       return {
         consensus: '[MOCK] Placeholder consensus produced by the mock provider. No model was consulted.',

@@ -498,6 +498,7 @@ export async function startDebateAction(_prev: FormState, formData: FormData): P
     return toState(e);
   }
   // Outside the try: a redirect is thrown, and must not be caught as a failure.
+  if (formData.get('returnTo') === 'journey') redirect(`/projects/${projectId}/personas?debate=${debateId}#debate`);
   redirect(`/projects/${projectId}/advanced/personas?debate=${debateId}#debate`);
 }
 

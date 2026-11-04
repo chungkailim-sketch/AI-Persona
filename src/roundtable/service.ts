@@ -121,25 +121,40 @@ export async function latestCast(projectId: string) {
   });
 }
 
-export async function requestCast(user: SessionUser, projectId: string, lang: Lang): Promise<{ cohortId: string }> {
+export interface CastOptions {
+  /** Markets to build for; defaults to the brief's. */
+  markets?: string[];
+  /** Parameters (segment groups) to cut personas on; empty means income tiers. */
+  groups?: string[];
+}
+
+export async function requestCast(user: SessionUser, projectId: string, lang: Lang, opts: CastOptions = {}): Promise<{ cohortId: string }> {
   await requirePermission(user, projectId, 'persona.create');
   const brief = await latestBrief(projectId);
-  const missing = studyBriefMissing(brief);
-  if (missing.length) throw new JourneyRefused(['Complete the brief first.', ...missing]);
+  const markets = [...new Set((opts.markets?.length ? opts.markets : brief?.markets ?? []).map((m) => m.trim()).filter(Boolean))].slice(0, 20);
+  const groups = [...new Set((opts.groups ?? []).map((g) => g.trim()).filter(Boolean))].slice(0, 6);
+  if (markets.length === 0) throw new JourneyRefused(['Choose at least one market.']);
   const running = await prisma.cohort.findFirst({ where: { projectId, kind: 'cast', buildStatus: { in: ['QUEUED', 'RUNNING'] } }, select: { id: true } });
   if (running) throw new JourneyRefused(['A cast is already being built. Wait for it to finish.']);
 
   const seed = randomInt(1, 2_000_000_000);
   const cohort = await prisma.cohort.create({
-    data: { projectId, name: `Cast · ${brief!.markets.join(', ')}`.slice(0, 200), mode: 'CLUSTER', kind: 'cast', buildStatus: 'QUEUED' },
+    data: {
+      projectId,
+      name: `Personas · ${markets.join(', ')}${groups.length ? ` · ${groups.join(', ')}` : ''}`.slice(0, 200),
+      mode: 'CLUSTER',
+      kind: 'cast',
+      buildStatus: 'QUEUED',
+      parameters: { markets, groups },
+    },
   });
   await enqueue({
     kind: 'cast',
-    input: { cohortId: cohort.id, markets: brief!.markets, language: lang, context: brief!.businessContext, seed },
+    input: { cohortId: cohort.id, markets, groups, language: lang, context: brief?.businessContext ?? null, seed },
     idempotencyKey: `cast:${cohort.id}`,
     maxAttempts: 2,
   });
-  await recordAudit({ action: 'persona.cast.requested', targetType: 'cohort', targetId: cohort.id, projectId, actorUserId: user.userId, actorEmail: user.email, reason: `Cast for ${brief!.markets.join(', ')}` });
+  await recordAudit({ action: 'persona.cast.requested', targetType: 'cohort', targetId: cohort.id, projectId, actorUserId: user.userId, actorEmail: user.email, reason: `Personas for ${markets.join(', ')}${groups.length ? ` on ${groups.join(', ')}` : ''}` });
   return { cohortId: cohort.id };
 }
 

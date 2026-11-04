@@ -7,6 +7,7 @@ import { can } from '@/auth/permissions';
 import { loadReport } from '@/roundtable/report';
 import { SlideDeck } from '@/ui/report/Slides';
 import { PrintButton } from '@/ui/components/PrintButton';
+import { projectModules } from '@/modules/project';
 
 export const metadata = { title: 'Roundtable report · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -33,7 +34,7 @@ export default async function RoundtableReportPage(props: PageProps<'/projects/[
         </div>
       </div>
       <main id="main" className="mx-auto max-w-[1320px] px-5 py-6 print:max-w-none print:p-0">
-        <SlideDeck r={report} />
+        <SlideDeck r={report} modules={await projectModules(projectId)} />
       </main>
     </div>
   );

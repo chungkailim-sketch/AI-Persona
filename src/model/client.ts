@@ -54,6 +54,8 @@ export interface CallOptions<T> {
   /** A cast being given its illustrative identities. */
   cohortId?: string;
   roundtableId?: string;
+  /** A plan written for the team (Results step). */
+  adviceId?: string;
   stage: string;
   personaKey?: string;
   system: string;
@@ -93,8 +95,9 @@ export async function debateSpendUsd(debateId: string): Promise<number> {
 }
 
 /** The running total for a cast or a roundtable, read from the calls already recorded. */
-export async function ownerSpendUsd(owner: { cohortId?: string; roundtableId?: string }): Promise<number> {
-  const agg = await prisma.modelCall.aggregate({ where: owner.cohortId ? { cohortId: owner.cohortId } : { roundtableId: owner.roundtableId }, _sum: { costUsd: true } });
+export async function ownerSpendUsd(owner: { cohortId?: string; roundtableId?: string; adviceId?: string }): Promise<number> {
+  const where = owner.cohortId ? { cohortId: owner.cohortId } : owner.roundtableId ? { roundtableId: owner.roundtableId } : { adviceId: owner.adviceId };
+  const agg = await prisma.modelCall.aggregate({ where, _sum: { costUsd: true } });
   return agg._sum.costUsd ?? 0;
 }
 
@@ -134,15 +137,15 @@ export async function callModel<T>(options: CallOptions<T>): Promise<CallResult<
   const p = modelProvider();
   const isMock = p.name === 'mock';
 
-  const owners = [options.runId, options.debateId, options.cohortId, options.roundtableId].filter(Boolean).length;
-  if (owners !== 1) throw new Error('A model call belongs to exactly one run, debate, cast or roundtable.');
+  const owners = [options.runId, options.debateId, options.cohortId, options.roundtableId, options.adviceId].filter(Boolean).length;
+  if (owners !== 1) throw new Error('A model call belongs to exactly one run, debate, cast, roundtable or plan.');
 
   if (options.budgetCapUsd !== undefined && !isMock) {
     const spent = options.runId
       ? await runSpendUsd(options.runId)
       : options.debateId
         ? await debateSpendUsd(options.debateId)
-        : await ownerSpendUsd({ cohortId: options.cohortId, roundtableId: options.roundtableId });
+        : await ownerSpendUsd({ cohortId: options.cohortId, roundtableId: options.roundtableId, adviceId: options.adviceId });
     if (spent >= options.budgetCapUsd) throw new BudgetExceeded(spent, options.budgetCapUsd);
   }
 
@@ -194,6 +197,7 @@ export async function callModel<T>(options: CallOptions<T>): Promise<CallResult<
         debateId: options.debateId ?? null,
         cohortId: options.cohortId ?? null,
         roundtableId: options.roundtableId ?? null,
+        adviceId: options.adviceId ?? null,
         stage: options.stage,
         personaKey: options.personaKey ?? null,
         provider: response.provider,

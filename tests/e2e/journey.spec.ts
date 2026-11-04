@@ -45,6 +45,9 @@ test('from upload to a slide report in five steps', async ({ page }) => {
   await page.getByRole('button', { name: 'Upload and ingest' }).click();
   await expect(page.getByRole('region', { name: 'Your files' }).getByText('Ready', { exact: true })).toBeVisible({ timeout: 90_000 });
   await shot(page, '1-data');
+  // Decision guidance at the data checkpoint (local stand-in without an OpenAI key).
+  await page.getByRole('button', { name: 'Get decision guidance' }).click();
+  await expect(page.getByText('The data is ready to build personas')).toBeVisible();
 
   // 2 Brief: the default question and categories are filled in; choose the markets.
   await goAndHydrate(page, `/projects/${id}/brief`);
@@ -54,16 +57,29 @@ test('from upload to a slide report in five steps', async ({ page }) => {
   await expect(page.getByText('Brief saved.')).toBeVisible();
   await shot(page, '2-brief');
 
-  // 3 Cast
+  // 3 Personas: every uploaded file is the source; the parameters are proposed from the data.
   await goAndHydrate(page, `/projects/${id}/personas`);
-  await expect(page.getByText('9 personas: Indonesia, Malaysia, Thailand × 3 income tiers.')).toBeVisible();
-  await page.getByRole('button', { name: 'Build the cast' }).click();
+  await expect(page.getByText('Source: all 1 file(s) uploaded in step 1.')).toBeVisible();
+  await expect(page.getByLabel(/Monthly household income/)).toBeChecked();
+  await expect(page.getByText('Personas ready for simulation')).toHaveCount(0);
+  await expect(page.getByText('Generate a cohort')).toHaveCount(0);
+  await expect(page.getByText('Population sample')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Build personas' }).click();
   await expect(page.locator('[data-persona-card]')).toHaveCount(9, { timeout: 60_000 });
   await expect(page.getByRole('columnheader', { name: 'Indonesia' })).toBeVisible();
   await expect(page.getByText('Premium Pioneers')).toBeVisible();
-  await shot(page, '3-cast');
-  await page.getByRole('button', { name: 'Approve cast' }).click();
+  await shot(page, '3-personas');
+  await page.getByRole('button', { name: 'Approve personas' }).click();
   await expect(page.getByText('Approved', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Agent swarm debate' })).toBeVisible();
+
+  // Open a persona and interview it.
+  await page.locator('[data-persona-card]').first().click();
+  await expect(page.getByRole('heading', { name: 'Interview' })).toBeVisible();
+  await page.getByLabel('Ask a question').fill('What do you look for when you buy something new?');
+  await page.getByRole('button', { name: 'Ask', exact: true }).click();
+  await expect(page.getByText(/Placeholder interview answer/)).toBeVisible({ timeout: 30_000 });
+  await shot(page, '3b-interview');
 
   // 4 Roundtable
   await goAndHydrate(page, `/projects/${id}/simulate`);
@@ -88,6 +104,15 @@ test('from upload to a slide report in five steps', async ({ page }) => {
   await page.getByRole('button', { name: 'Save market inputs' }).click();
   await expect(page.getByText('Market inputs saved.')).toBeVisible();
   await shot(page, '5-report');
+
+  // A comms and marketing plan, and the knowledge library.
+  await page.getByLabel('Your comms or marketing question').fill('How should we launch in the priority market in the first six months?');
+  await page.getByRole('button', { name: 'Write the plan' }).click();
+  await expect(page.getByText('Frameworks applied')).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('heading', { name: 'Knowledge library' })).toBeVisible();
+  await page.getByRole('tab', { name: 'Market entry knowledge' }).click();
+  await expect(page.getByText('CAGE distance framework')).toBeVisible();
+  await shot(page, '5b-plans');
 
   await goAndHydrate(page, `/projects/${id}/report`);
   await expect(page.getByRole('button', { name: /Print or save as PDF/ })).toBeVisible();
