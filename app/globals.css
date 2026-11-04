@@ -5,13 +5,13 @@
 /**
  * DESIGN TOKENS — semantic layer.
  *
- * Brand: Ruder Finn / rf.AI Persona. The greens and the yellow are taken from the approved
- * "ai-persona" logo (public/brand) and the RF report templates: a deep RF green for anything that
- * carries text, the brighter logo green for rules and marks, and the logo's yellow dot as a sparing
- * accent. Type is a bold geometric sans (Figtree) with Noto Sans SC for Chinese, both self-hosted (no font
- * request leaves the browser for a third party). To change the
- * brand, change values here — nothing else in the codebase contains a literal colour, font name or
- * duration.
+ * Brand: Ruder Finn, taken from ruderfinn.com and the rf.AI Persona logo. RF green #2DA44A is used
+ * exactly where text is large (headlines) or decorative (marks, rules, gradients); a deeper RF green
+ * carries small text and white-on-green buttons so both pass WCAG AA. RF teal #025562 fills table
+ * heads and bands, RF charcoal #2A2A38 is the ink, and the lime-to-green gradient is RF's signature
+ * band. Type is Be Vietnam Pro (as on ruderfinn.com) with Noto Sans SC for Chinese, self-hosted.
+ * To change the brand, change values here — nothing else in the codebase contains a literal
+ * colour, font name or duration.
  *
  * Tokens are named by job, not by component: a panel background, a strong border, a pending state.
  * Both themes define every token. Dark is its own set of steps, chosen and contrast-checked against
@@ -21,36 +21,42 @@
   color-scheme: light;
 
   /* ── brand — Ruder Finn ───────────────────────────────────────────────── */
-  --color-brand: #00703c;           /* RF deep green: buttons, links, headings accents */
+  --color-brand: #1e7b36;           /* deeper RF green: buttons, links, small text (5.3:1) */
   --color-brand-ink: #ffffff;
-  --color-brand-soft: #e4f4e8;      /* RF pale green panels */
-  --color-brand-mark: #2ba24c;      /* logo green: rules, marks, chart fills — never text */
-  --color-brand-deep: #0b4f2b;      /* table heads, cover fills */
+  --color-brand-soft: #e9f6ec;      /* pale RF green: active nav, soft panels */
+  --color-brand-mark: #2da44a;      /* RF green: headlines, marks, rules — large or decorative only */
+  --color-brand-deep: #025562;      /* RF teal: table heads, bands, cover fills */
   --color-brand-deep-ink: #ffffff;
   --color-highlight: #f8b010;       /* logo yellow dot — decorative accent only */
-  --font-display: 'Figtree Variable', 'Noto Sans SC Variable', 'Helvetica Neue', Arial, sans-serif;
-  --font-sans: 'Figtree Variable', 'Noto Sans SC Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
+  --color-sidebar: #f7f7f7;         /* RF side navigation */
+  /* persona grid tier rows, dark to pale as on the RF cast slide */
+  --tier-row-1: #145c28; --tier-row-1-ink: #ffffff;
+  --tier-row-2: #1e7b36; --tier-row-2-ink: #ffffff;
+  --tier-row-3: #d9efdf; --tier-row-3-ink: #145c28;
+  --gradient-brand: linear-gradient(100deg, #a8dd6b 0%, #5cc27a 55%, #2da44a 100%);
+  --font-display: 'Be Vietnam Pro', 'Noto Sans SC Variable', 'Helvetica Neue', Arial, sans-serif;
+  --font-sans: 'Be Vietnam Pro', 'Noto Sans SC Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
   --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
 
   /* ── surfaces ─────────────────────────────────────────────────────────── */
-  --color-bg: #f6f7f5;              /* page background */
+  --color-bg: #ffffff;              /* page background — RF pages are white */
   --color-elevated: #ffffff;        /* sticky bars, drawers */
   --color-surface: #ffffff;         /* panels */
   --color-surface-raised: #ffffff;  /* popovers, menus */
   --color-input: #ffffff;
-  --color-telemetry: #eef3ef;       /* activity feed well */
+  --color-telemetry: #f3f6f4;       /* activity feed well */
   --color-overlay: rgb(10 14 16 / 45%);
 
   /* ── text ─────────────────────────────────────────────────────────────── */
-  --color-ink: #111111;             /* primary */
-  --color-ink-muted: #434a50;       /* secondary */
-  --color-ink-subtle: #5d646b;      /* muted — ≥4.5:1 on every light surface */
+  --color-ink: #2a2a38;             /* primary — RF charcoal */
+  --color-ink-muted: #4a4a55;       /* secondary */
+  --color-ink-subtle: #6b6b70;      /* muted — ≥4.5:1 on every light surface */
   --color-telemetry-ink: #1c2226;
   --color-code: #2f363c;
-  --color-link: #00703c;
+  --color-link: #1e7b36;
 
   /* ── lines ────────────────────────────────────────────────────────────── */
-  --color-line: #e0e3df;            /* hairlines between regions */
+  --color-line: #e6e6e8;            /* hairlines between regions */
   --color-line-strong: #80878d;     /* input and control boundaries — ≥3:1 */
   --color-grid: rgb(21 24 27 / 4.5%);
 
@@ -74,7 +80,7 @@
 
   /* ── scale ─────────────────────────────────────────────────────────────── */
   --space-unit: 4px;
-  --radius-sm: 2px; --radius: 4px; --radius-lg: 8px;
+  --radius-sm: 6px; --radius: 10px; --radius-lg: 16px;
   --shadow-card: none;
   --shadow-pop: 0 8px 24px rgb(16 25 28 / 14%);
   --width-content: 1240px; --width-wide: 1600px; --width-prose: 72ch;
@@ -97,11 +103,12 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']) {
     color-scheme: dark;
-    --color-brand: #5cc77a; --color-brand-ink: #062611; --color-brand-soft: #12301c;
-    --color-brand-mark: #43b764; --color-brand-deep: #0e3a22; --color-brand-deep-ink: #ffffff; --color-highlight: #f8b010;
-    --color-bg: #0e1012; --color-elevated: #14171a; --color-surface: #191c20; --color-surface-raised: #22262b;
+    --color-brand: #6fd08a; --color-brand-ink: #0b1f12; --color-brand-soft: #14301f;
+    --color-brand-mark: #5cc77a; --color-brand-deep: #0b4c57; --color-brand-deep-ink: #ffffff; --color-highlight: #f8b010;
+    --color-sidebar: #191a22; --gradient-brand: linear-gradient(100deg, #5f9a3c 0%, #2f8b55 55%, #1e6d3a 100%);
+    --color-bg: #121319; --color-elevated: #15161d; --color-surface: #1b1c24; --color-surface-raised: #23242e;
     --color-input: #111417; --color-telemetry: #0b0d0f; --color-overlay: rgb(0 0 0 / 62%);
-    --color-ink: #e9ebe7; --color-ink-muted: #bcc2c7; --color-ink-subtle: #939aa1;
+    --color-ink: #ececf1; --color-ink-muted: #c1c1cb; --color-ink-subtle: #9a9aa6;
     --color-telemetry-ink: #d6dbd5; --color-code: #cdd4cd; --color-link: #7fd697;
     --color-line: #2b3035; --color-line-strong: #6b737a; --color-grid: rgb(233 235 231 / 3.5%);
     --color-ok: #8fd6a5; --color-ok-soft: #14301e;
@@ -120,11 +127,12 @@
 
 :root[data-theme='dark'] {
   color-scheme: dark;
-  --color-brand: #5cc77a; --color-brand-ink: #062611; --color-brand-soft: #12301c;
-  --color-brand-mark: #43b764; --color-brand-deep: #0e3a22; --color-brand-deep-ink: #ffffff; --color-highlight: #f8b010;
-  --color-bg: #0e1012; --color-elevated: #14171a; --color-surface: #191c20; --color-surface-raised: #22262b;
+  --color-brand: #6fd08a; --color-brand-ink: #0b1f12; --color-brand-soft: #14301f;
+  --color-brand-mark: #5cc77a; --color-brand-deep: #0b4c57; --color-brand-deep-ink: #ffffff; --color-highlight: #f8b010;
+  --color-sidebar: #191a22; --gradient-brand: linear-gradient(100deg, #5f9a3c 0%, #2f8b55 55%, #1e6d3a 100%);
+  --color-bg: #121319; --color-elevated: #15161d; --color-surface: #1b1c24; --color-surface-raised: #23242e;
   --color-input: #111417; --color-telemetry: #0b0d0f; --color-overlay: rgb(0 0 0 / 62%);
-  --color-ink: #e9ebe7; --color-ink-muted: #bcc2c7; --color-ink-subtle: #939aa1;
+  --color-ink: #ececf1; --color-ink-muted: #c1c1cb; --color-ink-subtle: #9a9aa6;
   --color-telemetry-ink: #d6dbd5; --color-code: #cdd4cd; --color-link: #7fd697;
   --color-line: #2b3035; --color-line-strong: #6b737a; --color-grid: rgb(233 235 231 / 3.5%);
   --color-ok: #8fd6a5; --color-ok-soft: #14301e;
@@ -149,7 +157,9 @@
     font-size: 15px;
     line-height: 1.55;
   }
-  h1, h2, h3 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+  h1, h2, h3 { font-family: var(--font-display); font-weight: 700; letter-spacing: -0.03em; text-wrap: balance; }
+  /* RF headline: large, bold, RF green (large text, ≥3:1). */
+  h1 { color: var(--color-brand-mark); font-weight: 800; letter-spacing: -0.045em; }
   a { color: inherit; }
   /* Focus is always visible — never removed, only restyled (UX-04). */
   :focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); border-radius: 2px; }
@@ -168,6 +178,11 @@
 
   /* Logo: the black wordmark on light surfaces, the white one on dark (see BrandLogo). */
   .logo-on-dark { display: none; }
+
+  /* Shown only in the Chinese interface: the English original under a translated heading. */
+  .zh-only { display: none; }
+  html[data-lang='zh'] .zh-only { display: block; }
+  html[data-lang='zh'] .en-only { display: none; }
   :root[data-theme='dark'] .logo-on-light { display: none; }
   :root[data-theme='dark'] .logo-on-dark { display: block; }
   @media (prefers-color-scheme: dark) {
@@ -238,19 +253,21 @@
 .slide-deck {
   color-scheme: light;
   --color-bg: #f6f7f5; --color-surface: #ffffff; --color-elevated: #ffffff; --color-surface-raised: #ffffff;
-  --color-ink: #111111; --color-ink-muted: #3f454a; --color-ink-subtle: #5d646b;
-  --color-line: #e0e3df; --color-line-strong: #80878d;
-  --color-brand: #00703c; --color-brand-ink: #ffffff; --color-brand-soft: #e4f4e8;
-  --color-brand-mark: #2ba24c; --color-brand-deep: #0b4f2b; --color-brand-deep-ink: #ffffff; --color-highlight: #f8b010;
+  --color-ink: #2a2a38; --color-ink-muted: #4a4a55; --color-ink-subtle: #6b6b70;
+  --color-line: #e6e6e8; --color-line-strong: #80878d;
+  --color-brand: #1e7b36; --color-brand-ink: #ffffff; --color-brand-soft: #e9f6ec;
+  --color-brand-mark: #2da44a; --color-brand-deep: #025562; --color-brand-deep-ink: #ffffff; --color-highlight: #f8b010;
+  --gradient-brand: linear-gradient(100deg, #a8dd6b 0%, #5cc27a 55%, #2da44a 100%);
   --color-ok: #1b6630; --color-ok-soft: #e2f2e6; --color-warn: #7f4b00; --color-warn-soft: #faedd8;
   --color-pending: #535b63; --color-pending-soft: #eceeee; --chart-track: #e7e9e5;
   --slide-paper: #ffffff;
+  --tier-row-1: #145c28; --tier-row-1-ink: #ffffff; --tier-row-2: #1e7b36; --tier-row-2-ink: #ffffff; --tier-row-3: #d9efdf; --tier-row-3-ink: #145c28;
   /* heat: ≥60 willing · 40–59 depends · <40 unlikely */
-  --heat-high: #0b6b35; --heat-high-ink: #ffffff;
+  --heat-high: #1e7b36; --heat-high-ink: #ffffff;
   --heat-mid: #fbe7a6; --heat-mid-ink: #4a3500;
   --heat-low: #e6e8e5; --heat-low-ink: #3f454a;
   /* market tiers */
-  --tier-priority: #0b6b35; --tier-build: #2ba24c; --tier-selective: #e39c00; --tier-watch: #9aa1a6;
+  --tier-priority: #025562; --tier-build: #2da44a; --tier-selective: #e39c00; --tier-watch: #9aa1a6;
   --map-sea: #f4f8f5; --map-land: #dfe6e0; --map-border: #ffffff;
   color: var(--color-ink);
 }
@@ -276,7 +293,7 @@
     --color-bg: #ffffff; --color-surface: #ffffff; --color-elevated: #ffffff; --color-telemetry: #ffffff;
     --color-ink: #000000; --color-ink-muted: #2b2f33; --color-ink-subtle: #4a5056;
     --color-line: #c9ccc6; --color-line-strong: #80878d;
-    --color-brand: #00703c; --color-brand-ink: #ffffff; --color-brand-soft: #e4f4e8;
+    --color-brand: #1e7b36; --color-brand-ink: #ffffff; --color-brand-soft: #e9f6ec;
     --color-ok: #1b6630; --color-ok-soft: #e2f2e6; --color-warn: #7f4b00; --color-warn-soft: #faedd8;
     --color-danger: #9a1f1c; --color-danger-soft: #fbe5e4; --color-info: #0c5886; --color-info-soft: #e0eef7;
     --color-pending: #535b63; --color-pending-soft: #eceeee; --chart-track: #e7e9e5;

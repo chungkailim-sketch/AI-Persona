@@ -15,7 +15,7 @@ import { cn } from '../cn';
 import { band, ENTRY_WEIGHTS, GEO_GATE, PILLAR_LABEL, PILLAR_SHORT, POTENTIAL_WEIGHTS, TIERS, type Pillar, type TierKey } from '@/roundtable/marketIndex';
 import type { Report, ReportPersona } from '@/roundtable/report';
 import { MarketMap, TIER_FILL } from './MarketMap';
-import { PersonaAvatar, PersonaCard, keyStats } from './PersonaCard';
+import { MarketHeader, PersonaAvatar, PersonaCard, TierHeader, keyStats } from './PersonaCard';
 import { ScaledSlide } from './ScaledSlide';
 
 const TIER_LABEL = Object.fromEntries(TIERS.map((t) => [t.key, t.label])) as Record<TierKey, string>;
@@ -37,6 +37,7 @@ function heatClass(score: number | null | undefined): string {
 function Slide({ section, title, source = SOURCE, page, children, className }: { section: string; title: ReactNode; source?: string | null; page: number; children: ReactNode; className?: string }) {
   return (
     <ScaledSlide>
+      <div aria-hidden className="absolute inset-x-0 top-0 h-1.5 bg-brand-gradient" />
       <div className="flex h-full flex-col px-14 pb-6 pt-10">
         <header className="flex items-start justify-between gap-6">
           <div className="min-w-0">
@@ -66,12 +67,13 @@ function Cover({ r }: { r: Report }) {
   const date = (r.roundtable.completedAt ?? new Date()).toISOString().slice(0, 10);
   return (
     <ScaledSlide>
+      <div aria-hidden className="absolute inset-x-0 bottom-0 h-3 bg-brand-gradient" />
       <div className="grid h-full grid-cols-[1fr_380px]">
         <div className="flex flex-col justify-between px-16 py-14">
           <BrandLogo height={40} />
           <div>
             <p className="text-[15px] font-bold uppercase tracking-[0.16em] text-brand-mark">AI Persona Roundtable</p>
-            <h1 className="mt-3 text-[50px] font-extrabold leading-[1.05] text-ink">{r.projectName}</h1>
+            <h1 className="mt-3 text-[50px] font-extrabold leading-[1.05] text-brand-mark">{r.projectName}</h1>
             <p className="mt-6 max-w-[640px] text-[22px] font-semibold leading-snug text-ink-muted">“{r.roundtable.question}”</p>
             {r.audience && <p className="mt-4 text-[15px] text-ink-subtle">{r.audience}</p>}
           </div>
@@ -128,7 +130,7 @@ function About({ page }: { page: number }) {
             <p className="text-[13px] font-bold uppercase tracking-wide text-brand">Benefits</p>
             <ul className="mt-2 flex flex-col gap-2">
               {BENEFITS.map((b) => (
-                <li key={b.title} className="rounded bg-brand-deep px-4 py-3 text-brand-deep-ink">
+                <li key={b.title} className="rounded-full bg-brand-deep px-4 py-3 text-brand-deep-ink">
                   <p className="text-[16px] font-bold">{b.title}</p>
                   <p className="text-[12.5px] opacity-90">{b.body}</p>
                 </li>
@@ -186,7 +188,7 @@ function Potential({ r, page }: { r: Report; page: number }) {
             </tbody>
           </table>
           {r.potential.some((p) => p.gated) && <p className="text-[11px] text-ink-subtle">* Capped by the policy gate.</p>}
-          <div className="rounded bg-brand-soft p-3">
+          <div className="rounded-full bg-brand-soft p-3">
             <p className="text-[12px] font-bold uppercase tracking-wide text-brand">Reading the data</p>
             <ul className="mt-1 flex flex-col gap-1 text-[12.5px] leading-snug text-ink">{(r.summary?.marketReading.potential ?? []).slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
           </div>
@@ -245,11 +247,11 @@ function Entry({ r, page }: { r: Report; page: number }) {
           <p className="mt-2 text-[10.5px] text-ink-subtle">† From the roundtable (not entered). Underlined: lead category. – : not entered or not in the cast.</p>
         </div>
         <div className="flex flex-col gap-3">
-          <div className="rounded bg-brand-soft p-3">
+          <div className="rounded-full bg-brand-soft p-3">
             <p className="text-[12px] font-bold uppercase tracking-wide text-brand">Interpretation</p>
             <ul className="mt-1 flex flex-col gap-1 text-[12px] leading-snug">{(r.summary?.marketReading.entry ?? []).slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
           </div>
-          <div className="rounded bg-brand-deep p-3 text-brand-deep-ink">
+          <div className="rounded-full bg-brand-deep p-3 text-brand-deep-ink">
             <p className="text-[12px] font-bold uppercase tracking-wide text-[var(--color-highlight)]">Entry strategy</p>
             <ul className="mt-1 flex flex-col gap-1 text-[12px] leading-snug">{(r.summary?.marketReading.strategy ?? []).slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
           </div>
@@ -286,9 +288,9 @@ function CastSlides({ r, start }: { r: Report; start: number }) {
           source={`Identities are illustrative; statistics are each segment's published shares against all adults in the market. ${SOURCE}`}>
           <div className="grid h-full gap-2" style={{ gridTemplateColumns: `120px repeat(${markets.length}, minmax(0, 1fr))`, gridTemplateRows: `auto repeat(${rows.length}, minmax(0, 1fr))` }}>
             <span />
-            {markets.map((m) => <p key={m} className="rounded-sm bg-brand-deep px-2 py-1 text-[14px] font-bold text-brand-deep-ink">{m}</p>)}
-            {rows.map((row) => (
-              <Row key={row.key} row={row} markets={markets} r={r} />
+            {markets.map((m) => <MarketHeader key={m} market={m} />)}
+            {rows.map((row, ri) => (
+              <Row key={row.key} row={row} index={ri} markets={markets} r={r} />
             ))}
           </div>
         </Slide>
@@ -297,13 +299,10 @@ function CastSlides({ r, start }: { r: Report; start: number }) {
   );
 }
 
-function Row({ row, markets, r }: { row: CastRow; markets: string[]; r: Report }) {
+function Row({ row, index, markets, r }: { row: CastRow; index: number; markets: string[]; r: Report }) {
   return (
     <>
-      <div className="flex flex-col justify-center">
-        <p className="text-[11px] font-bold uppercase tracking-wide text-brand-mark">{row.group}</p>
-        <p className="text-[14px] font-bold leading-tight">{row.label}</p>
-      </div>
+      <TierHeader index={index} group={row.group} label={row.label} />
       {markets.map((m) => {
         const p = r.cast.find((x) => x.profile.market === m && `${x.profile.group ?? ''}|${x.profile.tier}` === row.key);
         return (
@@ -345,7 +344,7 @@ function Roundtable({ r, page }: { r: Report; page: number }) {
             );
           })}
         </ul>
-        <div className="grid grid-cols-[1fr_auto] items-center gap-6 rounded bg-brand-deep px-5 py-3 text-brand-deep-ink">
+        <div className="grid grid-cols-[1fr_auto] items-center gap-6 rounded-full bg-brand-deep px-5 py-3 text-brand-deep-ink">
           <p className="text-[16px] font-semibold leading-snug"><span className="mr-2 text-[12px] font-bold uppercase tracking-wide text-[var(--color-highlight)]">Consensus</span>{r.summary?.consensus ?? '—'}</p>
           <p className="text-[12px] opacity-90">{`${r.view.bands.willing} willing · ${r.view.bands.depends} depends · ${r.view.bands.unlikely} not keen`}</p>
         </div>
@@ -404,7 +403,7 @@ function Heatmaps({ r, start }: { r: Report; start: number }) {
                 <li className="flex items-center gap-2"><span className="inline-block h-3 w-5 rounded-sm bg-[var(--heat-mid)]" /> 40–59 depends</li>
                 <li className="flex items-center gap-2"><span className="inline-block h-3 w-5 rounded-sm bg-[var(--heat-low)]" /> &lt;40 not keen</li>
               </ul>
-              <div className="rounded bg-brand-soft p-3">
+              <div className="rounded-full bg-brand-soft p-3">
                 <p className="text-[12px] font-bold uppercase tracking-wide text-brand">Key takeaways</p>
                 <ol className="mt-1 flex list-decimal flex-col gap-1.5 pl-4 text-[12.5px] leading-snug">{(r.summary?.takeaways ?? []).slice(0, 5).map((t, k) => <li key={k}>{t}</li>)}</ol>
               </div>
@@ -435,7 +434,7 @@ function Profile({ p, r, page }: { p: ReportPersona; r: Report; page: number }) 
               {id?.decisionLogic?.length ? <p className="mt-1 font-bold text-brand">{id.decisionLogic.join(' > ')}</p> : null}
             </div>
           </div>
-          <blockquote className="rounded bg-brand-deep p-4 text-[16px] font-semibold leading-snug text-brand-deep-ink">“{a.quote}”</blockquote>
+          <blockquote className="rounded-full bg-brand-deep p-4 text-[16px] font-semibold leading-snug text-brand-deep-ink">“{a.quote}”</blockquote>
           <div>
             <p className="text-[12px] font-bold uppercase tracking-wide text-brand">Mindset</p>
             <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-[12.5px]">

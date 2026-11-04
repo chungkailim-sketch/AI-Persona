@@ -99,7 +99,7 @@ export default async function PersonaPage(props: PageProps<'/projects/[projectId
               const a = (c.answer ?? {}) as { answer?: string; beyondData?: boolean; statIds?: string[]; isMock?: boolean };
               return (
                 <li key={c.id} className="flex flex-col gap-2">
-                  <p className="self-end rounded bg-brand-soft px-3 py-2 text-sm text-ink">{c.question}</p>
+                  <p className="self-end rounded-full bg-brand-soft px-3 py-2 text-sm text-ink">{c.question}</p>
                   <div className="flex items-start gap-2">
                     <PersonaAvatar name={persona.name} size={32} />
                     <div className="min-w-0 rounded border border-line bg-surface px-3 py-2">

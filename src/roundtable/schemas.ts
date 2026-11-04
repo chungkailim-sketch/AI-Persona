@@ -26,6 +26,8 @@ export const CastIdentity = z
     city: text(60),
     lifeStage: text(80),
     decisionLogic: strings(3, 40),
+    /** For each decision driver, the statistic that evidences it (shown as the driver's score). */
+    drivers: list(z.object({ factor: text(40), statId: text(6) }), 4).transform((a) => a.filter((d) => d.factor)),
     keyStatIds: strings(3, 6),
     oneLiner: text(200),
   })

@@ -47,7 +47,7 @@ export function NewProjectForm() {
       <button
         type="submit"
         disabled={pending}
-        className="self-start rounded bg-brand px-4 py-2 text-sm font-medium text-brand-ink disabled:opacity-50"
+        className="self-start rounded-full bg-brand px-4 py-2 text-sm font-medium text-brand-ink disabled:opacity-50"
       >
         {pending ? 'Creating…' : 'Create project'}
       </button>

@@ -31,6 +31,7 @@ const config: Config = {
         'brand-deep': 'var(--color-brand-deep)',
         'brand-deep-ink': 'var(--color-brand-deep-ink)',
         highlight: 'var(--color-highlight)',
+        sidebar: 'var(--color-sidebar)',
         ok: 'var(--color-ok)', 'ok-soft': 'var(--color-ok-soft)',
         warn: 'var(--color-warn)', 'warn-soft': 'var(--color-warn-soft)',
         danger: 'var(--color-danger)', 'danger-soft': 'var(--color-danger-soft)',
@@ -49,6 +50,7 @@ const config: Config = {
       },
       borderRadius: { sm: 'var(--radius-sm)', DEFAULT: 'var(--radius)', lg: 'var(--radius-lg)' },
       boxShadow: { card: 'var(--shadow-card)', pop: 'var(--shadow-pop)' },
+      backgroundImage: { 'brand-gradient': 'var(--gradient-brand)' },
       maxWidth: { content: 'var(--width-content)', wide: 'var(--width-wide)', prose: 'var(--width-prose)' },
       transitionDuration: {
         instant: 'var(--motion-instant)',

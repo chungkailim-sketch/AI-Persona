@@ -1,10 +1,12 @@
 /**
- * One cast persona, as on the cast slide: portrait, name and age, occupation and city, life stage,
- * decision logic and three key statistics with the tier's base. The identity is illustrative and
- * says so; the statistics are published figures.
+ * One persona in the format of the RF cast slide: round portrait, name • age, occupation · city,
+ * life stage, then the decision logic with each driver's score — the share of the published
+ * statistic that evidences it, with its difference from the market where it stands out. The
+ * identity is illustrative and says so; the scores are published figures.
  */
 import type { ReactNode } from 'react';
 import type { CastProfile } from '@/roundtable/engine';
+import { isoCode } from './markets';
 import { cn } from '../cn';
 
 export function initials(name: string): string {
@@ -13,15 +15,12 @@ export function initials(name: string): string {
 }
 
 export function PersonaAvatar({ name, portraitUrl, size = 56, className }: { name: string; portraitUrl?: string | null; size?: number; className?: string }) {
+  const ring = 'shrink-0 rounded-full ring-2 ring-brand-mark ring-offset-2 ring-offset-[var(--color-surface)]';
   if (portraitUrl) {
-    return <img src={portraitUrl} alt="" width={size} height={size} className={cn('shrink-0 rounded-full object-cover', className)} style={{ width: size, height: size }} />;
+    return <img src={portraitUrl} alt="" width={size} height={size} className={cn(ring, 'object-cover', className)} style={{ width: size, height: size }} />;
   }
   return (
-    <span
-      aria-hidden
-      className={cn('inline-flex shrink-0 items-center justify-center rounded-full bg-brand-soft font-bold text-brand', className)}
-      style={{ width: size, height: size, fontSize: size * 0.36 }}
-    >
+    <span aria-hidden className={cn(ring, 'inline-flex items-center justify-center bg-brand-soft font-bold text-brand', className)} style={{ width: size, height: size, fontSize: size * 0.36 }}>
       {initials(name)}
     </span>
   );
@@ -32,30 +31,76 @@ export function keyStats(profile: CastProfile) {
   return ids.map((id) => profile.stats.find((s) => s.id === id)).filter((s): s is NonNullable<typeof s> => Boolean(s));
 }
 
+/** "Quality 49 (+9)" for each decision driver that cites a statistic. */
+export function driverScores(profile: CastProfile): { factor: string; score: number; diff: number }[] {
+  return (profile.identity?.drivers ?? [])
+    .map((d) => ({ d, s: profile.stats.find((x) => x.id === d.statId) }))
+    .filter((x): x is { d: { factor: string; statId: string }; s: NonNullable<typeof x.s> } => Boolean(x.s))
+    .map(({ d, s }) => ({ factor: d.factor, score: Math.round(s.share), diff: Math.round(s.diff) }));
+}
+
+/** Market column head: the name (translated with the interface) over the English name and ISO code. */
+export function MarketHeader({ market, className }: { market: string; className?: string }) {
+  const iso = isoCode(market);
+  return (
+    <div className={cn('rounded-sm bg-brand px-2 py-1.5 text-center text-brand-ink', className)}>
+      <p className="text-[15px] font-bold leading-tight">{market}</p>
+      <p data-no-translate className="zh-only text-[10.5px] font-medium opacity-90">{iso ? `${market} - ${iso}` : market}</p>
+      {iso && <p data-no-translate className="en-only text-[10.5px] font-medium opacity-90">{iso}</p>}
+    </div>
+  );
+}
+
+const ROW = ['bg-[var(--tier-row-1)] text-[var(--tier-row-1-ink)]', 'bg-[var(--tier-row-2)] text-[var(--tier-row-2-ink)]', 'bg-[var(--tier-row-3)] text-[var(--tier-row-3-ink)]'];
+
+/** Tier row head: a solid block, dark to pale, with the tier, its name and the English name. */
+export function TierHeader({ index, group, label, className }: { index: number; group: string; label: string; className?: string }) {
+  return (
+    <div className={cn('flex h-full flex-col items-center justify-center rounded-lg px-2 py-3 text-center', ROW[index % 3], className)}>
+      <p className="text-[10.5px] font-bold uppercase tracking-wide opacity-90">{`Tier ${index + 1}`}</p>
+      <p className="text-[16px] font-extrabold leading-tight">{label}</p>
+      <p data-no-translate className="zh-only mt-0.5 text-[10.5px] opacity-90">{label}</p>
+      {group && <p className="mt-1 text-[10px] opacity-75">{group}</p>}
+    </div>
+  );
+}
+
 export function PersonaCard({ name, profile, portraitUrl, compact = false, footer }: { name: string; profile: CastProfile; portraitUrl?: string | null; compact?: boolean; footer?: ReactNode }) {
   const id = profile.identity;
+  const drivers = driverScores(profile);
   const stats = keyStats(profile);
   return (
-    <article className="flex h-full flex-col gap-2 rounded border border-line bg-surface p-3" data-persona-card>
+    <article className="flex h-full flex-col gap-2 rounded-lg border border-line bg-surface p-3 shadow-card" data-persona-card>
       <div className="flex items-start gap-3">
-        <PersonaAvatar name={name} portraitUrl={portraitUrl} size={compact ? 40 : 52} />
+        <PersonaAvatar name={name} portraitUrl={portraitUrl} size={compact ? 50 : 56} />
         <div className="min-w-0">
-          <h3 className="font-sans text-[15px] font-bold leading-tight text-ink">
+          <h3 className={cn('font-sans font-bold leading-tight text-ink', compact ? 'text-[14px]' : 'text-[16px]')}>
             {name}
-            {id?.age ? <span className="font-medium text-ink-muted"> • {id.age}</span> : null}
+            {id?.age ? <span>{` • ${id.age}`}</span> : null}
           </h3>
           {id && <p className="text-xs text-ink-muted">{[id.occupation, id.city].filter(Boolean).join(' · ')}</p>}
-          {id?.lifeStage && <p className="text-xs text-ink-subtle">{id.lifeStage}</p>}
+          {id?.lifeStage && <p className="text-xs text-ink-muted">{id.lifeStage}</p>}
         </div>
       </div>
       {id?.decisionLogic?.length ? (
-        <p className="rounded-sm bg-brand-soft px-2 py-1 text-xs font-semibold text-brand">{id.decisionLogic.join(' > ')}</p>
+        <div className="rounded-md bg-brand-soft px-2.5 py-1.5">
+          <p className="text-xs text-ink">
+            <b className="text-brand">Decision logic</b> <span className="font-semibold">{id.decisionLogic.join(' > ')}</span>
+          </p>
+          {(drivers.length > 0 || stats.length > 0) && (
+            <p className="mt-0.5 text-[11px] text-ink-muted">
+              {drivers.length > 0
+                ? drivers.map((d) => `${d.factor} ${d.score}${Math.abs(d.diff) >= 5 ? ` (${d.diff > 0 ? '+' : ''}${d.diff})` : ''}`).join(' · ')
+                : stats.map((s) => `${Math.round(s.share)}% ${s.statement.slice(0, 32)}${s.statement.length > 32 ? '…' : ''}`).join(' · ')}
+            </p>
+          )}
+        </div>
       ) : null}
       {!compact && (
-        <ul className="flex flex-col gap-1.5">
+        <ul className="flex flex-col gap-1">
           {stats.map((s) => (
-            <li key={s.id} className="flex gap-2 text-xs">
-              <span className="w-10 shrink-0 text-right font-bold text-brand">{Math.round(s.share)}%</span>
+            <li key={s.id} className="flex gap-2 text-[11.5px]">
+              <span className="w-9 shrink-0 text-right font-bold text-brand">{Math.round(s.share)}%</span>
               <span className="text-ink-muted">
                 {s.statement}
                 {s.response && !/^agree$/i.test(s.response) ? ` — ${s.response}` : ''}

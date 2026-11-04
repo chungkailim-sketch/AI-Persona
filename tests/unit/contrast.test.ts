@@ -38,7 +38,7 @@ function ratio(a: string, b: string): number {
 }
 
 const TEXT = ['--color-ink', '--color-ink-muted', '--color-ink-subtle', '--color-link', '--color-ok', '--color-warn', '--color-danger', '--color-info', '--color-pending', '--color-brand', '--color-observed', '--color-derived', '--color-inferred', '--color-simulated'];
-const SURFACES = ['--color-bg', '--color-surface', '--color-elevated', '--color-input', '--color-surface-raised'];
+const SURFACES = ['--color-bg', '--color-surface', '--color-elevated', '--color-input', '--color-surface-raised', '--color-sidebar'];
 
 describe.each([
   ['light', light],

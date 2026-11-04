@@ -5,9 +5,12 @@
  * statement is true), a choice (one of 2–255 values, with a probability for each) or a score (an
  * expected position on 2–10 ordered levels). The reply is an `answers` array in question order.
  *
- * The official reference could not be read from this deployment's build environment, so the reply
- * is parsed leniently: an answer is matched by name or position, and the usual field spellings are
- * accepted. Without a key, a deterministic local stand-in answers and every answer says so.
+ * Request and reply follow the official guide (developers.openai.com/api/docs/guides/decisions):
+ * questions carry a unique `name`, echoed on each answer; choice and score answers return
+ * `probabilities` as [{ value, probability }] (score entries also carry the level `label`) and a
+ * `confidence`; an answer of type "refusal" means the model declined that question. The reply is
+ * still read leniently (matched by name, then position). Without a key, a deterministic local
+ * stand-in answers and every answer says so.
  */
 import { createHash } from 'node:crypto';
 import { decisionsConfigured, env } from '@/lib/env';
@@ -29,6 +32,8 @@ export interface DecisionAnswer {
   /** score: expected zero-based level index (may be fractional) */
   score?: number;
   confidence?: number;
+  /** The model declined to answer this question. */
+  refused?: boolean;
 }
 
 export interface DecisionResult {
@@ -55,7 +60,8 @@ function probabilityMap(raw: unknown, keys: string[]): Record<string, number> | 
     raw.forEach((x, i) => {
       if (x && typeof x === 'object') {
         const o = x as Record<string, unknown>;
-        const k = String(o.value ?? o.label ?? o.choice ?? keys[i] ?? i);
+        // Score levels come back as { value: index, label }; key them by label.
+        const k = String(o.label ?? o.value ?? o.choice ?? keys[i] ?? i);
         const p = num(o.probability ?? o.p);
         if (p !== undefined) out[k] = p;
       } else if (num(x) !== undefined && keys[i] !== undefined) out[keys[i]!] = num(x)!;
@@ -78,6 +84,7 @@ export function parseDecisionResponse(body: unknown, questions: DecisionQuestion
     const a = list.find((x) => x && (x.name === q.name || x.question === q.name || x.id === q.name)) ?? list[i] ?? {};
     const inner = (a.answer && typeof a.answer === 'object' ? a.answer : a) as Record<string, unknown>;
     const out: DecisionAnswer = { name: q.name, type: q.type, confidence: num(inner.confidence ?? a.confidence) };
+    if (a.type === 'refusal') return { ...out, refused: true };
     if (q.type === 'predicate') {
       out.probability = num(inner.probability ?? inner.p ?? inner.probability_true ?? (typeof inner.answer === 'number' ? inner.answer : undefined));
       if (out.probability === undefined && typeof (inner.answer ?? inner.value) === 'boolean') out.probability = (inner.answer ?? inner.value) ? 1 : 0;

@@ -136,7 +136,9 @@ export async function executeCast(input: CastJobInput): Promise<{ cohortId: stri
           'Invent a plausible, ordinary person typical of that tier: a common local name for the market, an age, gender,',
           'occupation and city that fit the tier, a life stage, and the three things that drive their purchase decisions',
           'in order (e.g. "Quality", "Price", "Convenience"). Do not use the name of any real public figure.',
-          'Choose the three statistics (by id) that best characterise the tier for a reader.',
+          'Choose the three statistics (by id) that best characterise the tier for a reader. For each of the three decision',
+          'drivers, give the id of the statistic that best evidences it (empty if none does) — its share is shown as the',
+          "driver's score.",
           languageRule(input.language),
           'Reply with a single JSON object in the shape you are given. No prose outside it.',
         ].join('\n'),
@@ -152,7 +154,7 @@ export async function executeCast(input: CastJobInput): Promise<{ cohortId: stri
               `STAT IDS: ${profile.stats.map((s) => s.id).join(' | ')}`,
               '',
               'Respond with JSON: { "name": string, "age": number, "gender": string, "occupation": string, "city": string, "lifeStage": string, ' +
-                '"decisionLogic": [string, string, string], "keyStatIds": [string, string, string], "oneLiner": string }',
+                '"decisionLogic": [string, string, string], "drivers": [{ "factor": string, "statId": string }], "keyStatIds": [string, string, string], "oneLiner": string }',
             ]
               .filter(Boolean)
               .join('\n'),
@@ -168,7 +170,12 @@ export async function executeCast(input: CastJobInput): Promise<{ cohortId: stri
       if (!r.ok || !r.value) continue; // the card keeps its statistics and shows initials
       const valid = new Set(profile.stats.map((s) => s.id));
       const picked = r.value.keyStatIds.map((i) => i.trim().toUpperCase()).filter((i) => valid.has(i));
-      const identity = { ...r.value, keyStatIds: picked.length ? picked.slice(0, 3) : profile.stats.slice(0, 3).map((s) => s.id) };
+      const identity = {
+        ...r.value,
+        keyStatIds: picked.length ? picked.slice(0, 3) : profile.stats.slice(0, 3).map((s) => s.id),
+        // A driver's score is the share of the statistic it cites; one that cites nothing has no score.
+        drivers: r.value.drivers.map((d) => ({ factor: d.factor, statId: valid.has(d.statId.trim().toUpperCase()) ? d.statId.trim().toUpperCase() : '' })),
+      };
       await prisma.$transaction([
         prisma.personaVersion.update({ where: { id: v.id }, data: { profile: { ...profile, identity } as object } }),
         prisma.persona.update({ where: { id: p.id }, data: { name: identity.name } }),

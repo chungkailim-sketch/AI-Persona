@@ -33,9 +33,9 @@ export function CollapsibleSideNavigation({ isAdmin, collapsed, onNavigate }: { 
                 aria-current={active ? 'page' : undefined}
                 aria-label={collapsed ? s.label : undefined}
                 className={cn(
-                  'motion-color flex items-center gap-2.5 rounded px-2.5 py-2 text-sm',
+                  'motion-color flex items-center gap-3 rounded-full px-3 py-2 text-[15px] font-medium tracking-[-0.02em]',
                   collapsed && 'justify-center px-0',
-                  active ? 'bg-brand-soft font-medium text-brand' : 'text-ink-muted hover:bg-bg hover:text-ink',
+                  active ? 'bg-brand-soft font-semibold text-brand' : 'text-ink hover:bg-surface hover:text-brand',
                 )}
               >
                 <Icon name={s.icon} size={17} className="shrink-0" />

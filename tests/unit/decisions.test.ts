@@ -28,6 +28,22 @@ describe('Decisions API replies', () => {
     expect(a[2]).toMatchObject({ score: 1.43, probabilities: { Good: 0.53 } });
   });
 
+  it('reads the reply exactly as the official guide shows it, including a refusal', () => {
+    const a = parseDecisionResponse(
+      {
+        answers: [
+          { type: 'refusal', name: 'ready' },
+          { type: 'choice', name: 'next', choice: 'a', probabilities: [{ value: 'a', probability: 0.95 }, { value: 'b', probability: 0.05 }], confidence: 0.93 },
+          { type: 'score', name: 'fit', score: 1.1, probabilities: [{ value: 0, label: 'Poor', probability: 0.1 }, { value: 1, label: 'Fair', probability: 0.7 }, { value: 2, label: 'Good', probability: 0.2 }], confidence: 0.55 },
+        ],
+      },
+      Q,
+    );
+    expect(a[0]).toMatchObject({ name: 'ready', refused: true });
+    expect(a[1]).toMatchObject({ choice: 'a', probabilities: { a: 0.95, b: 0.05 }, confidence: 0.93 });
+    expect(a[2]).toMatchObject({ score: 1.1, probabilities: { Poor: 0.1, Fair: 0.7, Good: 0.2 } });
+  });
+
   it('falls back to position and to the most probable choice', () => {
     const a = parseDecisionResponse({ answers: [{ answer: true }, { probabilities: { a: 0.9, b: 0.1 } }, { expected_score: 2 }] }, Q);
     expect(a[0]!.probability).toBe(1);

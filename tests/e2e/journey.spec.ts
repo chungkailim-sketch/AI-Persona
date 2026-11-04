@@ -67,7 +67,7 @@ test('from upload to a slide report in five steps', async ({ page }) => {
   await page.getByRole('button', { name: 'Build personas' }).click();
   await expect(page.locator('[data-persona-card]')).toHaveCount(9, { timeout: 60_000 });
   await expect(page.getByRole('columnheader', { name: 'Indonesia' })).toBeVisible();
-  await expect(page.getByText('Premium Pioneers')).toBeVisible();
+  await expect(page.getByText('Premium Pioneers').first()).toBeVisible();
   await shot(page, '3-personas');
   await page.getByRole('button', { name: 'Approve personas' }).click();
   await expect(page.getByText('Approved', { exact: true })).toBeVisible();

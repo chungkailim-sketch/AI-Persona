@@ -13,6 +13,7 @@ const pct = (p: number) => `${Math.round(p * 100)}%`;
 function Answer({ q, a }: { q: DecisionQuestion; a: DecisionAnswer | undefined }) {
   const label = QUESTION_LABEL[q.name] ?? q.name;
   if (!a) return null;
+  if (a.refused) return <li className="text-sm text-ink-muted">{label}: <span className="text-warn">declined to answer</span></li>;
   if (q.type === 'predicate') {
     const p = a.probability ?? 0;
     return (

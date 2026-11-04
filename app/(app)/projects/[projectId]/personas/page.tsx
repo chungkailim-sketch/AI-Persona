@@ -10,7 +10,7 @@ import { proposeParameters } from '@/roundtable/parameters';
 import type { CastProfile } from '@/roundtable/engine';
 import { getDebate, listDebates } from '@/debate/service';
 import { fmtDateTime } from '@/lib/time';
-import { PersonaCard } from '@/ui/report/PersonaCard';
+import { MarketHeader, PersonaCard, TierHeader } from '@/ui/report/PersonaCard';
 import { WorkflowNav } from '../WorkflowNav';
 import { DecisionGuidance } from '../DecisionGuidance';
 import { RefreshWhileImporting } from '../data/RefreshWhileImporting';
@@ -138,18 +138,17 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
             <table className="w-full min-w-[720px] border-separate border-spacing-2">
               <thead>
                 <tr>
-                  <th scope="col" className="w-32" />
+                  <th scope="col" className="w-36" />
                   {castMarkets.map((m) => (
-                    <th key={m} scope="col" className="rounded-sm bg-brand-deep px-2 py-2 text-left text-sm font-bold text-brand-deep-ink">{m}</th>
+                    <th key={m} scope="col" className="p-0 font-normal"><MarketHeader market={m} /></th>
                   ))}
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {rows.map((row, ri) => (
                   <tr key={row.key}>
-                    <th scope="row" className="align-top text-left">
-                      <span className="block text-[11px] font-bold uppercase tracking-wide text-brand">{row.group}</span>
-                      <span className="block text-sm font-semibold text-ink">{row.label}</span>
+                    <th scope="row" className="h-px p-0 align-top font-normal">
+                      <TierHeader index={ri} group={row.group} label={row.label} />
                     </th>
                     {castMarkets.map((m) => {
                       const p = people.find((x) => x.profile?.market === m && `${x.profile.group ?? ''}|${x.profile.tier}` === row.key);
@@ -158,7 +157,7 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
                           {p?.profile ? (
                             <div className="flex h-full flex-col gap-1">
                               <Link href={`/projects/${projectId}/personas/${p.id}` as Route} className="block h-full rounded outline-offset-2 hover:ring-2 hover:ring-brand-mark" aria-label={`Open ${p.name}`}>
-                                <PersonaCard name={p.name} profile={p.profile} portraitUrl={null} footer={modules.has('interviews') ? <span className="text-xs font-semibold text-link">Open and interview →</span> : undefined} />
+                                <PersonaCard name={p.name} profile={p.profile} portraitUrl={null} compact footer={modules.has('interviews') ? <span className="text-xs font-semibold text-link">Open and interview →</span> : undefined} />
                               </Link>
                               {canEdit && !approved && <RenamePersona projectId={projectId} personaId={p.id} name={p.name} />}
                             </div>
@@ -226,7 +225,7 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
 
       {approved && (
         <div className="flex justify-end">
-          <Link href={`/projects/${projectId}/${nextStep.href}` as Route} className="rounded bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
+          <Link href={`/projects/${projectId}/${nextStep.href}` as Route} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
             {nextStep.label}
           </Link>
         </div>

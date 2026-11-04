@@ -59,6 +59,7 @@ function body(schemaName: string, rng: () => number, personaKey: string, request
         city: '[MOCK] Capital city',
         lifeStage: pick(rng, ['Single, renting', 'Married, young children', 'Married, children at school']),
         decisionLogic: ['Quality', 'Price', 'Convenience'],
+        drivers: ['Quality', 'Price', 'Convenience'].map((factor, i) => ({ factor, statId: listed(request, 'STAT IDS')[i] ?? '' })),
         keyStatIds: listed(request, 'STAT IDS').slice(0, 3),
         oneLiner: '[MOCK] Placeholder persona produced locally; says nothing about the world.',
       };

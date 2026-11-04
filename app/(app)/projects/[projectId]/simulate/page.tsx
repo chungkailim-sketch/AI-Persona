@@ -126,7 +126,7 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
       {rt?.status === 'COMPLETED' && <div className="max-w-3xl"><DecisionGuidance projectId={projectId} checkpoint="ROUNDTABLE" canAsk={can(ctx, 'project.edit', projectId)} /></div>}
       {rt?.status === 'COMPLETED' && (
         <div className="flex max-w-3xl justify-end">
-          <Link href={`/projects/${projectId}/results` as Route} className="rounded bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
+          <Link href={`/projects/${projectId}/results` as Route} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
             Next: Results →
           </Link>
         </div>
