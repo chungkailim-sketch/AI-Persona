@@ -10,7 +10,7 @@ export function GenerateForm({ disabled }: { disabled: boolean }) {
         <input type="checkbox" name="force" /> Regenerate every portrait, including those already photographs
       </label>
       <div>
-        <button type="submit" disabled={pending || disabled} className="rounded-full bg-action px-4 py-2 text-sm font-semibold text-action-ink hover:opacity-90 disabled:opacity-50">
+        <button type="submit" disabled={pending || disabled} className="rounded-full bg-action px-6 py-2.5 text-[13px] font-medium tracking-wide text-action-ink hover:opacity-90 disabled:opacity-50">
           {pending ? 'Starting…' : 'Generate photo headshots'}
         </button>
       </div>

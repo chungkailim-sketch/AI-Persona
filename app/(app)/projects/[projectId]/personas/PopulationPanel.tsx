@@ -68,7 +68,7 @@ export function PopulationForm({ projectId, sources }: { projectId: string; sour
 export function CohortFromPopulationForm({ projectId, sampleId, cells, defaultCount }: { projectId: string; sampleId: string; cells: number; defaultCount: number }) {
   const [state, action] = useActionState(cohortFromPopulationAction, empty);
   return (
-    <form action={action} className="mt-1 flex flex-col gap-3 rounded border border-line bg-surface px-3.5 py-3">
+    <form action={action} className="mt-1 flex flex-col gap-3 border-t border-line px-3.5 py-3">
       <input type="hidden" name="projectId" value={projectId} />
       <input type="hidden" name="sampleId" value={sampleId} />
       <p className="text-sm text-ink">Turn this sample into a cohort</p>
@@ -127,7 +127,7 @@ export function AdherencePanel({ projectId, cohortId, latest, canRun }: { projec
     </div>
   );
   return (
-    <div className="mt-4 rounded border border-line bg-surface px-3.5 py-3">
+    <div className="mt-4 border-t border-line px-3.5 py-3">
       <div className="flex flex-wrap items-center gap-2">
         <h3 className="font-sans text-sm font-medium text-ink">Persona adherence (contrast test)</h3>
         {v && <span className={`rounded-sm border px-1.5 font-mono text-[10.5px] ${v.tone}`}>{v.label}</span>}

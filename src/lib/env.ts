@@ -28,8 +28,11 @@ const schema = z.object({
   DECISIONS_MODEL: z.string().default('gpt-6-luna'),
   /** Hugging Face token for the image model that generates the photographic persona headshots. */
   HF_TOKEN: z.string().optional(),
-  IMAGE_PROVIDER: z.string().default('fal-ai'),
-  IMAGE_MODEL: z.string().default('stabilityai/stable-diffusion-xl-base-1.0'),
+  /** Key for the OpenAI image model; when blank, OPENAI_API_KEY is used. */
+  IMAGE_API_KEY: z.string().optional(),
+  /** "openai" (the OpenAI Images API) or a Hugging Face provider such as "fal-ai". */
+  IMAGE_PROVIDER: z.string().default('openai'),
+  IMAGE_MODEL: z.string().default('gpt-image-1-mini'),
   DECISIONS_API_URL: z.string().url().default('https://api.openai.com/v1/decisions'),
   EMAIL_PROVIDER: z.enum(['dev', 'postmark', 'ses', 'sendgrid', 'smtp']).default('dev'),
   EMAIL_FROM: z.string().default('no-reply@example.com'),
@@ -186,8 +189,18 @@ export interface IntegrationStatus {
 }
 
 /** A real OpenAI key is set (a placeholder left in the variable does not count). */
+/** The key the image provider will use, or null when none is set. */
+export function imageKey(e: AppEnv = env()): string | null {
+  if (e.IMAGE_PROVIDER === 'openai') {
+    const k = (e.IMAGE_API_KEY?.trim() || e.OPENAI_API_KEY?.trim() || '');
+    return /^sk-/.test(k) ? k : null;
+  }
+  const t = e.HF_TOKEN?.trim() ?? '';
+  return t.length > 8 ? t : null;
+}
+
 export function imagesConfigured(e: AppEnv = env()): boolean {
-  return Boolean(e.HF_TOKEN && e.HF_TOKEN.trim().length > 8);
+  return imageKey(e) !== null;
 }
 
 export function decisionsConfigured(e: AppEnv = env()): boolean {

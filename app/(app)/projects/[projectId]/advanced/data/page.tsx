@@ -267,7 +267,7 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
           <p className="mt-1 max-w-prose text-xs text-ink-subtle">{QUALITY_CAVEAT}</p>
           <ul className="mt-3 grid gap-2 sm:grid-cols-2">
             {detail.version.quality.map((c) => (
-              <li key={c.id} className="rounded border border-line bg-surface p-3">
+              <li key={c.id} className="border-t border-line p-3">
                 <div className="flex items-baseline justify-between gap-2">
                   <span className="text-sm text-ink">{c.label}</span>
                   <span className="font-mono text-sm text-ink-muted">

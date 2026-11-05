@@ -33,14 +33,14 @@ export default async function DashboardPage() {
           </Link>
         </div>
         {projects.length === 0 ? (
-          <div className="mt-3 rounded border border-line bg-surface p-6">
+          <div className="mt-3 border-t border-line p-6">
             <p className="text-sm text-ink-muted">
               Nothing here yet. A project is where evidence, a brief, personas and runs live
               together.
             </p>
             <Link
               href="/projects"
-              className="mt-4 inline-block rounded-full bg-action px-4 py-2 text-sm font-medium text-action-ink hover:opacity-90"
+              className="mt-4 inline-block rounded-full bg-action px-6 py-2.5 text-[13px] font-medium tracking-wide text-action-ink hover:opacity-90"
             >
               Create your first project
             </Link>
@@ -51,7 +51,7 @@ export default async function DashboardPage() {
               <li key={p.id}>
                 <Link
                   href={`/projects/${p.id}/data`}
-                  className="block rounded border border-line bg-surface p-4 hover:border-brand"
+                  className="block border-t border-line p-4 hover:border-brand"
                 >
                   <span className="font-medium text-ink">{p.name}</span>
                   <p className="mt-1 text-xs text-ink-subtle">
@@ -66,7 +66,7 @@ export default async function DashboardPage() {
 
       <section aria-labelledby="waiting" className="mt-12">
         <h2 id="waiting" className="text-lg">Waiting on you</h2>
-        <p className="mt-3 rounded border border-line bg-surface px-4 py-4 text-sm text-ink-muted">
+        <p className="mt-3 border-t border-line px-4 py-4 text-sm text-ink-muted">
           Persona approvals, governance confirmations and failed jobs will appear here once those
           capabilities are built. This panel is empty because nothing produces those items yet — not
           because you have nothing outstanding.

@@ -2,7 +2,7 @@ import type { FindingsDetail } from '@/report/summary';
 
 function Stat({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
-    <div className="rounded border border-line bg-surface px-3 py-2">
+    <div className="border-t border-line px-3 py-2">
       <p className="text-[11px] text-ink-subtle">{label}</p>
       <p className="mt-0.5 font-mono text-lg text-ink">{value}</p>
       {sub && <p className="text-[11px] text-ink-subtle">{sub}</p>}
@@ -102,7 +102,7 @@ export function FindingsDetailPanel({ detail }: { detail: FindingsDetail }) {
           <h3 className="text-sm font-medium text-ink">In the personas&rsquo; words</h3>
           <ul className="mt-1 grid gap-2 md:grid-cols-2">
             {d.quotes.map((q) => (
-              <li key={`${q.persona}-${q.stance}`} className="rounded border border-line bg-surface px-3 py-2">
+              <li key={`${q.persona}-${q.stance}`} className="border-t border-line px-3 py-2">
                 <p className="text-[11px] text-ink-subtle">
                   {q.segment} · <span className="font-mono">{q.stance}</span>{q.confidence !== null && ` · confidence ${q.confidence.toFixed(2)}`}
                 </p>

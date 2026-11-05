@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
-import '@fontsource-variable/manrope';
+import '@fontsource/be-vietnam-pro/300.css';
+import '@fontsource/be-vietnam-pro/400.css';
+import '@fontsource/be-vietnam-pro/500.css';
+import '@fontsource/be-vietnam-pro/600.css';
 import '@fontsource-variable/noto-sans-sc';
 import './globals.css';
 import { HydrationMarker } from '@/ui/HydrationMarker';

@@ -7,7 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { listProjectsForUser } from '@/server/projects';
 import { activeRunsFor } from '@/server/activity';
 import { ApplicationShell } from '@/ui/shell/ApplicationShell';
-import { NAV_COOKIE, THEME_COOKIE, parseThemePreference } from '@/ui/theme/theme';
+import { THEME_COOKIE, parseThemePreference } from '@/ui/theme/theme';
 
 /**
  * Application shell.
@@ -44,7 +44,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <ApplicationShell
-      initialCollapsed={jar.get(NAV_COOKIE)?.value === 'collapsed'}
       top={{
         userEmail: user.email,
         userRole: user.systemRole,

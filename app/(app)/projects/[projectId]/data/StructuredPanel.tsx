@@ -32,7 +32,7 @@ export function StructuredPanel({
     <div className="flex flex-col gap-3">
       {canDownload && (
         <p className="flex flex-wrap items-center gap-2 text-xs text-ink-muted">
-          <a href={`${base}/datapackage.json`} download className="rounded border border-line bg-surface px-2 py-1 font-mono text-[11px] text-brand hover:border-line-strong">
+          <a href={`${base}/datapackage.json`} download className="border-t border-line px-2 py-1 font-mono text-[11px] text-brand hover:border-line-strong">
             datapackage.json
           </a>
           Frictionless Data Package: every table&rsquo;s schema, types, units and provenance, readable by pandas, R, DuckDB and most BI tools.

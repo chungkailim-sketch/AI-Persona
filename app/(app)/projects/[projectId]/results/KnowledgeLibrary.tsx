@@ -38,7 +38,7 @@ export function KnowledgeLibrary({ entries, industries }: { entries: KnowledgeEn
       </div>
       <ul className="grid gap-3 md:grid-cols-2">
         {shown.map((k) => (
-          <li key={k.id} className="flex flex-col gap-2 rounded border border-line bg-surface p-4">
+          <li key={k.id} className="flex flex-col gap-2 border-t border-line p-4">
             <div className="flex items-start justify-between gap-2">
               <h4 className="text-[15px] font-bold text-ink">{k.title}</h4>
               <span className="shrink-0 rounded-sm bg-brand-soft px-1.5 py-0.5 text-[10.5px] font-semibold uppercase text-brand">{k.kind}</span>

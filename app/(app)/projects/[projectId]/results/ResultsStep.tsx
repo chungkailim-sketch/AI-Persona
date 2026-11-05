@@ -90,7 +90,7 @@ export function EvidenceDrawer({ finding, panelSize }: { finding: FindingRow; pa
   const changed = finding.votes.filter((v) => v.changed).length;
 
   return (
-    <li className="rounded border border-line bg-surface p-5">
+    <li className="border-t border-line p-5">
       <p className="text-base text-ink">{finding.claim}</p>
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -206,7 +206,7 @@ export function ClaimCheckPanel({
           </p>
           <ul className="mt-3 flex flex-col gap-3">
             {checked.map((c) => (
-              <li key={c.claim} className="rounded border border-line bg-surface p-4">
+              <li key={c.claim} className="border-t border-line p-4">
                 <p className="text-sm text-ink">&ldquo;{c.claim}&rdquo;</p>
                 <ul className="mt-2 flex flex-col gap-2">
                   {c.issues.map((i) => (

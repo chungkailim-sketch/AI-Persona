@@ -18,7 +18,7 @@ export default async function AdminAuditPage() {
       </p>
 
       {events.length === 0 ? (
-        <p className="mt-6 rounded border border-line bg-surface px-4 py-6 text-sm text-ink-muted">
+        <p className="mt-6 border-t border-line px-4 py-6 text-sm text-ink-muted">
           No events recorded yet.
         </p>
       ) : (

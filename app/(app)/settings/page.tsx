@@ -65,7 +65,7 @@ export default async function SettingsPage() {
           {sessions.map((s) => (
             <li
               key={s.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded border border-line bg-surface px-4 py-3"
+              className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3"
             >
               <div className="text-sm">
                 <p className="text-ink">
@@ -94,7 +94,7 @@ export default async function SettingsPage() {
 
       <section aria-labelledby="notifications" className="mt-12">
         <h2 id="notifications" className="text-lg">Notifications</h2>
-        <p className="mt-2 max-w-prose rounded border border-line bg-surface px-4 py-4 text-sm text-ink-muted">
+        <p className="mt-2 max-w-prose border-t border-line px-4 py-4 text-sm text-ink-muted">
           <span className="mr-2 rounded bg-warn-soft px-2 py-0.5 font-mono text-[10px] uppercase text-warn">
             Not available in this build
           </span>

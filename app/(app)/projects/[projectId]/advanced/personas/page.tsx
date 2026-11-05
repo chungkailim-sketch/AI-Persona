@@ -363,7 +363,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
               </div>
 
               {cohort.generationNote && (
-                <p className="mt-2 max-w-prose rounded border border-line bg-surface px-3 py-2 text-xs text-ink-muted">
+                <p className="mt-2 max-w-prose border-t border-line px-3 py-2 text-xs text-ink-muted">
                   {cohort.generationNote}
                 </p>
               )}
@@ -447,7 +447,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
             {debateView ? (
               <DebateDetail debate={debateView} />
             ) : (
-              <p className="rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">No debate yet. Enter a topic and run one.</p>
+              <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">No debate yet. Enter a topic and run one.</p>
             )}
           </div>
         </div>
@@ -543,7 +543,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
                 </div>
               </div>
             ) : (
-              <p className="rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">No population sample yet.</p>
+              <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">No population sample yet.</p>
             )}
           </div>
         </div>
@@ -565,7 +565,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
       )}
 
       {!canCreate && (
-        <p className="mt-10 max-w-prose rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">
+        <p className="mt-10 max-w-prose border-t border-line px-4 py-3 text-sm text-ink-muted">
           You can read this cohort but not change it.
         </p>
       )}

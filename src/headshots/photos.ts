@@ -1,15 +1,15 @@
 /**
  * Replace the illustrated headshots with synthetic photographic portraits (server only).
  *
- * Each catalog entry is described to an image model (Stable Diffusion XL through Hugging Face
- * Inference Providers, fal-ai) as a studio headshot of an invented person; the result is cropped square, resized and stored in the Headshot table. These are
+ * Each catalog entry is described to an image model (OpenAI gpt-image-1-mini by default, or a
+ * Hugging Face provider) as a studio headshot of an invented person; the result is cropped square, resized and stored in the Headshot table. These are
  * AI-generated faces of people who do not exist — never photographs of real people — and the app
  * keeps saying the personas are illustrative.
  */
 import sharp from 'sharp';
 import { prisma } from '@/lib/prisma';
 import { InferenceClient } from '@huggingface/inference';
-import { imagesConfigured, env } from '@/lib/env';
+import { imageKey, imagesConfigured, env } from '@/lib/env';
 import { HEADSHOTS, type HeadshotSpec, type Region } from './catalog';
 import { ensureHeadshots } from './store';
 
@@ -50,27 +50,45 @@ export interface PhotoRun {
   failed: { key: string; reason: string }[];
 }
 
-async function generateOne(s: HeadshotSpec, client: InferenceClient): Promise<Buffer> {
+const IMAGES_URL = 'https://api.openai.com/v1/images/generations';
+
+async function generateRaw(s: HeadshotSpec, key: string): Promise<Buffer> {
   const e = env();
+  if (e.IMAGE_PROVIDER === 'openai') {
+    const res = await fetch(IMAGES_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ model: e.IMAGE_MODEL, prompt: headshotPrompt(s), size: '1024x1024', quality: 'low', n: 1 }),
+      signal: AbortSignal.timeout(120_000),
+    });
+    if (!res.ok) {
+      const d = (await res.json().catch(() => null)) as { error?: { code?: string; message?: string } } | null;
+      throw new Error(`Images API ${res.status}${d?.error?.code ? ` (${d.error.code})` : ''}${d?.error?.message ? `: ${d.error.message.slice(0, 160)}` : ''}`);
+    }
+    const body = (await res.json()) as { data?: { b64_json?: string; url?: string }[] };
+    const item = body.data?.[0];
+    if (item?.b64_json) return Buffer.from(item.b64_json, 'base64');
+    if (item?.url) return Buffer.from(await (await fetch(item.url, { signal: AbortSignal.timeout(60_000) })).arrayBuffer());
+    throw new Error('The Images API returned no image.');
+  }
+  const client = new InferenceClient(key);
   const image = await client.textToImage(
-    {
-      provider: e.IMAGE_PROVIDER as 'fal-ai',
-      model: e.IMAGE_MODEL,
-      inputs: headshotPrompt(s),
-      parameters: { negative_prompt: NEGATIVE_PROMPT, width: 1024, height: 1024 },
-    },
+    { provider: e.IMAGE_PROVIDER as 'fal-ai', model: e.IMAGE_MODEL, inputs: headshotPrompt(s), parameters: { negative_prompt: NEGATIVE_PROMPT, width: 1024, height: 1024 } },
     { outputType: 'blob' },
   );
-  const raw = Buffer.from(await image.arrayBuffer());
+  return Buffer.from(await image.arrayBuffer());
+}
+
+async function generateOne(s: HeadshotSpec, key: string): Promise<Buffer> {
   // Square on the face, 512 px, compact.
-  return sharp(raw).resize(512, 512, { fit: 'cover', position: 'attention' }).webp({ quality: 84 }).toBuffer();
+  return sharp(await generateRaw(s, key)).resize(512, 512, { fit: 'cover', position: 'attention' }).webp({ quality: 84 }).toBuffer();
 }
 
 /** Generate photographs for every headshot not yet a photo (or for all with `force`). */
 export async function generatePhotoHeadshots(opts: { force?: boolean; onProgress?: (done: number, total: number) => void } = {}): Promise<PhotoRun> {
   const e = env();
-  if (!imagesConfigured(e)) throw new Error('No Hugging Face token is set (HF_TOKEN), so photographs cannot be generated.');
-  const client = new InferenceClient(e.HF_TOKEN!.trim());
+  const key = imageKey(e);
+  if (!imagesConfigured(e) || !key) throw new Error(e.IMAGE_PROVIDER === 'openai' ? 'No image API key is set (IMAGE_API_KEY), so photographs cannot be generated.' : 'No Hugging Face token is set (HF_TOKEN), so photographs cannot be generated.');
   await ensureHeadshots();
   const have = new Map((await prisma.headshot.findMany({ select: { key: true, source: true } })).map((h) => [h.key, h.source]));
   const todo = HEADSHOTS.filter((h) => opts.force || have.get(h.key) !== 'photo');
@@ -81,7 +99,7 @@ export async function generatePhotoHeadshots(opts: { force?: boolean; onProgress
     while (next < todo.length) {
       const s = todo[next++]!;
       try {
-        const data = await generateOne(s, client);
+        const data = await generateOne(s, key);
         await prisma.headshot.update({ where: { key: s.key }, data: { data: new Uint8Array(data), mime: 'image/webp', source: 'photo' } });
         run.generated += 1;
       } catch (err) {

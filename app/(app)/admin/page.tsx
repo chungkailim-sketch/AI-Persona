@@ -35,7 +35,7 @@ export default async function AdminOverviewPage() {
 
       <dl className="mt-8 grid gap-3 sm:grid-cols-3">
         {stats.map((s) => (
-          <div key={s.label} className="rounded border border-line bg-surface p-4">
+          <div key={s.label} className="border-t border-line p-4">
             <dt className="text-xs text-ink-subtle">{s.label}</dt>
             <dd className="mt-1 font-mono text-2xl text-ink">{s.value}</dd>
           </div>
@@ -52,7 +52,7 @@ export default async function AdminOverviewPage() {
           {flags.map((f) => (
             <li
               key={f.key}
-              className="flex flex-wrap items-center justify-between gap-3 rounded border border-line bg-surface px-4 py-3"
+              className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3"
             >
               <div>
                 <p className="font-mono text-xs text-ink">{f.key}</p>

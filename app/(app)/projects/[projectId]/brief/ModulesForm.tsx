@@ -20,7 +20,7 @@ export function ModulesForm({ projectId, useCase, active, canEdit }: { projectId
         <legend className="text-sm font-semibold text-ink">Use case</legend>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {USE_CASES.map((u) => (
-            <label key={u.key} className="flex cursor-pointer gap-2 rounded border border-line bg-surface p-3 has-[:checked]:border-brand has-[:checked]:bg-brand-soft">
+            <label key={u.key} className="flex cursor-pointer gap-2 border-t border-line p-3 has-[:checked]:border-brand has-[:checked]:bg-brand-soft">
               <input type="radio" name="useCase" value={u.key} checked={uc === u.key} disabled={!canEdit} onChange={() => { setUc(u.key); setOn([...u.modules]); }} className="mt-1" />
               <span>
                 <span className="block text-sm font-semibold text-ink">{u.label}</span>

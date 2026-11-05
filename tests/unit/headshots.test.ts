@@ -63,3 +63,16 @@ describe('photo prompts', () => {
     expect(q).toMatch(/East Asian man/);
   });
 });
+
+describe('image key selection', () => {
+  it('uses IMAGE_API_KEY, then OPENAI_API_KEY, for the OpenAI provider, and HF_TOKEN for a Hugging Face one', async () => {
+    const { imageKey, imagesConfigured } = await import('@/lib/env');
+    const base = { IMAGE_PROVIDER: 'openai', IMAGE_MODEL: 'gpt-image-1-mini' } as never;
+    expect(imageKey({ ...(base as object), IMAGE_API_KEY: 'sk-image-key', OPENAI_API_KEY: 'sk-other' } as never)).toBe('sk-image-key');
+    expect(imageKey({ ...(base as object), IMAGE_API_KEY: '  ', OPENAI_API_KEY: 'sk-other' } as never)).toBe('sk-other');
+    expect(imageKey({ ...(base as object) } as never)).toBeNull();
+    expect(imageKey({ ...(base as object), IMAGE_API_KEY: 'not-a-key' } as never)).toBeNull();
+    expect(imagesConfigured({ IMAGE_PROVIDER: 'fal-ai', HF_TOKEN: 'hf_abcdefghijk' } as never)).toBe(true);
+    expect(imagesConfigured({ IMAGE_PROVIDER: 'fal-ai', IMAGE_API_KEY: 'sk-x' } as never)).toBe(false);
+  });
+});

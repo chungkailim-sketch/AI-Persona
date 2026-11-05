@@ -402,7 +402,7 @@ export function DebateDetail({ debate }: { debate: DebateView }) {
               {verdict.segmentFindings.length > 0 && (
                 <ul className="grid gap-2 md:grid-cols-2">
                   {verdict.segmentFindings.map((s) => (
-                    <li key={s.segment} className="rounded border border-line bg-surface px-3 py-2">
+                    <li key={s.segment} className="border-t border-line px-3 py-2">
                       <p className="text-xs font-medium text-ink">{s.segment}</p>
                       <p className="mt-0.5 text-xs text-ink-muted">{s.assessment}</p>
                       <div className="mt-1"><Evidence ids={s.evidenceIds} items={items} /></div>
@@ -476,7 +476,7 @@ export function DebateDetail({ debate }: { debate: DebateView }) {
           <summary className="cursor-pointer text-xs text-brand">The crew — {debate.agents.length} agents with their role, goal and backstory</summary>
           <ul className="mt-2 grid gap-2 md:grid-cols-2">
             {debate.agents.map((a) => (
-              <li key={a.key} className="rounded border border-line bg-surface px-3 py-2">
+              <li key={a.key} className="border-t border-line px-3 py-2">
                 <p className="text-xs text-ink"><span className="font-mono text-ink-subtle">{a.key}</span> <span className="font-medium">{a.name}</span> <span className="text-ink-muted">— {a.role}</span></p>
                 <p className="mt-1 text-[11px] text-ink-muted"><span className="text-ink-subtle">Goal:</span> {a.goal}</p>
                 <p className="mt-0.5 line-clamp-3 text-[11px] text-ink-muted"><span className="text-ink-subtle">Backstory:</span> {a.backstory}</p>

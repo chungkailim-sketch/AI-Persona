@@ -1,4 +1,4 @@
-// Generate the photographic headshots from a shell with DATABASE_URL and HF_TOKEN set:
+// Generate the photographic headshots from a shell with DATABASE_URL and IMAGE_API_KEY set:
 //   npx tsx scripts/generateHeadshots.ts [--force]
 import { generatePhotoHeadshots } from '../src/headshots/photos';
 

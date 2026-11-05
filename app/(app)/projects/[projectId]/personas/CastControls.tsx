@@ -50,7 +50,7 @@ export function BuildPersonasForm({
         <legend className="text-sm font-semibold text-ink">Markets</legend>
         <div className="flex flex-wrap gap-2">
           {markets.map((m) => (
-            <label key={m} className="flex cursor-pointer items-center gap-2 rounded border border-line bg-surface px-3 py-1.5 text-sm has-[:checked]:border-brand has-[:checked]:bg-brand-soft">
+            <label key={m} className="flex cursor-pointer items-center gap-2 border-t border-line px-3 py-1.5 text-sm has-[:checked]:border-brand has-[:checked]:bg-brand-soft">
               <input type="checkbox" name="markets" value={m} checked={marketPick.includes(m)} onChange={() => setMarketPick(toggle(marketPick, m))} />
               <span>{m}</span>
             </label>
@@ -65,7 +65,7 @@ export function BuildPersonasForm({
         ) : (
           <div className="flex flex-wrap gap-2">
             {parameters.map((p) => (
-              <label key={p.name} className="flex cursor-pointer items-center gap-2 rounded border border-line bg-surface px-3 py-1.5 text-sm has-[:checked]:border-brand has-[:checked]:bg-brand-soft">
+              <label key={p.name} className="flex cursor-pointer items-center gap-2 border-t border-line px-3 py-1.5 text-sm has-[:checked]:border-brand has-[:checked]:bg-brand-soft">
                 <input type="checkbox" name="groups" value={p.name} checked={picked.includes(p.name)} onChange={() => setPicked(toggle(picked, p.name))} />
                 <span>{p.name}</span>
                 {p.recommended && <span className="rounded-sm bg-[var(--color-highlight)] px-1 text-[10px] font-bold uppercase text-ink">Recommended</span>}

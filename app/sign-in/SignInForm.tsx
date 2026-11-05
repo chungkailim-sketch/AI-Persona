@@ -135,7 +135,7 @@ export function SignInForm({ next }: { next: string }) {
           <button
             type="submit"
             disabled={busy}
-            className="rounded-full bg-action px-4 py-2 text-sm font-medium text-action-ink disabled:opacity-50"
+            className="rounded-full bg-action px-6 py-2.5 text-[13px] font-medium tracking-wide text-action-ink disabled:opacity-50"
           >
             {busy ? 'Sending…' : 'Send code'}
           </button>
@@ -164,7 +164,7 @@ export function SignInForm({ next }: { next: string }) {
           <button
             type="submit"
             disabled={busy}
-            className="rounded-full bg-action px-4 py-2 text-sm font-medium text-action-ink disabled:opacity-50"
+            className="rounded-full bg-action px-6 py-2.5 text-[13px] font-medium tracking-wide text-action-ink disabled:opacity-50"
           >
             {busy ? 'Checking…' : 'Sign in'}
           </button>

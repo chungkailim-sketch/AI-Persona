@@ -17,7 +17,7 @@ export async function generateHeadshotsAction(_prev: HeadshotActionState, formDa
   const actor = await requireUserApi();
   const ctx = await authContextFor(actor);
   if (!can(ctx, 'admin.models.manage')) return { error: 'You cannot manage models.' };
-  if (!imagesConfigured(env())) return { error: 'No Hugging Face token is set. Add HF_TOKEN in Railway → Variables (on web and worker), then try again.' };
+  if (!imagesConfigured(env())) return { error: 'No image API key is set. Add IMAGE_API_KEY in Railway → Variables (on web and worker), then try again.' };
   const running = await prisma.job.findFirst({ where: { kind: 'headshots', status: { in: ['PENDING', 'RUNNING'] } }, select: { id: true } });
   if (running) return { error: 'Headshots are already being generated.' };
   const force = formData.get('force') === 'on';

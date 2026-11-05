@@ -33,7 +33,7 @@ export default async function AdminUsersPage() {
         </p>
       )}
       {!canManage && (
-        <p className="mt-4 max-w-prose rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">
+        <p className="mt-4 max-w-prose border-t border-line px-4 py-3 text-sm text-ink-muted">
           You can view this list but not change it — your role carries <code>audit.view</code>{' '}
           without <code>admin.users.manage</code>.
         </p>

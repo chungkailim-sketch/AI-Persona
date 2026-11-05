@@ -76,15 +76,15 @@ export default async function AdminUsagePage() {
       </p>
 
       <dl className="mt-6 grid gap-3 sm:grid-cols-3">
-        <div className="rounded border border-line bg-surface p-4">
+        <div className="border-t border-line p-4">
           <dt className="text-xs text-ink-subtle">Estimated spend, 30 days</dt>
           <dd className="mt-1 font-mono text-2xl text-ink">${liveSpend.toFixed(2)}</dd>
         </div>
-        <div className="rounded border border-line bg-surface p-4">
+        <div className="border-t border-line p-4">
           <dt className="text-xs text-ink-subtle">Mock calls (no cost)</dt>
           <dd className="mt-1 font-mono text-2xl text-ink">{mockCalls}</dd>
         </div>
-        <div className="rounded border border-line bg-surface p-4">
+        <div className="border-t border-line p-4">
           <dt className="text-xs text-ink-subtle">Configured provider</dt>
           <dd className="mt-1 font-mono text-lg text-ink">{budget?.provider ?? 'unreadable'}</dd>
         </div>
@@ -100,7 +100,7 @@ export default async function AdminUsagePage() {
       <section aria-labelledby="providers" className="mt-10">
         <h2 id="providers" className="text-lg">By provider and model</h2>
         {byProvider.length === 0 ? (
-          <p className="mt-3 rounded border border-line bg-surface px-4 py-6 text-sm text-ink-muted">
+          <p className="mt-3 border-t border-line px-4 py-6 text-sm text-ink-muted">
             No model calls in the last 30 days.
           </p>
         ) : (

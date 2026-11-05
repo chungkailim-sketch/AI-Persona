@@ -197,7 +197,7 @@ info={BRIEF_INFO.decisionSupported}         label="What decision will this infor
         />
       </Field>
 
-      <fieldset className="rounded border border-line bg-surface p-4">
+      <fieldset className="border-t border-line p-4">
         <legend className="flex items-center px-1 text-sm font-medium text-ink">
           What you are hoping to find
           <InfoTip id="desiredOutcome" info={BRIEF_INFO.desiredOutcome} />
@@ -330,7 +330,7 @@ export function HypothesisList({
   return (
     <ul className="mt-3 flex flex-col gap-3">
       {hypotheses.map((h) => (
-        <li key={h.id} className="rounded border border-line bg-surface px-4 py-3">
+        <li key={h.id} className="border-t border-line px-4 py-3">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div className="min-w-0">
               <span className="rounded bg-bg px-2 py-0.5 font-mono text-[10px] uppercase text-ink-muted">
@@ -411,7 +411,7 @@ export function AddHypothesisForm({
   }
 
   return (
-    <form action={action} className="mt-4 flex max-w-2xl flex-col gap-4 rounded border border-line bg-surface p-4">
+    <form action={action} className="mt-4 flex max-w-2xl flex-col gap-4 border-t border-line p-4">
       <input type="hidden" name="projectId" value={projectId} />
       <input type="hidden" name="briefId" value={briefId} />
 

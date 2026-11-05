@@ -89,7 +89,7 @@ export function Field({
 }
 
 const INPUT =
-  'w-full rounded-lg border border-line-strong bg-input px-3 py-2 text-sm text-ink outline-none ' +
+  'w-full rounded border border-line-strong bg-input px-3 py-2 text-sm text-ink outline-none ' +
   'focus-visible:border-brand focus-visible:ring-2 focus-visible:ring-brand-soft';
 
 export function TextInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
@@ -119,7 +119,7 @@ export function SubmitButton({
       type="submit"
       disabled={pending}
       className={cn(
-        'self-start rounded-full px-5 py-2 text-sm font-semibold disabled:opacity-50',
+        'self-start rounded-full px-6 py-2.5 text-[13px] font-medium tracking-wide disabled:opacity-50',
         variant === 'primary'
           ? 'bg-action text-action-ink hover:opacity-90'
           : 'border border-line-strong text-ink-muted hover:border-brand',
