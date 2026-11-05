@@ -191,7 +191,10 @@ export async function latestRoundtable(projectId: string) {
 
 export async function requestRoundtable(user: SessionUser, projectId: string, lang: Lang): Promise<{ roundtableId: string }> {
   await requirePermission(user, projectId, 'simulation.run');
-  const brief = await latestBrief(projectId);
+  const saved = await latestBrief(projectId);
+  // The Brief form pre-fills the default categories; a brief saved without any (an older or Advanced
+  // brief) would otherwise block the roundtable on something the form appears to already show.
+  const brief = saved && saved.categories.length < 2 ? { ...saved, categories: DEFAULT_CATEGORIES[lang] } : saved;
   const problems = studyBriefMissing(brief);
   const cast = await latestCast(projectId);
   if (!cast || cast.buildStatus !== 'COMPLETED') problems.push('Build the cast first.');

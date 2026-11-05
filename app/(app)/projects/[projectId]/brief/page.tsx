@@ -57,6 +57,11 @@ export default async function BriefStepPage(props: PageProps<'/projects/[project
           <ModulesForm projectId={projectId} useCase={setup?.useCase ?? 'market_entry'} active={[...activeModules(setup ?? { useCase: 'market_entry', modules: [] })]} canEdit={can(ctx, 'project.edit', projectId)} />
         </div>
       </details>
+      {brief && missing.length > 0 && (
+        <p role="status" className="max-w-3xl rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink-muted">
+          Not complete yet: {missing.join(' ')} The suggested values below are not saved until you press Save.
+        </p>
+      )}
       <section className="panel max-w-3xl px-5 py-5">
         <StudyBriefForm projectId={projectId} brief={view} available={available} canEdit={can(ctx, 'project.edit', projectId)} locked={brief?.status === 'LOCKED'} />
       </section>
