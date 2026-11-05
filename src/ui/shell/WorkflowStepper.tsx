@@ -37,6 +37,7 @@ export function WorkflowStepper({ projectId, current, state }: { projectId: stri
             <li key={s.key} className="min-w-0" data-step={s.key} data-step-status={st.status}>
               <Link
                 href={`/projects/${projectId}/${s.href}` as Route}
+                prefetch={false}
                 aria-current={isCurrent ? 'step' : undefined}
                 className={cn(
                   'motion-color flex h-full flex-col gap-1.5 border-t pb-2 pr-3 pt-3 hover:border-ink',

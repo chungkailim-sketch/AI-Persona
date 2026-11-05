@@ -20,8 +20,25 @@ import { env } from '@/lib/env';
  */
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
+/**
+ * Pool settings. The library defaults wait forever for a connection and never probe an idle one, so a
+ * hiccup on the private network (Railway's `getaddrinfo EAI_AGAIN postgres.railway.internal`) left
+ * requests hanging for tens of seconds — and every click behind them with it. A connection that cannot be
+ * made in 8 s now fails that request quickly, a query may not run longer than 30 s, and idle
+ * connections are kept alive so a quiet minute does not mean a cold reconnect on the next click.
+ */
+const POOL = {
+  max: 10,
+  connectionTimeoutMillis: 8_000,
+  idleTimeoutMillis: 60_000,
+  keepAlive: true,
+  keepAliveInitialDelayMillis: 10_000,
+  query_timeout: 30_000,
+  statement_timeout: 30_000,
+} as const;
+
 function createClient(): PrismaClient {
-  const adapter = new PrismaPg({ connectionString: env().DATABASE_URL });
+  const adapter = new PrismaPg({ connectionString: env().DATABASE_URL, ...POOL });
   return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['warn', 'error'] : ['error'],
