@@ -35,7 +35,7 @@ export function TopNavigation({ userEmail, userRole, isAdmin, projects, environm
         <Link href="/dashboard" className="flex shrink-0 items-center text-ink" aria-label="rf.AI Persona — home">
           <BrandLogo height={22} />
         </Link>
-        <div className="hidden min-w-0 xl:block xl:max-w-[14rem]">
+        <div className="hidden min-w-0 2xl:block 2xl:max-w-[14rem]">
           <ProjectSelector projects={projects} />
         </div>
         <div className="hidden md:block md:flex-1">
@@ -50,15 +50,15 @@ export function TopNavigation({ userEmail, userRole, isAdmin, projects, environm
           )}
           {mockProvider && (
             <span className="rounded-sm border border-warn/40 bg-warn-soft px-1.5 py-0.5 text-[10px] uppercase text-warn" title="The mock model provider is configured. No AI model is consulted; outputs mean nothing.">
-              <span className="hidden sm:inline">Demonstration data</span>
-              <span className="sm:hidden">Mock</span>
+              <span className="hidden 2xl:inline">Demonstration data</span>
+              <span className="2xl:hidden">Mock</span>
             </span>
           )}
           <GlobalRunIndicator initial={activity} />
           <span className="hidden md:inline-flex"><MoreMenu isAdmin={isAdmin} /></span>
           <LanguageSwitcher />
           <ThemeSwitcher initialPreference={themePreference} />
-          <Link href="/projects" className="hidden rounded-full bg-action px-5 py-2.5 text-[12.5px] font-medium tracking-wide text-action-ink transition-transform duration-fast hover:-translate-y-px lg:inline-block">
+          <Link href="/projects" className="hidden rounded-full bg-action px-5 py-2.5 text-[12.5px] font-medium tracking-wide text-action-ink transition-transform duration-fast hover:-translate-y-px xl:inline-block">
             Start a new study
           </Link>
           <UserMenu email={userEmail} role={userRole} isAdmin={isAdmin} />

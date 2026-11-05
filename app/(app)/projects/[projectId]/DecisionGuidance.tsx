@@ -59,7 +59,7 @@ export async function DecisionGuidance({ projectId, checkpoint, subjectId, canAs
   const questions = (g?.questions ?? []) as unknown as DecisionQuestion[];
   const answers = (g?.answers ?? []) as unknown as DecisionAnswer[];
   return (
-    <section aria-label={title} className="panel py-4" data-checkpoint={checkpoint}>
+    <section aria-label={title} className="panel px-6 py-5" data-checkpoint={checkpoint}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="eyebrow">{title}</p>

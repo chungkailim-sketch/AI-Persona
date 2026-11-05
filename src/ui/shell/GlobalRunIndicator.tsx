@@ -45,7 +45,7 @@ export function GlobalRunIndicator({ initial }: { initial: ActivitySummary }) {
   return (
     <Link
       href={href as Route}
-      className="hidden items-center rounded border border-line px-2 py-1 hover:border-line-strong lg:inline-flex"
+      className={`${busy ? 'lg:inline-flex' : '2xl:inline-flex'} hidden items-center rounded border border-line px-2 py-1 hover:border-line-strong`}
       title={`${label}. Checked ${fmtTime(data.checkedAt)} ${TZ_LABEL}${stale ? ' — could not refresh' : ''}.`}
       data-global-runs={runs}
     >

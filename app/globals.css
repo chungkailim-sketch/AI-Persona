@@ -211,7 +211,7 @@
   .hairline-list > * + * { border-top: 1px solid var(--color-line); }
   .panel-head {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 18px 24px 12px; border-bottom: 1px solid var(--color-line);
+    padding: 14px 20px; border-bottom: 1px solid var(--color-line);
   }
   .eyebrow {
     font-family: var(--font-sans); font-size: 11.5px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;
