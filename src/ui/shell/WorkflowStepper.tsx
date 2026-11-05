@@ -45,7 +45,7 @@ export function WorkflowStepper({ projectId, current, state }: { projectId: stri
                 )}
               >
                 <span className="flex items-center gap-2">
-                  <span className={cn('inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border font-mono text-[10px]', isCurrent ? 'border-brand bg-brand text-brand-ink' : meta.cls)} aria-hidden>
+                  <span className={cn('inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border font-mono text-[10px]', isCurrent ? 'border-action bg-action text-action-ink' : meta.cls)} aria-hidden>
                     {st.status === 'available' || isCurrent ? s.index : <Icon name={meta.icon} size={11} className={st.status === 'running' ? 'motion-live' : undefined} />}
                   </span>
                   <span className={cn('truncate text-[13px]', isCurrent ? 'font-semibold text-ink' : 'text-ink-muted')}>{s.label}</span>

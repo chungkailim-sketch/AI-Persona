@@ -53,7 +53,7 @@ export async function WorkflowNav({ projectId, projectName, current, advanced = 
                       aria-current={isCurrent ? 'step' : undefined}
                       className={cn(
                         'flex flex-col items-center rounded border px-1 py-1 text-[10.5px] leading-tight',
-                        isCurrent ? 'border-brand bg-brand text-brand-ink' : 'border-line bg-surface text-ink-muted',
+                        isCurrent ? 'border-action bg-action text-action-ink' : 'border-line bg-surface text-ink-muted',
                         state[s.key].status === 'complete' && !isCurrent && 'border-ok/40 text-ok',
                       )}
                     >

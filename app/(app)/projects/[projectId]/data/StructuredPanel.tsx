@@ -56,7 +56,7 @@ export function StructuredPanel({
                   </span>
                 )}
                 {canDownload && (
-                  <a href={`${base}/${t.id}`} download className="rounded border border-brand bg-brand px-2 py-0.5 text-[11px] font-medium text-brand-ink hover:opacity-90">
+                  <a href={`${base}/${t.id}`} download className="rounded border border-action bg-action px-2 py-0.5 text-[11px] font-medium text-action-ink hover:opacity-90">
                     Download CSV
                   </a>
                 )}

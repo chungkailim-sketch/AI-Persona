@@ -25,7 +25,7 @@ export interface TopNavigationProps {
 
 export function TopNavigation({ userEmail, userRole, isAdmin, projects, environment, mockProvider, activity, themePreference, onOpenMenu }: TopNavigationProps) {
   return (
-    <header className="no-print sticky top-0 z-30 h-[52px] border-b border-line bg-elevated/95 backdrop-blur">
+    <header className="no-print sticky top-0 z-30 h-[52px] border-b border-line bg-elevated">
       <div className="flex h-full items-center gap-2 px-3 lg:gap-3 lg:px-4">
         <button type="button" onClick={onOpenMenu} className="rounded p-1.5 text-ink-muted hover:text-ink md:hidden" aria-label="Open navigation">
           <Icon name="menu" size={18} />

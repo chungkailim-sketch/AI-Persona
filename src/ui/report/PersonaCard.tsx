@@ -24,12 +24,12 @@ export function portraitOf(profile: CastProfile | null | undefined, seed: string
 
 export function PersonaAvatar({ name, profile, portraitUrl: given, size = 56, className }: { name: string; profile?: CastProfile | null; portraitUrl?: string | null; size?: number; className?: string }) {
   const portraitUrl = given ?? portraitOf(profile, name);
-  const ring = 'shrink-0 rounded-full ring-2 ring-brand-mark ring-offset-2 ring-offset-[var(--color-surface)]';
+  const ring = 'shrink-0 rounded-full';
   if (portraitUrl) {
     return <img src={portraitUrl} alt="" width={size} height={size} className={cn(ring, 'object-cover', className)} style={{ width: size, height: size }} />;
   }
   return (
-    <span aria-hidden className={cn(ring, 'inline-flex items-center justify-center bg-brand-soft font-bold text-brand', className)} style={{ width: size, height: size, fontSize: size * 0.36 }}>
+    <span aria-hidden className={cn(ring, 'inline-flex items-center justify-center bg-line font-semibold text-ink-muted', className)} style={{ width: size, height: size, fontSize: size * 0.36 }}>
       {initials(name)}
     </span>
   );
@@ -48,28 +48,26 @@ export function driverScores(profile: CastProfile): { factor: string; score: num
     .map(({ d, s }) => ({ factor: d.factor, score: Math.round(s.share), diff: Math.round(s.diff) }));
 }
 
-/** Market column head: the name (translated with the interface) over the English name and ISO code. */
+/** Market column head: the name in small capitals over a rule; the English name and ISO code in the Chinese interface. */
 export function MarketHeader({ market, className }: { market: string; className?: string }) {
   const iso = isoCode(market);
   return (
-    <div className={cn('rounded-sm bg-brand px-2 py-1.5 text-center text-brand-ink', className)}>
-      <p className="text-[15px] font-bold leading-tight">{market}</p>
-      <p data-no-translate className="zh-only text-[10.5px] font-medium opacity-90">{iso ? `${market} - ${iso}` : market}</p>
-      {iso && <p data-no-translate className="en-only text-[10.5px] font-medium opacity-90">{iso}</p>}
+    <div className={cn('border-b border-ink pb-2', className)}>
+      <p className="text-[11px] font-semibold uppercase leading-tight tracking-[0.2em] text-ink">{market}</p>
+      <p data-no-translate className="zh-only text-[10.5px] text-ink-subtle">{iso ? `${market} - ${iso}` : market}</p>
+      {iso && <p data-no-translate className="en-only text-[10.5px] text-ink-subtle">{iso}</p>}
     </div>
   );
 }
 
-const ROW = ['bg-[var(--tier-row-1)] text-[var(--tier-row-1-ink)]', 'bg-[var(--tier-row-2)] text-[var(--tier-row-2-ink)]', 'bg-[var(--tier-row-3)] text-[var(--tier-row-3-ink)]'];
-
-/** Tier row head: a solid block, dark to pale, with the tier, its name and the English name. */
+/** Tier row head: the tier number in small capitals over its name; the English name in the Chinese interface. */
 export function TierHeader({ index, group, label, className }: { index: number; group: string; label: string; className?: string }) {
   return (
-    <div className={cn('flex h-full flex-col items-center justify-center rounded-lg px-2 py-3 text-center', ROW[index % 3], className)}>
-      <p className="text-[10.5px] font-bold uppercase tracking-wide opacity-90">{`Tier ${index + 1}`}</p>
-      <p className="text-[16px] font-extrabold leading-tight">{label}</p>
-      <p data-no-translate className="zh-only mt-0.5 text-[10.5px] opacity-90">{label}</p>
-      {group && <p className="mt-1 text-[10px] opacity-75">{group}</p>}
+    <div className={cn('flex h-full flex-col justify-start border-t border-line pt-5', className)}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-subtle">{`Tier ${index + 1}`}</p>
+      <p className="mt-1.5 text-[15px] font-medium leading-snug text-ink">{label}</p>
+      <p data-no-translate className="zh-only mt-0.5 text-[10.5px] text-ink-subtle">{label}</p>
+      {group && <p className="mt-1 text-[10.5px] text-ink-subtle">{group}</p>}
     </div>
   );
 }
@@ -79,22 +77,22 @@ export function PersonaCard({ name, profile, portraitUrl, compact = false, foote
   const drivers = driverScores(profile);
   const stats = keyStats(profile);
   return (
-    <article className="flex h-full flex-col gap-2 rounded-lg border border-line bg-surface p-3 shadow-card" data-persona-card>
-      <div className="flex items-start gap-3">
+    <article className="flex h-full flex-col gap-3 border-t border-line bg-transparent pt-5" data-persona-card>
+      <div className="flex flex-col items-start gap-3">
         <PersonaAvatar name={name} profile={profile} portraitUrl={portraitUrl} size={compact ? 50 : 56} />
         <div className="min-w-0">
-          <h3 className={cn('font-sans font-bold leading-tight text-ink', compact ? 'text-[14px]' : 'text-[16px]')}>
+          <h3 className={cn('font-sans font-semibold leading-tight text-ink', compact ? 'text-[14px]' : 'text-[16px]')}>
             {name}
-            {id?.age ? <span>{` • ${id.age}`}</span> : null}
+            {id?.age ? <span className="font-normal text-ink-muted">{` ${id.age}`}</span> : null}
           </h3>
           {id && <p className="text-xs text-ink-muted">{[id.occupation, id.city].filter(Boolean).join(' · ')}</p>}
           {id?.lifeStage && <p className="text-xs text-ink-muted">{id.lifeStage}</p>}
         </div>
       </div>
       {id?.decisionLogic?.length ? (
-        <div className="rounded-md bg-brand-soft px-2.5 py-1.5">
+        <div className="border-l border-line pl-2.5">
           <p className="text-xs text-ink">
-            <b className="text-brand">Decision logic</b> <span className="font-semibold">{id.decisionLogic.join(' > ')}</span>
+            <b className="block text-[9.5px] font-semibold uppercase tracking-[0.2em] text-ink-subtle">Decision logic</b> <span className="font-medium">{id.decisionLogic.join(' > ')}</span>
           </p>
           {(drivers.length > 0 || stats.length > 0) && (
             <p className="mt-0.5 text-[11px] text-ink-muted">
@@ -109,7 +107,7 @@ export function PersonaCard({ name, profile, portraitUrl, compact = false, foote
         <ul className="flex flex-col gap-1">
           {stats.map((s) => (
             <li key={s.id} className="flex gap-2 text-[11.5px]">
-              <span className="w-9 shrink-0 text-right font-bold text-brand">{Math.round(s.share)}%</span>
+              <span className="w-9 shrink-0 text-right font-semibold text-ink">{Math.round(s.share)}%</span>
               <span className="text-ink-muted">
                 {s.statement}
                 {s.response && !/^agree$/i.test(s.response) ? ` — ${s.response}` : ''}

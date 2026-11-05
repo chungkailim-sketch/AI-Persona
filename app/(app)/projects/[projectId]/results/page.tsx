@@ -64,7 +64,7 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
         <div className="flex flex-wrap items-center gap-3">
           <Link href={`/projects/${projectId}/advanced/results` as Route} className="text-sm text-link underline-offset-2 hover:underline">Advanced results tools →</Link>
           {report && (
-            <Link href={`/projects/${projectId}/report` as Route} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
+            <Link href={`/projects/${projectId}/report` as Route} className="rounded-full bg-action px-4 py-2 text-sm font-semibold text-action-ink hover:opacity-90">
               Open full report / PDF
             </Link>
           )}

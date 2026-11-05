@@ -37,7 +37,7 @@ function heatClass(score: number | null | undefined): string {
 function Slide({ section, title, source = SOURCE, page, children, className }: { section: string; title: ReactNode; source?: string | null; page: number; children: ReactNode; className?: string }) {
   return (
     <ScaledSlide>
-      <div aria-hidden className="absolute inset-x-0 top-0 h-1.5 bg-brand-gradient" />
+      <div aria-hidden className="absolute inset-x-0 top-0 h-[3px] bg-brand-mark" />
       <div className="flex h-full flex-col px-14 pb-6 pt-10">
         <header className="flex items-start justify-between gap-6">
           <div className="min-w-0">
@@ -67,13 +67,13 @@ function Cover({ r }: { r: Report }) {
   const date = (r.roundtable.completedAt ?? new Date()).toISOString().slice(0, 10);
   return (
     <ScaledSlide>
-      <div aria-hidden className="absolute inset-x-0 bottom-0 h-3 bg-brand-gradient" />
+      <div aria-hidden className="absolute inset-x-0 bottom-0 h-[3px] bg-brand-mark" />
       <div className="grid h-full grid-cols-[1fr_380px]">
         <div className="flex flex-col justify-between px-16 py-14">
           <BrandLogo height={40} />
           <div>
             <p className="text-[15px] font-bold uppercase tracking-[0.16em] text-brand-mark">AI Persona Roundtable</p>
-            <h1 className="mt-3 text-[50px] font-extrabold leading-[1.05] text-brand-mark">{r.projectName}</h1>
+            <h1 className="mt-3 text-[50px] font-normal leading-[1.08] tracking-[-0.03em] text-ink">{r.projectName}</h1>
             <p className="mt-6 max-w-[640px] text-[22px] font-semibold leading-snug text-ink-muted">“{r.roundtable.question}”</p>
             {r.audience && <p className="mt-4 text-[15px] text-ink-subtle">{r.audience}</p>}
           </div>
@@ -369,7 +369,7 @@ function Heatmaps({ r, start }: { r: Report; start: number }) {
                 <tr>
                   <th className="w-[200px] rounded-sm bg-brand-deep px-2 py-1 text-left text-brand-deep-ink">Persona</th>
                   {r.roundtable.categories.map((c) => <th key={c} className="rounded-sm bg-brand-deep px-1 py-1 font-semibold leading-tight text-brand-deep-ink">{c}</th>)}
-                  <th className="w-[64px] rounded-sm bg-brand px-1 py-1 text-brand-ink">Overall</th>
+                  <th className="w-[64px] rounded-sm bg-action px-1 py-1 text-action-ink">Overall</th>
                 </tr>
               </thead>
               <tbody>

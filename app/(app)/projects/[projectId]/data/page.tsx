@@ -124,7 +124,7 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
       {datasets.length > 0 && <DecisionGuidance projectId={projectId} checkpoint="DATA" canAsk={canEdit} />}
       {ready > 0 && (
         <div className="flex justify-end">
-          <Link href={`/projects/${projectId}/brief` as Route} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
+          <Link href={`/projects/${projectId}/brief` as Route} className="rounded-full bg-action px-4 py-2 text-sm font-semibold text-action-ink hover:opacity-90">
             Next: Brief →
           </Link>
         </div>
