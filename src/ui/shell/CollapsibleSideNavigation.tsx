@@ -55,7 +55,7 @@ export function CollapsibleSideNavigation({ isAdmin, collapsed, onNavigate }: { 
                   <Tooltip.Root>
                     <Tooltip.Trigger asChild>{link}</Tooltip.Trigger>
                     <Tooltip.Portal>
-                      <Tooltip.Content side="right" sideOffset={8} className="z-50 border-t border-line-raised px-2 py-1 text-xs text-ink shadow-pop">
+                      <Tooltip.Content side="right" sideOffset={8} className="z-50 rounded border border-line bg-surface-raised px-2 py-1 text-xs text-ink shadow-pop">
                         {s.label}
                       </Tooltip.Content>
                     </Tooltip.Portal>

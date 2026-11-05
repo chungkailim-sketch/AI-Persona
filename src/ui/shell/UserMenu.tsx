@@ -19,7 +19,7 @@ export function UserMenu({ email, role, isAdmin }: { email: string; role: string
         <Icon name="chevronDown" size={13} />
       </Menu.Trigger>
       <Menu.Portal>
-        <Menu.Content align="end" sideOffset={6} className="z-50 min-w-[14rem] border-t border-line-raised p-1 shadow-pop">
+        <Menu.Content align="end" sideOffset={6} className="z-50 min-w-[14rem] rounded border border-line bg-surface-raised p-1 shadow-pop">
           <div className="px-2 py-1.5">
             <p className="truncate font-mono text-[11.5px] text-ink">{email}</p>
             <p className="text-[11px] text-ink-subtle">{role.toLowerCase().replace(/_/g, ' ')}</p>

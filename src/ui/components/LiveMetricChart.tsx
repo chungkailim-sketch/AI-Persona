@@ -83,7 +83,7 @@ export const LiveMetricChart = memo(function LiveMetricChart({ events, bucketSec
               })}
             </svg>
             {hover !== null && buckets[hover] && (
-              <div className="pointer-events-none absolute -top-1 right-0 border-t border-line-raised px-2 py-1 font-mono text-[10.5px] text-ink shadow-pop">
+              <div className="pointer-events-none absolute -top-1 right-0 rounded border border-line bg-surface-raised px-2 py-1 font-mono text-[10.5px] text-ink shadow-pop">
                 {fmt(buckets[hover]!.t)} · pass {buckets[hover]!.pass} · flag {buckets[hover]!.flag} · fail {buckets[hover]!.fail}
               </div>
             )}

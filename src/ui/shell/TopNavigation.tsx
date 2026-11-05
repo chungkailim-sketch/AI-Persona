@@ -8,6 +8,8 @@ import { ProjectSelector, type ProjectOption } from './ProjectSelector';
 import { ThemeSwitcher } from './ThemeSwitcher';
 import { LanguageSwitcher } from '../i18n/LanguageSwitcher';
 import { UserMenu } from './UserMenu';
+import { MoreMenu } from './MoreMenu';
+import { StepNav } from './StepNav';
 import type { ThemePreference } from '../theme/theme';
 
 export interface TopNavigationProps {
@@ -25,43 +27,40 @@ export interface TopNavigationProps {
 
 export function TopNavigation({ userEmail, userRole, isAdmin, projects, environment, mockProvider, activity, themePreference, onOpenMenu }: TopNavigationProps) {
   return (
-    <header className="no-print sticky top-0 z-30 h-[52px] border-b border-line bg-elevated">
-      <div className="flex h-full items-center gap-2 px-3 lg:gap-3 lg:px-4">
+    <header className="no-print sticky top-0 z-30 border-b border-line bg-elevated/85 backdrop-blur-md">
+      <div className="mx-auto flex h-[68px] max-w-[1200px] items-center gap-4 px-5 lg:gap-7 lg:px-8">
         <button type="button" onClick={onOpenMenu} className="rounded p-1.5 text-ink-muted hover:text-ink md:hidden" aria-label="Open navigation">
           <Icon name="menu" size={18} />
         </button>
-        <Link href="/dashboard" className="flex shrink-0 items-center gap-2.5 text-ink" aria-label="RF AI Persona Intelligence — home">
-          <BrandLogo height={20} />
-          <span className="hidden text-[13px] font-semibold uppercase tracking-[0.08em] text-ink-muted lg:inline">Intelligence</span>
+        <Link href="/dashboard" className="flex shrink-0 items-center text-ink" aria-label="rf.AI Persona — home">
+          <BrandLogo height={22} />
         </Link>
-        <span aria-hidden className="hidden h-5 w-px bg-line sm:block" />
-        <div className="min-w-0 flex-1 sm:flex-none">
+        <div className="hidden min-w-0 xl:block xl:max-w-[14rem]">
           <ProjectSelector projects={projects} />
         </div>
+        <div className="hidden md:block md:flex-1">
+          <div className="flex justify-center"><StepNav /></div>
+        </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2.5 md:ml-0 lg:gap-3.5">
           {environment !== 'production' && (
-            <span className="hidden rounded-sm border border-info/40 bg-info-soft px-1.5 py-0.5 font-mono text-[10px] uppercase text-info md:inline" title="This is not the production environment.">
+            <span className="hidden rounded-sm border border-info/40 bg-info-soft px-1.5 py-0.5 text-[10px] uppercase text-info 2xl:inline" title="This is not the production environment.">
               {environment}
             </span>
           )}
           {mockProvider && (
-            <span className="rounded-sm border border-warn/40 bg-warn-soft px-1.5 py-0.5 font-mono text-[10px] uppercase text-warn" title="The mock model provider is configured. No AI model is consulted; outputs mean nothing.">
+            <span className="rounded-sm border border-warn/40 bg-warn-soft px-1.5 py-0.5 text-[10px] uppercase text-warn" title="The mock model provider is configured. No AI model is consulted; outputs mean nothing.">
               <span className="hidden sm:inline">Demonstration data</span>
               <span className="sm:hidden">Mock</span>
             </span>
           )}
           <GlobalRunIndicator initial={activity} />
-          <Link href="/methodology" className="hidden h-8 w-8 items-center justify-center rounded border border-line text-ink-muted hover:border-line-strong hover:text-ink sm:inline-flex" aria-label="Methodology and help" title="Methodology and help">
-            <Icon name="help" size={16} />
-          </Link>
+          <span className="hidden md:inline-flex"><MoreMenu isAdmin={isAdmin} /></span>
           <LanguageSwitcher />
           <ThemeSwitcher initialPreference={themePreference} />
-          {isAdmin && (
-            <Link href="/admin" className="hidden h-8 items-center rounded border border-line px-2 text-xs text-ink-muted hover:border-line-strong hover:text-ink lg:inline-flex">
-              Admin
-            </Link>
-          )}
+          <Link href="/projects" className="hidden rounded-full bg-action px-5 py-2.5 text-[12.5px] font-medium tracking-wide text-action-ink transition-transform duration-fast hover:-translate-y-px lg:inline-block">
+            Start a new study
+          </Link>
           <UserMenu email={userEmail} role={userRole} isAdmin={isAdmin} />
         </div>
       </div>
