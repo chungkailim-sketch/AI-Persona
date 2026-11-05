@@ -7,6 +7,7 @@
 import type { ReactNode } from 'react';
 import type { CastProfile } from '@/roundtable/engine';
 import { isoCode } from './markets';
+import { headshotUrl, pickHeadshot } from '@/headshots/catalog';
 import { cn } from '../cn';
 
 export function initials(name: string): string {
@@ -14,7 +15,15 @@ export function initials(name: string): string {
   return ((parts[0]?.[0] ?? '?') + (parts.length > 1 ? parts[parts.length - 1]![0] : '')).toUpperCase();
 }
 
-export function PersonaAvatar({ name, portraitUrl, size = 56, className }: { name: string; portraitUrl?: string | null; size?: number; className?: string }) {
+/** The persona's headshot: the one it was given, or (for a cast built before headshots) the best match. */
+export function portraitOf(profile: CastProfile | null | undefined, seed: string): string | null {
+  if (!profile) return null;
+  const key = profile.headshot ?? pickHeadshot({ id: seed, market: profile.market, gender: profile.identity?.gender, age: profile.identity?.age });
+  return headshotUrl(key);
+}
+
+export function PersonaAvatar({ name, profile, portraitUrl: given, size = 56, className }: { name: string; profile?: CastProfile | null; portraitUrl?: string | null; size?: number; className?: string }) {
+  const portraitUrl = given ?? portraitOf(profile, name);
   const ring = 'shrink-0 rounded-full ring-2 ring-brand-mark ring-offset-2 ring-offset-[var(--color-surface)]';
   if (portraitUrl) {
     return <img src={portraitUrl} alt="" width={size} height={size} className={cn(ring, 'object-cover', className)} style={{ width: size, height: size }} />;
@@ -72,7 +81,7 @@ export function PersonaCard({ name, profile, portraitUrl, compact = false, foote
   return (
     <article className="flex h-full flex-col gap-2 rounded-lg border border-line bg-surface p-3 shadow-card" data-persona-card>
       <div className="flex items-start gap-3">
-        <PersonaAvatar name={name} portraitUrl={portraitUrl} size={compact ? 50 : 56} />
+        <PersonaAvatar name={name} profile={profile} portraitUrl={portraitUrl} size={compact ? 50 : 56} />
         <div className="min-w-0">
           <h3 className={cn('font-sans font-bold leading-tight text-ink', compact ? 'text-[14px]' : 'text-[16px]')}>
             {name}

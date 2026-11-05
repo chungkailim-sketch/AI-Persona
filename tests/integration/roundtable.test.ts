@@ -127,6 +127,11 @@ describe('simplified journey: cast and roundtable', () => {
     expect(profiles[0]!.bands).toContain('IDR 20 million or more');
     expect(profiles[0]!.identity?.name).toMatch(/MOCK/);
     expect(profiles[0]!.identity!.keyStatIds.length).toBeGreaterThan(0);
+    // Every persona is given a headshot from the pre-loaded catalog, and no face repeats within the cast.
+    const keys = profiles.map((p) => p.headshot);
+    expect(keys.every((k) => /^hs-\d{2}$/.test(k ?? ''))).toBe(true);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(await db.headshot.count()).toBe(50);
     // Every model call is recorded against the cast.
     expect(await db.modelCall.count({ where: { cohortId } })).toBe(6);
 
@@ -168,5 +173,28 @@ describe('simplified journey: cast and roundtable', () => {
     expect(outcome.status).toBe('FAILED');
     const c = await db.cohort.findUniqueOrThrow({ where: { id: cohortId } });
     expect(c.buildError).toMatch(/Peru/);
+  });
+  it('activates only the personas the question is about, and lets the team ask everyone instead', async () => {
+    const { owner, projectId } = await readyProject();
+    await saveStudyBrief(owner, projectId, { context: '', markets: ['Indonesia', 'Thailand'], question: 'How open are Indonesian consumers to luxury brands from China?', categories: DEFAULT_CATEGORIES.en });
+    const { cohortId } = await requestCast(owner, projectId, 'en');
+    await executeCast((await db.job.findFirstOrThrow({ where: { kind: 'cast' } })).input as never);
+    await approveCast(owner, projectId, cohortId);
+
+    const { roundtableId } = await requestRoundtable(owner, projectId, 'en');
+    expect((await executeRoundtable(roundtableId)).status).toBe('COMPLETED');
+    const rt = await db.roundtable.findUniqueOrThrow({ where: { id: roundtableId }, include: { answers: true } });
+    expect(rt.answers).toHaveLength(3);
+    expect(rt.answers.every((a) => a.market === 'Indonesia')).toBe(true);
+    expect(rt.total).toBe(3);
+    const sel = rt.selection as unknown as { markets: string[]; activated: unknown[]; skipped: { reason: string }[] };
+    expect(sel.markets).toEqual(['Indonesia']);
+    expect(sel.activated).toHaveLength(3);
+    expect(sel.skipped).toHaveLength(3);
+    expect(sel.skipped[0]!.reason).toMatch(/Indonesia/);
+
+    const all = await requestRoundtable(owner, projectId, 'en', 'all');
+    await executeRoundtable(all.roundtableId);
+    expect(await db.roundtableAnswer.count({ where: { roundtableId: all.roundtableId } })).toBe(6);
   });
 });

@@ -99,7 +99,7 @@ export async function startRoundtableAction(_prev: FormState, formData: FormData
   const projectId = String(formData.get('projectId') ?? '');
   try {
     const user = await requireUserApi();
-    await requestRoundtable(user, projectId, await lang());
+    await requestRoundtable(user, projectId, await lang(), formData.get('mode') === 'all' ? 'all' : 'auto');
   } catch (e) {
     return toState(e);
   }

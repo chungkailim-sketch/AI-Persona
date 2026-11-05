@@ -157,7 +157,7 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
                           {p?.profile ? (
                             <div className="flex h-full flex-col gap-1">
                               <Link href={`/projects/${projectId}/personas/${p.id}` as Route} className="block h-full rounded outline-offset-2 hover:ring-2 hover:ring-brand-mark" aria-label={`Open ${p.name}`}>
-                                <PersonaCard name={p.name} profile={p.profile} portraitUrl={null} compact footer={modules.has('interviews') ? <span className="text-xs font-semibold text-link">Open and interview →</span> : undefined} />
+                                <PersonaCard name={p.name} profile={p.profile} compact footer={modules.has('interviews') ? <span className="text-xs font-semibold text-link">Open and interview →</span> : undefined} />
                               </Link>
                               {canEdit && !approved && <RenamePersona projectId={projectId} personaId={p.id} name={p.name} />}
                             </div>

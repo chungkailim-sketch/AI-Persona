@@ -21,6 +21,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     { href: '/admin/users', label: 'Users and roles', need: 'admin.users.manage' },
     { href: '/admin/domains', label: 'Approved domains', need: 'admin.domains.manage' },
     { href: '/admin/jobs', label: 'Job queue', need: 'admin.jobs.view' },
+    { href: '/admin/headshots', label: 'Headshots', need: 'admin.models.manage' },
     { href: '/admin/usage', label: 'Usage and spend', need: 'admin.usage.view' },
     { href: '/admin/audit', label: 'Audit log', need: 'audit.view' },
   ] as const;

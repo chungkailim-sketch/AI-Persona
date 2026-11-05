@@ -26,6 +26,10 @@ const schema = z.object({
   /** OpenAI Decisions API — decision guidance at the checkpoints of the journey. Optional. */
   OPENAI_API_KEY: z.string().optional(),
   DECISIONS_MODEL: z.string().default('gpt-6-luna'),
+  /** Hugging Face token for the image model that generates the photographic persona headshots. */
+  HF_TOKEN: z.string().optional(),
+  IMAGE_PROVIDER: z.string().default('fal-ai'),
+  IMAGE_MODEL: z.string().default('stabilityai/stable-diffusion-xl-base-1.0'),
   DECISIONS_API_URL: z.string().url().default('https://api.openai.com/v1/decisions'),
   EMAIL_PROVIDER: z.enum(['dev', 'postmark', 'ses', 'sendgrid', 'smtp']).default('dev'),
   EMAIL_FROM: z.string().default('no-reply@example.com'),
@@ -182,6 +186,10 @@ export interface IntegrationStatus {
 }
 
 /** A real OpenAI key is set (a placeholder left in the variable does not count). */
+export function imagesConfigured(e: AppEnv = env()): boolean {
+  return Boolean(e.HF_TOKEN && e.HF_TOKEN.trim().length > 8);
+}
+
 export function decisionsConfigured(e: AppEnv = env()): boolean {
   return Boolean(e.OPENAI_API_KEY && /^sk-/.test(e.OPENAI_API_KEY.trim()));
 }

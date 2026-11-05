@@ -11,6 +11,8 @@
  *
  * Every call goes through `callModel`, recorded against the cast or the roundtable and budget-capped.
  */
+import { ensureHeadshots } from '@/headshots/store';
+import { pickHeadshot } from '@/headshots/catalog';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/env';
 import { callModel, ownerSpendUsd } from '@/model/client';
@@ -22,6 +24,7 @@ import { isLongSurveyTable } from '@/forecast/series';
 import { buildCastSeeds, type CastSeed, type CastStat } from '@/server/castBuilder';
 import { CastIdentity, RoundtableAnswerShape, RoundtableSummary } from './schemas';
 import { band } from './marketIndex';
+import { selectPersonas, type Selection } from './selection';
 
 export const ROUNDTABLE_PROMPT_VERSION = '1.0.0';
 
@@ -39,6 +42,8 @@ export interface CastProfile {
   base: number;
   stats: CastStat[];
   identity?: CastIdentity;
+  /** Key of the illustrated headshot (src/headshots) this persona was given. */
+  headshot?: string;
 }
 
 export interface ScoredCategory {
@@ -181,6 +186,18 @@ export async function executeCast(input: CastJobInput): Promise<{ cohortId: stri
         prisma.persona.update({ where: { id: p.id }, data: { name: identity.name } }),
       ]);
     }
+    await ensureHeadshots();
+    // Each persona gets the headshot closest to their gender, market and age; faces do not repeat within a cast.
+    const fresh = await prisma.persona.findMany({ where: { cohortId }, orderBy: { createdAt: 'asc' }, include: { versions: { orderBy: { versionNo: 'desc' }, take: 1 } } });
+    const taken = new Set<string>();
+    for (const p of fresh) {
+      const v = p.versions[0];
+      const profile = (v?.profile ?? null) as CastProfile | null;
+      if (!v || !profile) continue;
+      const key = profile.headshot ?? pickHeadshot({ id: p.id, market: profile.market, gender: profile.identity?.gender, age: profile.identity?.age }, taken);
+      taken.add(key);
+      if (profile.headshot !== key) await prisma.personaVersion.update({ where: { id: v.id }, data: { profile: { ...profile, headshot: key } as object } });
+    }
     await prisma.cohort.update({ where: { id: cohortId }, data: { buildStatus: 'COMPLETED' } });
     return { cohortId, status: 'COMPLETED', personas: personas.length };
   } catch (e) {
@@ -267,17 +284,33 @@ export async function executeRoundtable(roundtableId: string): Promise<{ roundta
   });
   await prisma.roundtable.update({
     where: { id: roundtableId },
-    data: { status: 'RUNNING', phase: 'ANSWERS', total: personas.length, startedAt: rt.startedAt ?? new Date(), failureReason: null },
+    data: { status: 'RUNNING', phase: 'ANSWERS', startedAt: rt.startedAt ?? new Date(), failureReason: null },
   });
   const cap = (await ownerSpendUsd({ roundtableId })) + env().AI_RUN_BUDGET_USD;
   let isMock = true;
 
   try {
+    // Who answers: decided once (a retry reuses it), shown on the page, and the answers' total follows it.
+    let selection = rt.selection as unknown as Selection | null;
+    if (!selection?.activated) {
+      const mode = (rt.selection as { mode?: string } | null)?.mode === 'all' ? 'all' : 'auto';
+      const chosen = await selectPersonas({
+        roundtableId, question: rt.question, context: rt.context, categories: rt.categories, mode, language: lang, seed: rt.seed, budgetCapUsd: cap,
+        personas: personas.flatMap((p) => { const profile = (p.versions[0]?.profile ?? null) as CastProfile | null; return profile ? [{ id: p.id, profile }] : []; }),
+      });
+      const { isMock: _m, ...stored } = chosen;
+      void _m;
+      selection = stored;
+      await prisma.roundtable.update({ where: { id: roundtableId }, data: { selection: selection as object } });
+    }
+    const active = new Set(selection.activated.map((a) => a.personaId));
+    await prisma.roundtable.update({ where: { id: roundtableId }, data: { total: active.size } });
+
     const done = new Set(rt.answers.map((a) => a.personaId));
     let index = 0;
     for (const p of personas) {
       index += 1;
-      if (done.has(p.id)) continue;
+      if (done.has(p.id) || !active.has(p.id)) continue;
       const profile = (p.versions[0]?.profile ?? null) as CastProfile | null;
       if (!profile) continue;
       const id = profile.identity;

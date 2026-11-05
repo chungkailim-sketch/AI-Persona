@@ -13,6 +13,7 @@ import { PersonaAvatar } from '@/ui/report/PersonaCard';
 import { WorkflowNav } from '../WorkflowNav';
 import { DecisionGuidance } from '../DecisionGuidance';
 import { RefreshWhileImporting } from '../data/RefreshWhileImporting';
+import type { Selection } from '@/roundtable/selection';
 import { StartRoundtableButton } from './RoundtableControls';
 import { projectModules } from '@/modules/project';
 
@@ -41,6 +42,8 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
   for (const p of answerPersonas) if (!personas.has(p.id)) personas.set(p.id, { name: p.name, profile: null });
   const answers = [...(rt?.answers ?? [])].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   const isMock = env().MODEL_PROVIDER === 'mock';
+  const sel = rt?.selection as unknown as Selection | null;
+  const selection = sel?.activated ? sel : null;
   const stale = rt && cast && rt.cohortId !== cast.id;
 
   return (
@@ -78,7 +81,7 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
               </p>
             ) : (
               <>
-                <p className="text-sm text-ink">{`${cast!.personas.length} personas will answer, then a strategist writes the takeaways: ${cast!.personas.length + 1} model calls.`}</p>
+                <p className="text-sm text-ink">{`Up to ${cast!.personas.length} personas will answer, then a strategist writes the takeaways.`}</p>
                 {isMock && <p className="text-xs text-warn">The mock model provider is configured: answers will be placeholders.</p>}
                 {canRun ? <StartRoundtableButton projectId={projectId} label={rt ? 'Run the roundtable again' : 'Start the roundtable'} /> : <p className="text-sm text-ink-muted">Starting a roundtable needs the simulation.run permission.</p>}
               </>
@@ -87,6 +90,34 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
         ) : null}
         {stale && !running && <p className="mt-3 text-xs text-ink-subtle">The personas have been rebuilt since the last roundtable; run it again to use them.</p>}
       </section>
+
+      {rt && selection && (
+        <details className="panel max-w-3xl" open={running}>
+          <summary className="cursor-pointer px-5 py-3 text-sm font-semibold text-ink">
+            {`${selection.activated.length} of ${selection.activated.length + selection.skipped.length} personas activated${selection.markets.length ? ` · ${selection.markets.join(', ')}` : ''}`}
+          </summary>
+          <div className="grid gap-4 border-t border-line px-5 py-4 md:grid-cols-2">
+            {([['Activated', selection.activated], ['Not asked', selection.skipped]] as const).map(([title, rows]) => (
+              <div key={title}>
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">{title}</h3>
+                <ul className="mt-2 flex flex-col gap-2">
+                  {rows.length === 0 && <li className="text-xs text-ink-subtle">—</li>}
+                  {rows.map((r) => {
+                    const p = personas.get(r.personaId);
+                    return (
+                      <li key={r.personaId} className="text-xs">
+                        <span className="font-semibold text-ink">{p?.name ?? '—'}</span>
+                        {p?.profile && <span className="text-ink-muted">{` · ${p.profile.market} · ${p.profile.tierLabel}`}</span>}
+                        <p className="text-ink-subtle">{r.reason}</p>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </details>
+      )}
 
       {rt && (
         <section className="panel max-w-3xl" aria-live="polite">
@@ -107,7 +138,7 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
                 const b = band(a.overall ?? 0);
                 return (
                   <li key={a.id} className="flex gap-3 py-2.5">
-                    <PersonaAvatar name={p?.name ?? '?'} size={36} />
+                    <PersonaAvatar name={p?.name ?? '?'} profile={p?.profile} size={36} />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-ink">
                         {p?.name ?? 'Persona'} <span className="font-normal text-ink-subtle">· {a.market} · {p?.profile?.tierLabel ?? ''}</span>

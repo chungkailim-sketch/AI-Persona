@@ -34,6 +34,13 @@ export const CastIdentity = z
   .refine((r) => r.name.length > 0, { message: 'No name.' });
 export type CastIdentity = z.infer<typeof CastIdentity>;
 
+/** Which personas should answer this question, with a reason for each decision. */
+export const PersonaSelection = z.object({
+  activate: list(z.object({ ref: text(12), reason: text(240) }), 80),
+  skip: list(z.object({ ref: text(12), reason: text(240) }), 80),
+});
+export type PersonaSelection = z.infer<typeof PersonaSelection>;
+
 export const RoundtableAnswerShape = z
   .object({
     quote: text(400),
