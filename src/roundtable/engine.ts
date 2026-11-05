@@ -24,6 +24,7 @@ import { isLongSurveyTable } from '@/forecast/series';
 import { buildCastSeeds, type CastSeed, type CastStat } from '@/server/castBuilder';
 import { CastIdentity, RoundtableAnswerShape, RoundtableSummary } from './schemas';
 import { band } from './marketIndex';
+import { selectPersonas, type Selection } from './selection';
 
 export const ROUNDTABLE_PROMPT_VERSION = '1.0.0';
 
@@ -283,17 +284,33 @@ export async function executeRoundtable(roundtableId: string): Promise<{ roundta
   });
   await prisma.roundtable.update({
     where: { id: roundtableId },
-    data: { status: 'RUNNING', phase: 'ANSWERS', total: personas.length, startedAt: rt.startedAt ?? new Date(), failureReason: null },
+    data: { status: 'RUNNING', phase: 'ANSWERS', startedAt: rt.startedAt ?? new Date(), failureReason: null },
   });
   const cap = (await ownerSpendUsd({ roundtableId })) + env().AI_RUN_BUDGET_USD;
   let isMock = true;
 
   try {
+    // Who answers: decided once (a retry reuses it), shown on the page, and the answers' total follows it.
+    let selection = rt.selection as unknown as Selection | null;
+    if (!selection?.activated) {
+      const mode = (rt.selection as { mode?: string } | null)?.mode === 'all' ? 'all' : 'auto';
+      const chosen = await selectPersonas({
+        roundtableId, question: rt.question, context: rt.context, categories: rt.categories, mode, language: lang, seed: rt.seed, budgetCapUsd: cap,
+        personas: personas.flatMap((p) => { const profile = (p.versions[0]?.profile ?? null) as CastProfile | null; return profile ? [{ id: p.id, profile }] : []; }),
+      });
+      const { isMock: _m, ...stored } = chosen;
+      void _m;
+      selection = stored;
+      await prisma.roundtable.update({ where: { id: roundtableId }, data: { selection: selection as object } });
+    }
+    const active = new Set(selection.activated.map((a) => a.personaId));
+    await prisma.roundtable.update({ where: { id: roundtableId }, data: { total: active.size } });
+
     const done = new Set(rt.answers.map((a) => a.personaId));
     let index = 0;
     for (const p of personas) {
       index += 1;
-      if (done.has(p.id)) continue;
+      if (done.has(p.id) || !active.has(p.id)) continue;
       const profile = (p.versions[0]?.profile ?? null) as CastProfile | null;
       if (!profile) continue;
       const id = profile.identity;

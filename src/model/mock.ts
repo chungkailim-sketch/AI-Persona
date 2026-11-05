@@ -64,6 +64,11 @@ function body(schemaName: string, rng: () => number, personaKey: string, request
         oneLiner: '[MOCK] Placeholder persona produced locally; says nothing about the world.',
       };
 
+    case 'roundtable_selection': {
+      const refs = listed(request, 'REFS');
+      return { activate: refs.map((ref) => ({ ref, reason: '[MOCK] Placeholder reason.' })), skip: [] };
+    }
+
     case 'roundtable_answer':
       return {
         quote: `[MOCK] Placeholder quote from ${personaKey}.`,

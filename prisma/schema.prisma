@@ -1370,6 +1370,8 @@ model Roundtable {
   status        String    @default("QUEUED") // QUEUED | RUNNING | COMPLETED | FAILED
   phase         String?
   total         Int       @default(0)
+  /// Who answers: { mode: 'auto' | 'all', activated: [{ personaId, reason }], skipped: [{ personaId, reason }], markets, method }
+  selection     Json?
   isMock        Boolean   @default(true)
   /// Model-written: consensus, takeaways, communications recommendation, market reading.
   summary       Json?

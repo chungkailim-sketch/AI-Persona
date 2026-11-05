@@ -174,4 +174,27 @@ describe('simplified journey: cast and roundtable', () => {
     const c = await db.cohort.findUniqueOrThrow({ where: { id: cohortId } });
     expect(c.buildError).toMatch(/Peru/);
   });
+  it('activates only the personas the question is about, and lets the team ask everyone instead', async () => {
+    const { owner, projectId } = await readyProject();
+    await saveStudyBrief(owner, projectId, { context: '', markets: ['Indonesia', 'Thailand'], question: 'How open are Indonesian consumers to luxury brands from China?', categories: DEFAULT_CATEGORIES.en });
+    const { cohortId } = await requestCast(owner, projectId, 'en');
+    await executeCast((await db.job.findFirstOrThrow({ where: { kind: 'cast' } })).input as never);
+    await approveCast(owner, projectId, cohortId);
+
+    const { roundtableId } = await requestRoundtable(owner, projectId, 'en');
+    expect((await executeRoundtable(roundtableId)).status).toBe('COMPLETED');
+    const rt = await db.roundtable.findUniqueOrThrow({ where: { id: roundtableId }, include: { answers: true } });
+    expect(rt.answers).toHaveLength(3);
+    expect(rt.answers.every((a) => a.market === 'Indonesia')).toBe(true);
+    expect(rt.total).toBe(3);
+    const sel = rt.selection as unknown as { markets: string[]; activated: unknown[]; skipped: { reason: string }[] };
+    expect(sel.markets).toEqual(['Indonesia']);
+    expect(sel.activated).toHaveLength(3);
+    expect(sel.skipped).toHaveLength(3);
+    expect(sel.skipped[0]!.reason).toMatch(/Indonesia/);
+
+    const all = await requestRoundtable(owner, projectId, 'en', 'all');
+    await executeRoundtable(all.roundtableId);
+    expect(await db.roundtableAnswer.count({ where: { roundtableId: all.roundtableId } })).toBe(6);
+  });
 });

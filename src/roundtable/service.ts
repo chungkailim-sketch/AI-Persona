@@ -189,7 +189,7 @@ export async function latestRoundtable(projectId: string) {
   return prisma.roundtable.findFirst({ where: { projectId }, orderBy: { createdAt: 'desc' }, include: { answers: true } });
 }
 
-export async function requestRoundtable(user: SessionUser, projectId: string, lang: Lang): Promise<{ roundtableId: string }> {
+export async function requestRoundtable(user: SessionUser, projectId: string, lang: Lang, mode: 'auto' | 'all' = 'auto'): Promise<{ roundtableId: string }> {
   await requirePermission(user, projectId, 'simulation.run');
   const saved = await latestBrief(projectId);
   // The Brief form pre-fills the default categories; a brief saved without any (an older or Advanced
@@ -213,6 +213,7 @@ export async function requestRoundtable(user: SessionUser, projectId: string, la
       language: lang,
       seed: randomInt(1, 2_000_000_000),
       total: cast!.personas.length,
+      selection: { mode } as object,
       createdById: user.userId,
     },
   });
