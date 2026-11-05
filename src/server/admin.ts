@@ -15,6 +15,7 @@ import {
 import { authContextFor, revokeAllSessionsForUser, type SessionUser } from '@/auth/session';
 import { AuthorizationError } from '@/auth/guard';
 import { recordAudit } from '@/lib/audit';
+import { PROJECT_ROLES, type ProjectRole } from '@/auth/permissions';
 
 export function isSystemRole(v: string): v is SystemRole {
   return (SYSTEM_ROLES as readonly string[]).includes(v);
@@ -198,5 +199,74 @@ export async function listAuditEvents(actor: SessionUser, limit = 100) {
       reason: true,
       createdAt: true,
     },
+  });
+}
+
+// ── Project access ────────────────────────────────────────────────────────────
+
+export function isProjectRole(v: string): v is ProjectRole {
+  return (PROJECT_ROLES as readonly string[]).includes(v);
+}
+
+/**
+ * Every project with each user's role on it, for the access panel. Super administrators only:
+ * a platform role never reads project data by itself, so only the highest role may decide who does.
+ */
+export async function listProjectAccess(actor: SessionUser) {
+  const ctx = await authContextFor(actor);
+  if (ctx.systemRole !== 'SUPER_ADMIN') return null;
+  const [projects, members] = await Promise.all([
+    prisma.project.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true, status: true }, take: 500 }),
+    prisma.projectMember.findMany({ select: { userId: true, projectId: true, role: true } }),
+  ]);
+  return { projects, members };
+}
+
+/** Give a user a role on one project, change it, or (role = null) take it away. */
+export async function setProjectAccess(
+  actor: SessionUser,
+  targetUserId: string,
+  projectId: string,
+  role: ProjectRole | null,
+  meta: { ip?: string | null } = {},
+): Promise<void> {
+  const ctx = await authContextFor(actor);
+  if (ctx.systemRole !== 'SUPER_ADMIN') throw new AuthorizationError('admin.users.manage');
+  // Granting yourself access to a client's project would sidestep the audited break-glass route.
+  if (targetUserId === actor.userId) throw new Error('You cannot change your own project access. Use break-glass access for a project you do not belong to.');
+
+  const [user, project, existing] = await Promise.all([
+    prisma.user.findUnique({ where: { id: targetUserId }, select: { id: true, email: true, status: true } }),
+    prisma.project.findUnique({ where: { id: projectId }, select: { id: true, name: true } }),
+    prisma.projectMember.findUnique({ where: { projectId_userId: { projectId, userId: targetUserId } } }),
+  ]);
+  if (!user) throw new Error('No such user.');
+  if (!project) throw new Error('No such project.');
+  if (role && user.status === 'DEACTIVATED') throw new Error('That account is deactivated. Reactivate it first.');
+
+  if (existing?.role === 'OWNER' && role !== 'OWNER') {
+    const owners = await prisma.projectMember.count({ where: { projectId, role: 'OWNER' } });
+    if (owners <= 1) throw new Error('A project must keep at least one owner. Make someone else an owner first.');
+  }
+  if ((existing?.role ?? null) === role) return;
+
+  if (role === null) await prisma.projectMember.delete({ where: { projectId_userId: { projectId, userId: targetUserId } } });
+  else await prisma.projectMember.upsert({
+    where: { projectId_userId: { projectId, userId: targetUserId } },
+    update: { role },
+    create: { projectId, userId: targetUserId, role, addedBy: actor.userId },
+  });
+
+  await recordAudit({
+    action: role === null ? 'project.access.revoked' : existing ? 'project.access.changed' : 'project.access.granted',
+    targetType: 'project',
+    targetId: projectId,
+    projectId,
+    actorUserId: actor.userId,
+    actorEmail: actor.email,
+    beforeValue: { role: existing?.role ?? null },
+    afterValue: { role },
+    reason: `${user.email} on "${project.name}": ${existing?.role ?? 'no access'} → ${role ?? 'no access'}, by ${actor.email}`,
+    ip: meta.ip ?? null,
   });
 }

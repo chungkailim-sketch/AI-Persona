@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
 import { requireUserApi, AuthorizationError } from '@/auth/guard';
-import { changeSystemRole, setUserStatus, isSystemRole } from '@/server/admin';
+import { changeSystemRole, setUserStatus, isSystemRole, setProjectAccess, isProjectRole } from '@/server/admin';
 import { clientIp } from '@/lib/request';
 
 export interface AdminActionState {
@@ -62,6 +62,28 @@ export async function setStatusAction(
     if (e instanceof AuthorizationError) {
       return { error: 'You cannot change that account.' };
     }
+    return { error: e instanceof Error ? e.message : 'That change could not be applied.' };
+  }
+}
+
+export async function setProjectAccessAction(
+  _prev: AdminActionState,
+  formData: FormData,
+): Promise<AdminActionState> {
+  const actor = await requireUserApi();
+  const userId = String(formData.get('userId') ?? '');
+  const projectId = String(formData.get('projectId') ?? '');
+  const raw = String(formData.get('role') ?? '');
+  const role = raw === 'NONE' ? null : isProjectRole(raw) ? raw : undefined;
+  if (!userId || !projectId || role === undefined) return { error: 'Choose a project role.' };
+
+  try {
+    const h = await headers();
+    await setProjectAccess(actor, userId, projectId, role, { ip: clientIp(h) });
+    revalidatePath('/admin/users');
+    return { ok: role === null ? 'Access removed.' : `Access set to ${role.toLowerCase()}.` };
+  } catch (e) {
+    if (e instanceof AuthorizationError) return { error: 'Only a super administrator can change project access.' };
     return { error: e instanceof Error ? e.message : 'That change could not be applied.' };
   }
 }

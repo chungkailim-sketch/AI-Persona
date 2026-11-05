@@ -1,7 +1,7 @@
 import { requireUser } from '@/auth/guard';
 import { authContextFor } from '@/auth/session';
 import { SYSTEM_ROLES, can, canAssignSystemRole } from '@/auth/permissions';
-import { listUsers } from '@/server/admin';
+import { listUsers, listProjectAccess } from '@/server/admin';
 import { UserRow } from './UserRow';
 import { fmtDate } from '@/lib/time';
 
@@ -11,7 +11,8 @@ export const dynamic = 'force-dynamic';
 export default async function AdminUsersPage() {
   const actor = await requireUser('/admin/users');
   const ctx = await authContextFor(actor);
-  const users = await listUsers(actor);
+  const [users, access] = await Promise.all([listUsers(actor), listProjectAccess(actor)]);
+  const rolesOf = (userId: string) => Object.fromEntries((access?.members ?? []).filter((m) => m.userId === userId).map((m) => [m.projectId, m.role]));
   const canManage = can(ctx, 'admin.users.manage');
 
   // Which roles this actor may grant. The server re-checks on submit; this only decides what to
@@ -26,6 +27,11 @@ export default async function AdminUsersPage() {
         deactivate your own account. Changing a role or deactivating an account ends that user’s
         existing sessions immediately.
       </p>
+      {access && (
+        <p className="mt-2 max-w-prose text-sm text-ink-muted">
+          As a super administrator you can also open <b>Project access</b> on a user to give them a role on specific projects, or take it away.
+        </p>
+      )}
       {!canManage && (
         <p className="mt-4 max-w-prose rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">
           You can view this list but not change it — your role carries <code>audit.view</code>{' '}
@@ -46,6 +52,7 @@ export default async function AdminUsersPage() {
             assignableRoles={assignable}
             isSelf={u.id === actor.userId}
             canManage={canManage}
+            access={access ? { projects: access.projects, roles: rolesOf(u.id) } : undefined}
           />
         ))}
       </ul>

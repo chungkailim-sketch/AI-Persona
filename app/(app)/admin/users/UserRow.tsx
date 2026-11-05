@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import { changeRoleAction, setStatusAction, type AdminActionState } from './actions';
+import { ProjectAccess, type AccessProject } from './ProjectAccess';
 
 const initial: AdminActionState = {};
 
@@ -16,6 +17,8 @@ export interface UserRowProps {
   assignableRoles: readonly string[];
   isSelf: boolean;
   canManage: boolean;
+  /** Present only for a super administrator: every project and this user's role on each. */
+  access?: { projects: AccessProject[]; roles: Record<string, string> } | undefined;
 }
 
 export function UserRow(p: UserRowProps) {
@@ -92,6 +95,8 @@ export function UserRow(p: UserRowProps) {
           )}
         </div>
       </div>
+
+      {p.access && !p.isSelf && <ProjectAccess userId={p.id} email={p.email} projects={p.access.projects} roles={p.access.roles} />}
 
       {message && (
         <p
