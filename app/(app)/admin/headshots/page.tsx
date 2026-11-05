@@ -29,12 +29,12 @@ export default async function AdminHeadshotsPage() {
       <header>
         <h1 className="text-2xl">Persona headshots</h1>
         <p className="mt-1 max-w-prose text-sm text-ink-muted">
-          Fifty portraits are pre-loaded and matched to each persona by gender, market and age. They start as illustrations; generating photographs replaces them with synthetic photographic portraits of people who do not exist ({env().IMAGE_MODEL} via {env().IMAGE_PROVIDER}; billed to the Hugging Face account).
+          Fifty portraits are pre-loaded and matched to each persona by gender, market and age. They start as illustrations; generating photographs replaces them with synthetic photographic portraits of people who do not exist ({env().IMAGE_MODEL} via {env().IMAGE_PROVIDER}; billed to the account that owns the key).
         </p>
       </header>
       <section className="panel flex flex-col gap-3 px-5 py-5">
         <p className="text-sm text-ink"><strong>{status.photos}</strong> of {HEADSHOTS.length} are photographs.</p>
-        {!configured && <p className="text-sm text-warn">No Hugging Face token is set (HF_TOKEN in Railway → Variables, on web and worker).</p>}
+        {!configured && <p className="text-sm text-warn">No image API key is set (IMAGE_API_KEY in Railway → Variables, on web and worker).</p>}
         <GenerateForm disabled={!configured} />
         {job && (
           <p className="text-sm text-ink-muted">
