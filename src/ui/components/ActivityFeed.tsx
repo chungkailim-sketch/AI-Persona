@@ -110,7 +110,7 @@ export const ActivityFeedRow = memo(function ActivityFeedRow({
             <p className="mt-0.5 font-sans text-[12px] text-ink-muted">{event.message}</p>
           )}
           {expanded && (
-            <div id={detailsId} className="mt-1.5 rounded border border-line bg-surface p-2 font-sans text-[11.5px] text-ink-muted">
+            <div id={detailsId} className="mt-1.5 border-t border-line p-2 font-sans text-[11.5px] text-ink-muted">
               <dl className="grid grid-cols-[7rem_1fr] gap-x-2 gap-y-0.5">
                 <dt className="text-ink-subtle">Event</dt>
                 <dd className="font-mono">{event.eventType}</dd>

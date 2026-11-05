@@ -57,7 +57,7 @@ export default async function ResultsStepPage(props: PageProps<'/projects/[proje
       <div>
         <WorkflowNav projectId={projectId} projectName={project.name} current="RESULTS" advanced />
         <h1 className="mt-6 text-2xl">Results</h1>
-        <p className="mt-3 max-w-prose rounded border border-line bg-surface px-4 py-6 text-sm text-ink-muted">
+        <p className="mt-3 max-w-prose border-t border-line px-4 py-6 text-sm text-ink-muted">
           No run has completed in this project yet. Results appear here once one has.
         </p>
         <p className="mt-4 text-sm">
@@ -96,7 +96,7 @@ export default async function ResultsStepPage(props: PageProps<'/projects/[proje
             className={
               h.id === hypothesisId
                 ? 'rounded border border-action bg-action px-3 py-1 text-xs text-action-ink'
-                : 'rounded border border-line bg-surface px-3 py-1 text-xs text-ink-muted hover:text-ink'
+                : 'border-t border-line px-3 py-1 text-xs text-ink-muted hover:text-ink'
             }
           >
             {h.label} · {runs} run{runs === 1 ? '' : 's'}
@@ -112,7 +112,7 @@ export default async function ResultsStepPage(props: PageProps<'/projects/[proje
         <WorkflowNav projectId={projectId} projectName={project.name} current="RESULTS" advanced />
         <h1 className="mt-6 text-2xl">Results</h1>
         {hypothesisNav}
-        <p className="mt-4 max-w-prose rounded border border-line bg-surface px-4 py-6 text-sm text-ink-muted">
+        <p className="mt-4 max-w-prose border-t border-line px-4 py-6 text-sm text-ink-muted">
           No completed run has tested {selectedHypothesis ? `${selectedHypothesis.label} ("${selectedHypothesis.statement}")` : 'this hypothesis'} yet.{' '}
           <Link href={`/projects/${projectId}/advanced/simulate` as Route} className="text-brand underline-offset-2 hover:underline">Plan a run for it</Link>.
         </p>
@@ -216,7 +216,7 @@ export default async function ResultsStepPage(props: PageProps<'/projects/[proje
         <h2 id="evidence" className="text-lg">Evidence this rests on</h2>
         <ul className="mt-4 flex flex-col gap-3">
           {report.evidence.map((e) => (
-            <li key={e.datasetName} className="rounded border border-line bg-surface p-4">
+            <li key={e.datasetName} className="border-t border-line p-4">
               <p className="font-medium text-ink">{e.datasetName}</p>
               <p className="mt-1 text-xs text-ink-subtle">
                 {e.rowCount.toLocaleString()} responses · {e.fieldCount} measures used
@@ -268,7 +268,7 @@ export default async function ResultsStepPage(props: PageProps<'/projects/[proje
           overrideMinimum={OVERRIDE_MINIMUM}
         />
       ) : (
-        <p className="mt-10 max-w-prose rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">
+        <p className="mt-10 max-w-prose border-t border-line px-4 py-3 text-sm text-ink-muted">
           You can read this report but not export it.
         </p>
       )}

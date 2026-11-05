@@ -28,7 +28,7 @@ function savedLabel(iso: string | null): string {
 export function WorkflowStepper({ projectId, current, state }: { projectId: string; current: StepKey; state: WorkflowState }) {
   return (
     <nav aria-label="Project workflow" className="no-print">
-      <ol className="grid grid-cols-1 gap-1.5 sm:grid-cols-5">
+      <ol className="grid grid-cols-1 gap-x-5 gap-y-2 sm:grid-cols-5">
         {WORKFLOW_STEPS.map((s) => {
           const st = state[s.key];
           const meta = META[st.status];
@@ -39,9 +39,8 @@ export function WorkflowStepper({ projectId, current, state }: { projectId: stri
                 href={`/projects/${projectId}/${s.href}` as Route}
                 aria-current={isCurrent ? 'step' : undefined}
                 className={cn(
-                  'motion-color flex h-full flex-col gap-1 rounded border bg-surface px-2.5 py-2 hover:border-line-strong',
-                  meta.ring,
-                  isCurrent && 'border-brand ring-1 ring-brand',
+                  'motion-color flex h-full flex-col gap-1.5 border-t pb-2 pr-3 pt-3 hover:border-ink',
+                  isCurrent ? 'border-ink' : 'border-line',
                 )}
               >
                 <span className="flex items-center gap-2">

@@ -28,7 +28,7 @@ export function UserRow(p: UserRowProps) {
   const isError = Boolean(roleState.error ?? statusState.error);
 
   return (
-    <li className="rounded border border-line bg-surface px-4 py-3">
+    <li className="border-t border-line px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="truncate font-mono text-xs text-ink">{p.email}</p>

@@ -37,7 +37,9 @@
   --gradient-brand: linear-gradient(100deg, #a8dd6b 0%, #5cc27a 55%, #2da44a 100%);
   --font-display: 'Manrope Variable', 'Noto Sans SC Variable', 'Helvetica Neue', Arial, sans-serif;
   --font-sans: 'Manrope Variable', 'Noto Sans SC Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
-  --font-mono: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
+  /* Labels, ids and numbers use the sans face with tabular figures; real code keeps a monospace (see base). */
+  --font-mono: 'Manrope Variable', 'Noto Sans SC Variable', 'Helvetica Neue', Arial, system-ui, sans-serif;
+  --font-code: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, monospace;
 
   /* ── surfaces ─────────────────────────────────────────────────────────── */
   --color-bg: #f9f9f9;              /* page background */
@@ -81,7 +83,7 @@
 
   /* ── scale ─────────────────────────────────────────────────────────────── */
   --space-unit: 4px;
-  --radius-sm: 4px; --radius: 6px; --radius-lg: 12px;
+  --radius-sm: 2px; --radius: 4px; --radius-lg: 8px;
   --shadow-card: none;
   --shadow-pop: 0 8px 24px rgb(16 25 28 / 14%);
   --width-content: 1240px; --width-wide: 1600px; --width-prose: 72ch;
@@ -164,6 +166,8 @@
   h2 { font-weight: 500; }
   h3 { font-weight: 600; }
   a { color: inherit; }
+  code, pre, kbd, samp { font-family: var(--font-code); }
+  .font-mono { font-variant-numeric: tabular-nums; }
   /* Focus is always visible — never removed, only restyled (UX-04). */
   :focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); border-radius: 2px; }
   [hidden] { display: none !important; }
@@ -202,11 +206,12 @@
   }
 
   /* Panel: the unit of the command-center layout. */
-  .panel { background: var(--color-surface); border: 1px solid var(--color-line); border-radius: var(--radius); }
+  /* A panel is an open section under a hairline, not a box. */
+  .panel { background: transparent; border: 0; border-top: 1px solid var(--color-line); border-radius: 0; }
   .hairline-list > * + * { border-top: 1px solid var(--color-line); }
   .panel-head {
     display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 10px 14px; border-bottom: 1px solid var(--color-line);
+    padding: 14px 0 10px;
   }
   .eyebrow {
     font-family: var(--font-sans); font-size: 11px; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase;

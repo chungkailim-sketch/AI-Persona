@@ -69,7 +69,7 @@ export async function WorkflowNav({ projectId, projectName, current, advanced = 
         <WorkflowStepper projectId={projectId} current={current} state={state} />
       </div>
       {advanced && (
-        <p className="no-print flex flex-wrap items-center gap-2 rounded border border-line bg-surface px-3 py-2 text-sm text-ink-muted">
+        <p className="no-print flex flex-wrap items-center gap-2 border-t border-line px-3 py-2 text-sm text-ink-muted">
           <span className="eyebrow">Advanced</span>
           <span>The full research tools behind this step.</span>
           <Link href={`/projects/${projectId}/${stepByKey(current).href}` as Route} className="ml-auto text-link underline-offset-2 hover:underline">

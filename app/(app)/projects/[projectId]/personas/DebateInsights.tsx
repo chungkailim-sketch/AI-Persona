@@ -74,7 +74,7 @@ export function DebateInsights({
 
   if (!completed) {
     return (
-      <p className="rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">
+      <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">
         When this debate completes you can put questions to the panel, generate a communications strategy report, and interview the personas here.
       </p>
     );
@@ -290,7 +290,7 @@ function PanelResult({ a }: { a: InsightArtifactView }) {
       <h4 className="mt-2 text-sm font-medium text-ink">What each persona said</h4>
       <ul className="flex flex-col gap-2">
         {answers.slice(page.start, page.end).map((x) => (
-          <li key={String(x.agentKey)} className="rounded border border-line bg-surface px-3 py-2">
+          <li key={String(x.agentKey)} className="border-t border-line px-3 py-2">
             <div className="flex flex-wrap items-baseline gap-2">
               <span className="font-mono text-[10.5px] text-ink-subtle">{String(x.agentKey)}</span>
               <span className="text-xs font-medium text-ink">{String(x.name)}</span>
@@ -521,7 +521,7 @@ function PersonaTab({
             <li key={q.id} className="flex flex-col gap-1">
               <p className="self-end rounded-full bg-brand-soft/50 px-3 py-1.5 text-xs text-ink">{q.prompt}</p>
               {q.status === 'COMPLETED' ? (
-                <div className="rounded border border-line bg-surface px-3 py-2 text-xs text-ink-muted">
+                <div className="border-t border-line px-3 py-2 text-xs text-ink-muted">
                   <p className="whitespace-pre-wrap">{q.content.answer}<Ids ids={q.content.evidenceIds} /></p>
                   <p className="mt-1 font-mono text-[10px] text-ink-subtle">
                     confidence {Number(q.content.confidence).toFixed(2)}{q.content.outsideEvidence ? ' · goes beyond the evidence' : ''}

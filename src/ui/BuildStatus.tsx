@@ -35,7 +35,7 @@ export function NotYetBuilt({ title, phase, summary, delivers }: NotYetBuiltProp
 
       <p className="mt-4 max-w-prose text-ink-muted">{summary}</p>
 
-      <div className="mt-6 rounded border border-line bg-surface p-5">
+      <div className="mt-6 border-t border-line p-5">
         <p className="font-mono text-[11px] uppercase tracking-[0.1em] text-ink-subtle">
           Delivered by {PHASE_LABEL[phase]}
         </p>

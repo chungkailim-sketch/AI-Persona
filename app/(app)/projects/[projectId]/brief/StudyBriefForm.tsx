@@ -42,7 +42,7 @@ export function StudyBriefForm({ projectId, brief, available, canEdit, locked }:
         ) : (
           <div className="flex flex-wrap gap-2">
             {markets.map((m) => (
-              <label key={m} className="flex cursor-pointer items-center gap-2 rounded border border-line bg-surface px-3 py-1.5 text-sm has-[:checked]:border-brand has-[:checked]:bg-brand-soft">
+              <label key={m} className="flex cursor-pointer items-center gap-2 border-t border-line px-3 py-1.5 text-sm has-[:checked]:border-brand has-[:checked]:bg-brand-soft">
                 <input type="checkbox" name="markets" value={m} defaultChecked={brief.markets.includes(m)} disabled={!canEdit} />
                 <span>{m}</span>
               </label>

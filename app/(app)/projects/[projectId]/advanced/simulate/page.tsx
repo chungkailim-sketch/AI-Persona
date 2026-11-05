@@ -125,7 +125,7 @@ export default async function SimulateStepPage(props: PageProps<'/projects/[proj
               className={
                 r.id === selected?.id
                   ? 'rounded border border-brand bg-brand-soft px-2.5 py-1 font-mono text-[11px] text-brand'
-                  : 'rounded border border-line bg-surface px-2.5 py-1 font-mono text-[11px] text-ink-muted hover:text-ink'
+                  : 'border-t border-line px-2.5 py-1 font-mono text-[11px] text-ink-muted hover:text-ink'
               }
             >
               {hypothesisLabel(r.config?.hypothesisId)} · {fmtDateTime(r.createdAt).slice(5)} · {r.status.toLowerCase().replace(/_/g, ' ')}

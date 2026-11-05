@@ -217,7 +217,7 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
               {debate?.status === 'COMPLETED' && (
                 <DecisionGuidance projectId={projectId} checkpoint="DEBATE" subjectId={debate.id} canAsk={can(ctx, 'project.edit', projectId)} title="Decision on the debate outcome" />
               )}
-              {debate ? <DebateDetail debate={debate} /> : <p className="rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">No debate yet. Enter a topic and run one.</p>}
+              {debate ? <DebateDetail debate={debate} /> : <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">No debate yet. Enter a topic and run one.</p>}
             </div>
           </div>
         </section>
@@ -225,7 +225,7 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
 
       {approved && (
         <div className="flex justify-end">
-          <Link href={`/projects/${projectId}/${nextStep.href}` as Route} className="rounded-full bg-action px-4 py-2 text-sm font-semibold text-action-ink hover:opacity-90">
+          <Link href={`/projects/${projectId}/${nextStep.href}` as Route} className="rounded-full bg-action px-6 py-2.5 text-[13px] font-medium tracking-wide text-action-ink hover:opacity-90">
             {nextStep.label}
           </Link>
         </div>

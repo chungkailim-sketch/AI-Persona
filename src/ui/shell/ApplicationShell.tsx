@@ -88,7 +88,7 @@ export function ApplicationShell({
         </Dialog.Root>
 
         <main id="main" className="min-h-[calc(100dvh-52px)] min-w-0 flex-1 bg-bg">
-          <div className="mx-auto max-w-wide px-4 py-6 lg:px-10">{children}</div>
+          <div className="mx-auto max-w-[1240px] px-5 py-8 lg:px-14 lg:py-12">{children}</div>
         </main>
       </div>
     </div>

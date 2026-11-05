@@ -133,7 +133,7 @@ export function FindingItem({
   const [open, setOpen] = useState(false);
 
   return (
-    <li className="rounded border border-line bg-surface px-4 py-3">
+    <li className="border-t border-line px-4 py-3">
       <div className="flex flex-wrap items-start gap-2">
         <SeverityChip severity={finding.severity} />
         <span className="font-mono text-[11px] text-ink-subtle">{finding.check}</span>
@@ -304,7 +304,7 @@ export function FieldReviewForm({
       <input type="hidden" name="projectId" value={projectId} />
       <input type="hidden" name="datasetVersionId" value={datasetVersionId} />
 
-      <p className="max-w-prose rounded border border-line bg-surface px-3 py-2 text-xs text-ink-muted">
+      <p className="max-w-prose border-t border-line px-3 py-2 text-xs text-ink-muted">
         {detectionCaveat}
       </p>
       {sensitiveCount > 0 && (

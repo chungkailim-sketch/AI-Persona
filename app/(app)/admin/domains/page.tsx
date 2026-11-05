@@ -26,7 +26,7 @@ export default async function AdminDomainsPage() {
         {domains.map((d) => (
           <li
             key={d.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded border border-line bg-surface px-4 py-3"
+            className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3"
           >
             <div>
               <p className="font-mono text-sm text-ink">{d.domain}</p>

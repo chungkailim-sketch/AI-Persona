@@ -66,7 +66,7 @@ export default async function AdminJobsPage() {
 
       <dl className="mt-6 grid gap-3 sm:grid-cols-4">
         {stats.map((s) => (
-          <div key={s.label} className="rounded border border-line bg-surface p-4">
+          <div key={s.label} className="border-t border-line p-4">
             <dt className="text-xs text-ink-subtle">{s.label}</dt>
             <dd
               className={
@@ -84,7 +84,7 @@ export default async function AdminJobsPage() {
       <section aria-labelledby="recent" className="mt-10">
         <h2 id="recent" className="text-lg">Recent jobs</h2>
         {recent.length === 0 ? (
-          <p className="mt-3 rounded border border-line bg-surface px-4 py-6 text-sm text-ink-muted">
+          <p className="mt-3 border-t border-line px-4 py-6 text-sm text-ink-muted">
             No jobs have been enqueued.
           </p>
         ) : (

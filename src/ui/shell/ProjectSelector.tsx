@@ -39,7 +39,7 @@ export function ProjectSelector({ projects }: { projects: ProjectOption[] }) {
         <Icon name="chevronDown" size={13} className="shrink-0" />
       </Menu.Trigger>
       <Menu.Portal>
-        <Menu.Content align="start" sideOffset={6} className="z-50 max-h-[60vh] min-w-[18rem] overflow-y-auto rounded border border-line bg-surface-raised p-1 shadow-pop">
+        <Menu.Content align="start" sideOffset={6} className="z-50 max-h-[60vh] min-w-[18rem] overflow-y-auto border-t border-line-raised p-1 shadow-pop">
           {projects.length === 0 && <p className="px-2 py-1.5 text-sm text-ink-subtle">You are not a member of any project yet.</p>}
           {projects.map((p) => (
             <Menu.Item key={p.id} asChild className="flex cursor-pointer flex-col rounded px-2 py-1.5 outline-none data-[highlighted]:bg-bg">

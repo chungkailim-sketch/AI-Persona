@@ -30,7 +30,7 @@ export default async function ProjectsPage() {
       <section aria-labelledby="your-projects" className="mt-10">
         <h2 id="your-projects" className="text-lg">Your projects</h2>
         {projects.length === 0 ? (
-          <p className="mt-3 rounded border border-line bg-surface px-4 py-6 text-sm text-ink-muted">
+          <p className="mt-3 border-t border-line px-4 py-6 text-sm text-ink-muted">
             You are not a member of any project yet. Create one below.
           </p>
         ) : (
@@ -39,7 +39,7 @@ export default async function ProjectsPage() {
               <li key={p.id}>
                 <Link
                   href={`/projects/${p.id}/data`}
-                  className="block rounded border border-line bg-surface p-4 transition-colors duration-fast hover:border-brand"
+                  className="block border-t border-line p-4 transition-colors duration-fast hover:border-brand"
                 >
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-medium text-ink">{p.name}</span>

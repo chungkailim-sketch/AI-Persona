@@ -37,7 +37,7 @@ export default async function BriefStepPage(props: PageProps<'/projects/[project
       <div className="">
         <WorkflowNav projectId={projectId} projectName={project.name} current="BRIEF" advanced />
         <h1 className="mt-6 text-2xl">Brief</h1>
-        <p className="mt-3 max-w-prose rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">
+        <p className="mt-3 max-w-prose border-t border-line px-4 py-3 text-sm text-ink-muted">
           No brief has been written yet, and viewers cannot start one.
         </p>
       </div>
@@ -111,7 +111,7 @@ export default async function BriefStepPage(props: PageProps<'/projects/[project
           />
         </section>
       ) : (
-        <p className="mt-10 max-w-prose rounded border border-line bg-surface px-4 py-3 text-sm text-ink-muted">
+        <p className="mt-10 max-w-prose border-t border-line px-4 py-3 text-sm text-ink-muted">
           You can read this brief but not change it.
         </p>
       )}
