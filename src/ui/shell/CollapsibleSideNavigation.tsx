@@ -29,6 +29,7 @@ export function CollapsibleSideNavigation({ isAdmin, collapsed, onNavigate }: { 
             const link = (
               <Link
                 href={s.href as Route}
+                prefetch={false}
                 onClick={onNavigate}
                 aria-current={active ? 'page' : undefined}
                 aria-label={collapsed ? s.label : undefined}

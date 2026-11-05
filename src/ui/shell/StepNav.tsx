@@ -34,7 +34,7 @@ export function StepNav({ vertical = false, onNavigate }: { vertical?: boolean; 
       <ul className={cn(vertical ? 'flex flex-col' : 'flex items-center gap-7')}>
         {items.map((i) => (
           <li key={i.key}>
-            <Link href={i.href as Route} onClick={onNavigate} aria-current={i.active ? 'page' : undefined} className={cn('motion-color font-medium', base, i.active ? on : off)}>
+            <Link href={i.href as Route} prefetch={false} onClick={onNavigate} aria-current={i.active ? 'page' : undefined} className={cn('motion-color font-medium', base, i.active ? on : off)}>
               {i.index > 0 && <span className="text-xs font-normal tabular-nums text-ink-subtle">{`0${i.index}`}</span>}
               {i.label}
             </Link>

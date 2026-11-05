@@ -20,18 +20,18 @@ export function MoreMenu({ isAdmin }: { isAdmin: boolean }) {
           <p className="eyebrow px-2.5 pb-1 pt-2">Advanced</p>
           {advanced.map((s) => (
             <Menu.Item key={s.href} asChild className={item}>
-              <Link href={s.href as Route}><Icon name={s.icon} size={15} /> {s.label}</Link>
+              <Link href={s.href as Route} prefetch={false}><Icon name={s.icon} size={15} /> {s.label}</Link>
             </Menu.Item>
           ))}
           <Menu.Separator className="my-1.5 h-px bg-line" />
           {rest.map((s) => (
             <Menu.Item key={s.href} asChild className={item}>
-              <Link href={s.href as Route}><Icon name={s.icon} size={15} /> {s.label}</Link>
+              <Link href={s.href as Route} prefetch={false}><Icon name={s.icon} size={15} /> {s.label}</Link>
             </Menu.Item>
           ))}
           {isAdmin && (
             <Menu.Item asChild className={item}>
-              <Link href={ADMIN_SECTION.href as Route}><Icon name={ADMIN_SECTION.icon} size={15} /> {ADMIN_SECTION.label}</Link>
+              <Link href={ADMIN_SECTION.href as Route} prefetch={false}><Icon name={ADMIN_SECTION.icon} size={15} /> {ADMIN_SECTION.label}</Link>
             </Menu.Item>
           )}
         </Menu.Content>
