@@ -3,7 +3,7 @@ import { requireUser } from '@/auth/guard';
 import { authContextFor } from '@/auth/session';
 import { can } from '@/auth/permissions';
 import { prisma } from '@/lib/prisma';
-import { decisionsConfigured, env } from '@/lib/env';
+import { imagesConfigured, env } from '@/lib/env';
 import { HEADSHOTS, headshotUrl } from '@/headshots/catalog';
 import { headshotStatus } from '@/headshots/store';
 import { GenerateForm } from './GenerateForm';
@@ -21,7 +21,7 @@ export default async function AdminHeadshotsPage() {
     prisma.headshot.findMany({ select: { key: true, source: true } }),
   ]);
   const photo = new Set(sources.filter((s) => s.source === 'photo').map((s) => s.key));
-  const configured = decisionsConfigured(env());
+  const configured = imagesConfigured(env());
   const result = (job?.output ?? null) as { generated?: number; failed?: { key: string; reason: string }[] } | null;
 
   return (
@@ -29,12 +29,12 @@ export default async function AdminHeadshotsPage() {
       <header>
         <h1 className="text-2xl">Persona headshots</h1>
         <p className="mt-1 max-w-prose text-sm text-ink-muted">
-          Fifty portraits are pre-loaded and matched to each persona by gender, market and age. They start as illustrations; generating photographs replaces them with synthetic photographic portraits of people who do not exist ({env().IMAGE_MODEL}, about US$2 for all fifty).
+          Fifty portraits are pre-loaded and matched to each persona by gender, market and age. They start as illustrations; generating photographs replaces them with synthetic photographic portraits of people who do not exist ({env().IMAGE_MODEL} via {env().IMAGE_PROVIDER}; billed to the Hugging Face account).
         </p>
       </header>
       <section className="panel flex flex-col gap-3 px-5 py-5">
         <p className="text-sm text-ink"><strong>{status.photos}</strong> of {HEADSHOTS.length} are photographs.</p>
-        {!configured && <p className="text-sm text-warn">No OpenAI key is set (OPENAI_API_KEY in Railway → Variables, on web and worker).</p>}
+        {!configured && <p className="text-sm text-warn">No Hugging Face token is set (HF_TOKEN in Railway → Variables, on web and worker).</p>}
         <GenerateForm disabled={!configured} />
         {job && (
           <p className="text-sm text-ink-muted">

@@ -1,4 +1,4 @@
-// Generate the photographic headshots from a shell with DATABASE_URL and OPENAI_API_KEY set:
+// Generate the photographic headshots from a shell with DATABASE_URL and HF_TOKEN set:
 //   npx tsx scripts/generateHeadshots.ts [--force]
 import { generatePhotoHeadshots } from '../src/headshots/photos';
 

@@ -1,18 +1,18 @@
 /**
  * Replace the illustrated headshots with synthetic photographic portraits (server only).
  *
- * Each catalog entry is described to an image model (OpenAI Images API) as a studio headshot of an
- * invented person; the result is cropped square, resized and stored in the Headshot table. These are
+ * Each catalog entry is described to an image model (Stable Diffusion XL through Hugging Face
+ * Inference Providers, fal-ai) as a studio headshot of an invented person; the result is cropped square, resized and stored in the Headshot table. These are
  * AI-generated faces of people who do not exist — never photographs of real people — and the app
  * keeps saying the personas are illustrative.
  */
 import sharp from 'sharp';
 import { prisma } from '@/lib/prisma';
-import { decisionsConfigured, env } from '@/lib/env';
+import { InferenceClient } from '@huggingface/inference';
+import { imagesConfigured, env } from '@/lib/env';
 import { HEADSHOTS, type HeadshotSpec, type Region } from './catalog';
 import { ensureHeadshots } from './store';
 
-const IMAGE_API_URL = 'https://api.openai.com/v1/images/generations';
 const WHO: Record<Region, string> = {
   east_asian: 'East Asian',
   southeast_asian: 'Southeast Asian',
@@ -29,15 +29,19 @@ const STYLE_WORD: Record<string, string> = {
 };
 const OUTFIT_WORD: Record<string, string> = { tee: 'a plain crew-neck top', shirt: 'a collared shirt', blazer: 'a business blazer over a shirt', turtle: 'a smart roll-neck top' };
 
+export const NEGATIVE_PROMPT = 'cartoon, illustration, painting, drawing, 3d render, anime, deformed, distorted face, extra fingers, blurry, low quality, text, watermark, logo, hat, sunglasses';
+
 export function headshotPrompt(s: HeadshotSpec): string {
-  const who = `a ${s.age}-year-old ${WHO[s.region]} ${s.gender === 'F' ? 'woman' : 'man'}`;
-  const hair = s.style === 'hijab' ? 'wearing a hijab' : s.style === 'bald' ? 'with a shaved head' : `with ${HAIR_WORD[s.hair] ?? ''} ${STYLE_WORD[s.style]}`.replace('  ', ' ');
-  const extras = [s.beard === 'full' ? 'a full beard' : s.beard === 'stubble' ? 'light stubble' : s.beard === 'mustache' ? 'a moustache' : '', s.glasses ? 'glasses' : '', s.earrings ? 'small earrings' : ''].filter(Boolean);
+  const who = `${s.age} year old ${WHO[s.region]} ${s.gender === 'F' ? 'woman' : 'man'}`;
+  const hair = s.style === 'hijab' ? 'wearing a hijab' : s.style === 'bald' ? 'shaved head' : `${HAIR_WORD[s.hair] ?? ''} ${STYLE_WORD[s.style]}`.trim();
+  const extras = [s.beard === 'full' ? 'full beard' : s.beard === 'stubble' ? 'light stubble' : s.beard === 'mustache' ? 'moustache' : '', s.glasses ? 'glasses' : '', s.earrings ? 'small earrings' : ''].filter(Boolean);
   return [
-    `Photorealistic professional headshot photograph of ${who}, ${hair}${extras.length ? `, with ${extras.join(' and ')}` : ''}, wearing ${OUTFIT_WORD[s.outfit]}.`,
-    'Head and shoulders, facing the camera, friendly natural expression, soft studio light, plain light neutral grey background, sharp focus, natural skin texture, like a corporate website portrait.',
-    'The person is entirely fictional. No text, no logos, no watermark.',
-  ].join(' ');
+    `Photorealistic professional corporate headshot photo of a ${who}`,
+    hair,
+    ...extras,
+    `wearing ${OUTFIT_WORD[s.outfit]}`,
+    'head and shoulders, looking at camera, friendly natural smile, soft studio lighting, plain light grey background, sharp focus, detailed natural skin texture, 85mm portrait photography, entirely fictional person',
+  ].join(', ');
 }
 
 export interface PhotoRun {
@@ -46,33 +50,27 @@ export interface PhotoRun {
   failed: { key: string; reason: string }[];
 }
 
-async function generateOne(s: HeadshotSpec, key: string): Promise<Buffer> {
+async function generateOne(s: HeadshotSpec, client: InferenceClient): Promise<Buffer> {
   const e = env();
-  const res = await fetch(IMAGE_API_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${key}` },
-    body: JSON.stringify({ model: e.IMAGE_MODEL, prompt: headshotPrompt(s), size: '1024x1024', quality: 'medium', n: 1 }),
-    signal: AbortSignal.timeout(120_000),
-  });
-  if (!res.ok) {
-    const d = (await res.json().catch(() => null)) as { error?: { code?: string; message?: string } } | null;
-    throw new Error(`Images API ${res.status}${d?.error?.code ? ` (${d.error.code})` : ''}${d?.error?.message ? `: ${d.error.message.slice(0, 160)}` : ''}`);
-  }
-  const body = (await res.json()) as { data?: { b64_json?: string; url?: string }[] };
-  const item = body.data?.[0];
-  let raw: Buffer;
-  if (item?.b64_json) raw = Buffer.from(item.b64_json, 'base64');
-  else if (item?.url) raw = Buffer.from(await (await fetch(item.url, { signal: AbortSignal.timeout(60_000) })).arrayBuffer());
-  else throw new Error('The Images API returned no image.');
-  // Square on the face (upper-centre), 512 px, compact.
+  const image = await client.textToImage(
+    {
+      provider: e.IMAGE_PROVIDER as 'fal-ai',
+      model: e.IMAGE_MODEL,
+      inputs: headshotPrompt(s),
+      parameters: { negative_prompt: NEGATIVE_PROMPT, width: 1024, height: 1024 },
+    },
+    { outputType: 'blob' },
+  );
+  const raw = Buffer.from(await image.arrayBuffer());
+  // Square on the face, 512 px, compact.
   return sharp(raw).resize(512, 512, { fit: 'cover', position: 'attention' }).webp({ quality: 84 }).toBuffer();
 }
 
 /** Generate photographs for every headshot not yet a photo (or for all with `force`). */
 export async function generatePhotoHeadshots(opts: { force?: boolean; onProgress?: (done: number, total: number) => void } = {}): Promise<PhotoRun> {
   const e = env();
-  if (!decisionsConfigured(e)) throw new Error('No OpenAI key is set (OPENAI_API_KEY), so photographs cannot be generated.');
-  const key = e.OPENAI_API_KEY!.trim();
+  if (!imagesConfigured(e)) throw new Error('No Hugging Face token is set (HF_TOKEN), so photographs cannot be generated.');
+  const client = new InferenceClient(e.HF_TOKEN!.trim());
   await ensureHeadshots();
   const have = new Map((await prisma.headshot.findMany({ select: { key: true, source: true } })).map((h) => [h.key, h.source]));
   const todo = HEADSHOTS.filter((h) => opts.force || have.get(h.key) !== 'photo');
@@ -83,13 +81,13 @@ export async function generatePhotoHeadshots(opts: { force?: boolean; onProgress
     while (next < todo.length) {
       const s = todo[next++]!;
       try {
-        const data = await generateOne(s, key);
+        const data = await generateOne(s, client);
         await prisma.headshot.update({ where: { key: s.key }, data: { data: new Uint8Array(data), mime: 'image/webp', source: 'photo' } });
         run.generated += 1;
       } catch (err) {
         run.failed.push({ key: s.key, reason: err instanceof Error ? err.message : 'failed' });
         // A key or quota problem will fail every call; stop early rather than make fifty failing requests.
-        if (/\b(401|403|429)\b|insufficient_quota|invalid_api_key/.test(String(err))) next = todo.length;
+        if (/\b(401|402|403|429)\b|unauthorized|credit|quota|rate limit/i.test(String(err))) next = todo.length;
       }
       opts.onProgress?.(++done, todo.length);
     }

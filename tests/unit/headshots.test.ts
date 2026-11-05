@@ -58,6 +58,7 @@ describe('photo prompts', () => {
     expect(p).toMatch(/Photorealistic/);
     expect(p).toMatch(/hijab/);
     expect(p).toMatch(/entirely fictional/);
+    expect((await import('@/headshots/photos')).NEGATIVE_PROMPT).toMatch(/cartoon/);
     const q = headshotPrompt(HEADSHOTS[6]!);
     expect(q).toMatch(/East Asian man/);
   });

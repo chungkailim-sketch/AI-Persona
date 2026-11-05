@@ -6,7 +6,7 @@ import { authContextFor } from '@/auth/session';
 import { can } from '@/auth/permissions';
 import { enqueue } from '@/queue/queue';
 import { prisma } from '@/lib/prisma';
-import { decisionsConfigured, env } from '@/lib/env';
+import { imagesConfigured, env } from '@/lib/env';
 
 export interface HeadshotActionState {
   error?: string;
@@ -17,7 +17,7 @@ export async function generateHeadshotsAction(_prev: HeadshotActionState, formDa
   const actor = await requireUserApi();
   const ctx = await authContextFor(actor);
   if (!can(ctx, 'admin.models.manage')) return { error: 'You cannot manage models.' };
-  if (!decisionsConfigured(env())) return { error: 'No OpenAI key is set. Add OPENAI_API_KEY in Railway → Variables (web and worker), then try again.' };
+  if (!imagesConfigured(env())) return { error: 'No Hugging Face token is set. Add HF_TOKEN in Railway → Variables (on web and worker), then try again.' };
   const running = await prisma.job.findFirst({ where: { kind: 'headshots', status: { in: ['PENDING', 'RUNNING'] } }, select: { id: true } });
   if (running) return { error: 'Headshots are already being generated.' };
   const force = formData.get('force') === 'on';
