@@ -45,7 +45,7 @@ export default async function PersonaPage(props: PageProps<'/projects/[projectId
         <aside className="flex flex-col gap-4">
           <section className="panel flex flex-col gap-3 px-5 py-5">
             <div className="flex items-center gap-4">
-              <PersonaAvatar name={persona.name} size={72} />
+              <PersonaAvatar name={persona.name} profile={profile} size={72} />
               <div className="min-w-0">
                 <h1 className="text-2xl leading-tight">{persona.name}{id?.age ? <span className="font-medium text-ink-muted">{` • ${id.age}`}</span> : null}</h1>
                 {id && <p className="text-sm text-ink-muted">{[id.occupation, id.city].filter(Boolean).join(' · ')}</p>}
@@ -101,7 +101,7 @@ export default async function PersonaPage(props: PageProps<'/projects/[projectId
                 <li key={c.id} className="flex flex-col gap-2">
                   <p className="self-end rounded-full bg-brand-soft px-3 py-2 text-sm text-ink">{c.question}</p>
                   <div className="flex items-start gap-2">
-                    <PersonaAvatar name={persona.name} size={32} />
+                    <PersonaAvatar name={persona.name} profile={profile} size={32} />
                     <div className="min-w-0 rounded border border-line bg-surface px-3 py-2">
                       {c.ok ? <p className="whitespace-pre-line text-sm text-ink">{a.answer}</p> : <p className="text-sm text-warn">No answer was produced.</p>}
                       <p className="mt-1 text-[11px] text-ink-subtle">

@@ -107,7 +107,7 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
                 const b = band(a.overall ?? 0);
                 return (
                   <li key={a.id} className="flex gap-3 py-2.5">
-                    <PersonaAvatar name={p?.name ?? '?'} size={36} />
+                    <PersonaAvatar name={p?.name ?? '?'} profile={p?.profile} size={36} />
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-semibold text-ink">
                         {p?.name ?? 'Persona'} <span className="font-normal text-ink-subtle">· {a.market} · {p?.profile?.tierLabel ?? ''}</span>

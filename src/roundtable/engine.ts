@@ -11,6 +11,8 @@
  *
  * Every call goes through `callModel`, recorded against the cast or the roundtable and budget-capped.
  */
+import { ensureHeadshots } from '@/headshots/store';
+import { pickHeadshot } from '@/headshots/catalog';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/env';
 import { callModel, ownerSpendUsd } from '@/model/client';
@@ -39,6 +41,8 @@ export interface CastProfile {
   base: number;
   stats: CastStat[];
   identity?: CastIdentity;
+  /** Key of the illustrated headshot (src/headshots) this persona was given. */
+  headshot?: string;
 }
 
 export interface ScoredCategory {
@@ -180,6 +184,18 @@ export async function executeCast(input: CastJobInput): Promise<{ cohortId: stri
         prisma.personaVersion.update({ where: { id: v.id }, data: { profile: { ...profile, identity } as object } }),
         prisma.persona.update({ where: { id: p.id }, data: { name: identity.name } }),
       ]);
+    }
+    await ensureHeadshots();
+    // Each persona gets the headshot closest to their gender, market and age; faces do not repeat within a cast.
+    const fresh = await prisma.persona.findMany({ where: { cohortId }, orderBy: { createdAt: 'asc' }, include: { versions: { orderBy: { versionNo: 'desc' }, take: 1 } } });
+    const taken = new Set<string>();
+    for (const p of fresh) {
+      const v = p.versions[0];
+      const profile = (v?.profile ?? null) as CastProfile | null;
+      if (!v || !profile) continue;
+      const key = profile.headshot ?? pickHeadshot({ id: p.id, market: profile.market, gender: profile.identity?.gender, age: profile.identity?.age }, taken);
+      taken.add(key);
+      if (profile.headshot !== key) await prisma.personaVersion.update({ where: { id: v.id }, data: { profile: { ...profile, headshot: key } as object } });
     }
     await prisma.cohort.update({ where: { id: cohortId }, data: { buildStatus: 'COMPLETED' } });
     return { cohortId, status: 'COMPLETED', personas: personas.length };

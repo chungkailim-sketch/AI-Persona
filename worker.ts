@@ -33,6 +33,7 @@ import { provisionDemoWorkspace } from './src/demo/provision';
 import { runForecastAnalysis } from './src/forecast/analysis';
 import { executeDebate } from './src/debate/engine';
 import { executeInsight } from './src/debate/insights';
+import { generatePhotoHeadshots } from './src/headshots/photos';
 import { executeCast, executeRoundtable, type CastJobInput } from './src/roundtable/engine';
 import { executePlan } from './src/advice/planner';
 
@@ -113,6 +114,11 @@ async function handle(job: ClaimedJob): Promise<Record<string, unknown>> {
       if (!input.roundtableId) throw new Error('Job input does not name a roundtable.');
       const outcome = await executeRoundtable(input.roundtableId);
       return outcome as unknown as Record<string, unknown>;
+    }
+    case 'headshots': {
+      const input = job.input as { force?: boolean };
+      const run = await generatePhotoHeadshots({ force: Boolean(input.force) });
+      return run as unknown as Record<string, unknown>;
     }
     case 'advice': {
       const input = job.input as { adviceId?: string };
@@ -228,7 +234,7 @@ async function loop(): Promise<void> {
     }
     let job: ClaimedJob | null = null;
     try {
-      job = await claimNext(WORKER_ID, ['ingest', 'simulate', 'export', 'demo_provision', 'trend_analysis', 'debate', 'debate_insight', 'cast', 'roundtable', 'advice']);
+      job = await claimNext(WORKER_ID, ['ingest', 'simulate', 'export', 'demo_provision', 'trend_analysis', 'debate', 'debate_insight', 'cast', 'roundtable', 'advice', 'headshots']);
     } catch (e) {
       log('could not reach the queue', { error: e instanceof Error ? e.message : String(e) });
       await new Promise((r) => setTimeout(r, 5_000));

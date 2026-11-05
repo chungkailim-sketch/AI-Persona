@@ -12,6 +12,8 @@
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client';
 import { loadEnv, approvedDomainsFromEnv, demoSignIn } from '../src/lib/env';
+import { HEADSHOTS } from '../src/headshots/catalog';
+import { drawHeadshot } from '../src/headshots/draw';
 
 async function main(): Promise<void> {
   const env = loadEnv();
@@ -93,6 +95,14 @@ async function main(): Promise<void> {
       });
     }
     console.log('immutable safety controls ensured: 5');
+
+    // Only missing ones: a headshot already replaced by a generated photo is left alone.
+    const have = new Set((await prisma.headshot.findMany({ select: { key: true } })).map((h) => h.key));
+    for (const h of HEADSHOTS) {
+      if (have.has(h.key)) continue;
+      await prisma.headshot.create({ data: { key: h.key, region: h.region, gender: h.gender, age: h.age, data: Buffer.from(drawHeadshot(h)) } });
+    }
+    console.log(`headshots loaded: ${HEADSHOTS.length}`);
   } finally {
     await prisma.$disconnect();
   }

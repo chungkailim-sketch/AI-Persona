@@ -127,6 +127,11 @@ describe('simplified journey: cast and roundtable', () => {
     expect(profiles[0]!.bands).toContain('IDR 20 million or more');
     expect(profiles[0]!.identity?.name).toMatch(/MOCK/);
     expect(profiles[0]!.identity!.keyStatIds.length).toBeGreaterThan(0);
+    // Every persona is given a headshot from the pre-loaded catalog, and no face repeats within the cast.
+    const keys = profiles.map((p) => p.headshot);
+    expect(keys.every((k) => /^hs-\d{2}$/.test(k ?? ''))).toBe(true);
+    expect(new Set(keys).size).toBe(keys.length);
+    expect(await db.headshot.count()).toBe(50);
     // Every model call is recorded against the cast.
     expect(await db.modelCall.count({ where: { cohortId } })).toBe(6);
 

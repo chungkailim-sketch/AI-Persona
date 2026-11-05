@@ -26,6 +26,8 @@ const schema = z.object({
   /** OpenAI Decisions API — decision guidance at the checkpoints of the journey. Optional. */
   OPENAI_API_KEY: z.string().optional(),
   DECISIONS_MODEL: z.string().default('gpt-6-luna'),
+  /** Image model used to generate the photographic persona headshots (uses OPENAI_API_KEY). */
+  IMAGE_MODEL: z.string().default('gpt-image-1'),
   DECISIONS_API_URL: z.string().url().default('https://api.openai.com/v1/decisions'),
   EMAIL_PROVIDER: z.enum(['dev', 'postmark', 'ses', 'sendgrid', 'smtp']).default('dev'),
   EMAIL_FROM: z.string().default('no-reply@example.com'),

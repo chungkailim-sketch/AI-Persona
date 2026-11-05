@@ -329,7 +329,7 @@ function Roundtable({ r, page }: { r: Report; page: number }) {
             return (
               <li key={a.personaId} className="flex flex-col gap-2 rounded border border-line p-3">
                 <div className="flex items-center gap-2">
-                  <PersonaAvatar name={p?.name ?? '?'} size={44} />
+                  <PersonaAvatar name={p?.name ?? '?'} profile={p?.profile} size={44} />
                   <div className="min-w-0">
                     <p className="truncate text-[14px] font-bold">{p?.name}</p>
                     <p className="text-[11px] text-ink-subtle">{`${a.market} · ${p?.profile.tierLabel ?? ''}`}</p>
@@ -427,7 +427,7 @@ function Profile({ p, r, page }: { p: ReportPersona; r: Report; page: number }) 
       <div className="grid h-full grid-cols-[300px_1fr_300px] gap-5">
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-3">
-            <PersonaAvatar name={p.name} size={72} />
+            <PersonaAvatar name={p.name} profile={p.profile} size={72} />
             <div className="text-[13px] text-ink-muted">
               {id && <p className="font-semibold text-ink">{[id.occupation, id.city].filter(Boolean).join(' · ')}</p>}
               {id?.lifeStage && <p>{id.lifeStage}</p>}
