@@ -25,7 +25,7 @@ export function KnowledgeLibrary({ entries, industries }: { entries: KnowledgeEn
       <div role="tablist" aria-label="Knowledge bases" className="flex flex-wrap gap-2">
         {TABS.map((t) => (
           <button key={t.key} role="tab" type="button" aria-selected={tab === t.key} onClick={() => setTab(t.key)}
-            className={`rounded px-3 py-1.5 text-sm font-semibold ${tab === t.key ? 'bg-brand text-brand-ink' : 'border border-line text-ink-muted hover:border-brand'}`}>
+            className={`rounded px-3 py-1.5 text-sm font-semibold ${tab === t.key ? 'bg-action text-action-ink' : 'border border-line text-ink-muted hover:border-brand'}`}>
             {t.label}
           </button>
         ))}

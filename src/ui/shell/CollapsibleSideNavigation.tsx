@@ -21,7 +21,7 @@ export function CollapsibleSideNavigation({ isAdmin, collapsed, onNavigate }: { 
   return (
     <Tooltip.Provider delayDuration={200}>
       <nav aria-label="Sections" className="w-full">
-        <ul className="flex flex-col gap-0.5">
+        <ul className="flex flex-col">
           {items.map((s, i) => {
             const advanced = (x: (typeof items)[number] | undefined) => Boolean(x && 'group' in x && x.group === 'advanced');
             const startsAdvanced = advanced(s) && !advanced(items[i - 1]);
@@ -33,13 +33,14 @@ export function CollapsibleSideNavigation({ isAdmin, collapsed, onNavigate }: { 
                 aria-current={active ? 'page' : undefined}
                 aria-label={collapsed ? s.label : undefined}
                 className={cn(
-                  'motion-color flex items-center gap-3 rounded-full px-3 py-2 text-[15px] font-medium tracking-[-0.02em]',
+                  'motion-color flex items-center gap-3 border-t border-line py-3 text-[15px] font-medium',
                   collapsed && 'justify-center px-0',
-                  active ? 'bg-brand-soft font-semibold text-brand' : 'text-ink hover:bg-surface hover:text-brand',
+                  active ? 'text-ink' : 'text-ink-muted hover:text-ink',
                 )}
               >
                 <Icon name={s.icon} size={17} className="shrink-0" />
                 {!collapsed && <span className="truncate">{s.label}</span>}
+                {!collapsed && active && <span aria-hidden className="ml-auto h-1.5 w-1.5 rounded-full bg-brand-mark" />}
               </Link>
             );
             return (
@@ -48,7 +49,7 @@ export function CollapsibleSideNavigation({ isAdmin, collapsed, onNavigate }: { 
                   (collapsed ? (
                     <span aria-hidden className="my-2 block h-px bg-line" />
                   ) : (
-                    <span className="eyebrow mb-1 mt-4 block px-2.5">Advanced</span>
+                    <span className="eyebrow mb-2 mt-8 block">Advanced</span>
                   ))}
                 {collapsed ? (
                   <Tooltip.Root>

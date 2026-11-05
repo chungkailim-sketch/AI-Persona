@@ -95,7 +95,7 @@ export default async function ResultsStepPage(props: PageProps<'/projects/[proje
             title={h.statement}
             className={
               h.id === hypothesisId
-                ? 'rounded border border-brand bg-brand px-3 py-1 text-xs text-brand-ink'
+                ? 'rounded border border-action bg-action px-3 py-1 text-xs text-action-ink'
                 : 'rounded border border-line bg-surface px-3 py-1 text-xs text-ink-muted hover:text-ink'
             }
           >
@@ -157,7 +157,7 @@ export default async function ResultsStepPage(props: PageProps<'/projects/[proje
               aria-current={r.id === runId ? 'page' : undefined}
               className={
                 r.id === runId
-                  ? 'rounded bg-brand px-3 py-1 text-xs text-brand-ink'
+                  ? 'rounded bg-action px-3 py-1 text-xs text-action-ink'
                   : 'rounded bg-surface px-3 py-1 text-xs text-ink-muted hover:text-ink'
               }
             >

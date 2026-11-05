@@ -26,6 +26,8 @@ const config: Config = {
         'line-strong': 'var(--color-line-strong)',
         brand: 'var(--color-brand)',
         'brand-ink': 'var(--color-brand-ink)',
+        action: 'var(--color-action)',
+        'action-ink': 'var(--color-action-ink)',
         'brand-soft': 'var(--color-brand-soft)',
         'brand-mark': 'var(--color-brand-mark)',
         'brand-deep': 'var(--color-brand-deep)',

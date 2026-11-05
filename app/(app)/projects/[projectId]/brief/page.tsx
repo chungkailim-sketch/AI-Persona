@@ -68,7 +68,7 @@ export default async function BriefStepPage(props: PageProps<'/projects/[project
       {brief && <div className="max-w-3xl"><DecisionGuidance projectId={projectId} checkpoint="BRIEF" canAsk={can(ctx, 'project.edit', projectId)} /></div>}
       {brief && missing.length === 0 && (
         <div className="flex max-w-3xl justify-end">
-          <Link href={`/projects/${projectId}/personas` as Route} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-brand-ink hover:opacity-90">
+          <Link href={`/projects/${projectId}/personas` as Route} className="rounded-full bg-action px-4 py-2 text-sm font-semibold text-action-ink hover:opacity-90">
             Next: Personas →
           </Link>
         </div>

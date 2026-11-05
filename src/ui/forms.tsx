@@ -121,7 +121,7 @@ export function SubmitButton({
       className={cn(
         'self-start rounded-full px-5 py-2 text-sm font-semibold disabled:opacity-50',
         variant === 'primary'
-          ? 'bg-brand text-brand-ink hover:opacity-90'
+          ? 'bg-action text-action-ink hover:opacity-90'
           : 'border border-line-strong text-ink-muted hover:border-brand',
       )}
     >

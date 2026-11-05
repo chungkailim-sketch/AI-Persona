@@ -32,7 +32,7 @@ export default function Home() {
       <div className="mt-8 flex gap-3">
         <Link
           href="/sign-in"
-          className="rounded-full bg-brand px-4 py-2 text-sm font-medium text-brand-ink transition-opacity duration-fast hover:opacity-90"
+          className="rounded-full bg-action px-4 py-2 text-sm font-medium text-action-ink transition-opacity duration-fast hover:opacity-90"
         >
           Sign in
         </Link>

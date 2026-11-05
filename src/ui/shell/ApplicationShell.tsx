@@ -43,7 +43,7 @@ export function ApplicationShell({
       <div className="flex">
         <aside
           className={cn(
-            'no-print sticky top-[52px] hidden h-[calc(100dvh-52px)] shrink-0 flex-col justify-between bg-sidebar px-3 py-4 transition-[width] duration-standard ease-standard md:flex',
+            'no-print sticky top-[52px] hidden h-[calc(100dvh-52px)] shrink-0 flex-col justify-between border-r border-line bg-sidebar px-5 py-6 transition-[width] duration-standard ease-standard md:flex',
             collapsed ? 'w-[4.25rem]' : 'w-64',
           )}
           data-nav-state={collapsed ? 'collapsed' : 'expanded'}
@@ -51,9 +51,9 @@ export function ApplicationShell({
           <CollapsibleSideNavigation isAdmin={top.isAdmin} collapsed={collapsed} />
           <div className="flex flex-col gap-3">
             {!collapsed && (
-              <Link href="/projects" className="group flex items-center justify-between gap-2 rounded-full bg-brand-gradient py-2 pl-4 pr-2 text-sm font-bold text-ink shadow-card">
+              <Link href="/projects" className="group flex items-center justify-between gap-2 rounded-full bg-action py-2 pl-4 pr-2 text-xs font-medium tracking-wide text-action-ink">
                 <span>Start a new study</span>
-                <span aria-hidden className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-surface text-brand transition-transform duration-fast group-hover:translate-x-0.5">
+                <span aria-hidden className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-action-ink text-action transition-transform duration-fast group-hover:translate-x-0.5">
                   <Icon name="chevronRight" size={15} />
                 </span>
               </Link>
@@ -63,7 +63,7 @@ export function ApplicationShell({
             onClick={toggle}
             aria-expanded={!collapsed}
             aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}
-            className={cn('flex items-center gap-2 rounded px-2.5 py-2 text-xs text-ink-subtle hover:bg-bg hover:text-ink', collapsed && 'justify-center px-0')}
+            className={cn('flex items-center gap-2 px-0.5 py-2 text-xs text-ink-subtle hover:text-ink', collapsed && 'justify-center px-0')}
           >
             <Icon name={collapsed ? 'chevronRight' : 'chevronLeft'} size={15} />
             {!collapsed && <span>Collapse</span>}

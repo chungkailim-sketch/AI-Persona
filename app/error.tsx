@@ -33,7 +33,7 @@ export default function GlobalError({
         <button
           type="button"
           onClick={reset}
-          className="mt-6 rounded-full bg-brand px-4 py-2 text-sm font-medium text-brand-ink hover:opacity-90"
+          className="mt-6 rounded-full bg-action px-4 py-2 text-sm font-medium text-action-ink hover:opacity-90"
         >
           Try again
         </button>
