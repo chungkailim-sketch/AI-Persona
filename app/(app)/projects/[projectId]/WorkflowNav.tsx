@@ -29,8 +29,8 @@ export async function WorkflowNav({ projectId, projectName, current, advanced = 
           <span aria-hidden className="text-ink-subtle">/</span> {projectName}
         </p>
       </nav>
-      <div className="no-print -mx-5 contents flex-col gap-2 bg-bg/95 px-5 backdrop-blur sm:sticky sm:flex sm:top-[52px] sm:z-20 sm:border-b sm:border-line sm:pb-2 lg:mx-0 lg:px-0">
-        <div className="sticky top-[52px] z-20 -mx-5 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line bg-bg/95 px-5 py-2 backdrop-blur sm:static sm:mx-0 sm:border-b-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:backdrop-blur-none">
+      <div className="no-print -mx-5 contents flex-col gap-2 bg-bg/95 px-5 backdrop-blur sm:flex sm:border-b sm:border-line sm:pb-2 lg:mx-0 lg:px-0">
+        <div className="sticky top-[68px] z-20 -mx-5 flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line bg-bg/95 px-5 py-2 backdrop-blur sm:static sm:mx-0 sm:border-b-0 sm:bg-transparent sm:px-0 sm:pb-0 sm:backdrop-blur-none">
           <span className="font-display text-[15px] font-semibold text-ink">{projectName}</span>
           {project && (
             <span className="rounded-sm border border-line px-1.5 font-mono text-[10px] uppercase text-ink-muted">{project.status.toLowerCase()}</span>
