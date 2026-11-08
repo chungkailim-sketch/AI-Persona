@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { loadEnv, integrationStatus } from '@/lib/env';
 import { BrandLogo } from '@/ui/shell/BrandLogo';
 
 const STEPS = [
@@ -25,14 +24,6 @@ const outline = 'inline-block rounded-full border border-ink px-7 py-3.5 text-[1
  * or broken first screen (prompt §32).
  */
 export default function Home() {
-  let integrations: ReturnType<typeof integrationStatus> = [];
-  let configError: string | null = null;
-  try {
-    integrations = integrationStatus(loadEnv());
-  } catch (e) {
-    configError = e instanceof Error ? e.message : 'Configuration could not be read.';
-  }
-
   return (
     <div className="min-h-dvh bg-bg">
       <header className="sticky top-0 z-30 border-b border-line bg-elevated/85 backdrop-blur-md">
@@ -41,7 +32,6 @@ export default function Home() {
           <nav aria-label="Primary" className="hidden items-center gap-7 text-sm font-medium text-ink-muted md:flex">
             <a href="#how" className="hover:text-ink">How it works</a>
             <Link href="/methodology" className="hover:text-ink">Methodology</Link>
-            <a href="#status" className="hover:text-ink">Status</a>
           </nav>
           <div className="flex items-center gap-4">
             <Link href="/sign-in" className="text-sm font-medium text-ink-muted hover:text-ink">Sign in</Link>
@@ -130,30 +120,6 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="status" aria-labelledby="integrations" className="py-16">
-          <span className="eyebrow">Status</span>
-          <h2 id="integrations" className="mt-3 text-2xl">Integration status</h2>
-          <p className="mt-2 max-w-prose text-sm font-light text-ink-muted">
-            What is genuinely connected in this build, and what runs on a local adapter. Nothing mocked is presented as live.
-          </p>
-          {configError ? (
-            <p className="mt-6 rounded-lg border border-danger bg-danger-soft px-4 py-3 text-sm text-danger">{configError}</p>
-          ) : (
-            <ul className="mt-6 grid gap-x-8 sm:grid-cols-2">
-              {integrations.map((i) => (
-                <li key={i.key} className="border-t border-line py-4">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-sm font-medium text-ink">{i.label}</span>
-                    <span className={i.connected ? 'rounded-full bg-ok-soft px-2.5 py-0.5 text-[11px] text-ok' : 'rounded-full bg-warn-soft px-2.5 py-0.5 text-[11px] text-warn'}>
-                      {i.connected ? 'connected' : `adapter: ${i.mode}`}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-xs font-light text-ink-subtle">{i.note}</p>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
       </main>
 
       <footer className="border-t border-line">
