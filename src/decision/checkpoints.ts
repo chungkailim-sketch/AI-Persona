@@ -2,7 +2,7 @@
  * Decision guidance at each checkpoint of the journey (server only).
  *
  * Each checkpoint gathers what has been decided so far — computed from the tables of record, never
- * written by a model — into one input, and asks the Decisions API a few questions about what to do
+ * written by a model — into one input, and asks the decision engine a few questions about what to do
  * next. The answer is guidance with probabilities; nothing in the journey is gated on it.
  */
 import { prisma } from '@/lib/prisma';
@@ -15,7 +15,7 @@ import { availableMarkets, latestBrief, latestCast, latestRoundtable } from '@/r
 import { roundtableView, type CastProfile, type ScoredCategory } from '@/roundtable/engine';
 import { loadReport } from '@/roundtable/report';
 
-export const CHECKPOINTS = ['DATA', 'BRIEF', 'CAST', 'DEBATE', 'ROUNDTABLE', 'REPORT'] as const;
+export const CHECKPOINTS = ['DATA', 'BRIEF', 'CAST', 'SWARM_SETUP', 'DEBATE', 'ROUNDTABLE', 'REPORT'] as const;
 export type Checkpoint = (typeof CHECKPOINTS)[number];
 
 /** Human wording for every choice value, shown next to its probability. */
@@ -45,10 +45,22 @@ export const CHOICE_LABEL: Record<string, string> = {
   commission_field_research: 'Commission field research first',
   enter_priority_market_first: 'Enter the priority market first',
   revisit_brief: 'Revisit the brief',
+  rounds_1: 'One rebuttal round (quick)',
+  rounds_2: 'Two rebuttal rounds (standard)',
+  rounds_3: 'Three rebuttal rounds (thorough)',
+  compare_suggested: 'Compare the segments the brief names',
+  compare_none: 'No segment comparison',
+  run_swarm_debate: 'Run the swarm debate',
+  run_roundtable_first: 'Run the roundtable first',
+  approve_cast_first: 'Approve the personas first',
 };
 
 export const QUESTION_LABEL: Record<string, string> = {
   ready: 'The data is ready to build personas',
+  motion: 'Motion most likely to give a usable answer',
+  rounds: 'Rebuttal rounds',
+  compare: 'Segment comparison',
+  swarm_ready: 'The personas can argue this motion from their data',
   next: 'Recommended next step',
   clear: 'The question can be answered from consumer survey data',
   fit: 'Fit between the brief and the data',
@@ -142,6 +154,39 @@ async function buildCast(projectId: string): Promise<Built> {
   };
 }
 
+async function buildSwarmSetup(projectId: string): Promise<Built> {
+  const [brief, cast, imported] = await Promise.all([
+    latestBrief(projectId),
+    latestCast(projectId),
+    prisma.advice.findFirst({ where: { projectId, kind: 'BRIEF_IMPORT', status: 'COMPLETED' }, orderBy: { createdAt: 'desc' } }),
+  ]);
+  const swarm = ((imported?.content ?? {}) as { swarm?: { topic?: string; hypothesis?: string; focusSegments?: string[] } }).swarm ?? {};
+  const hypotheses = brief ? await prisma.hypothesis.findMany({ where: { briefId: brief.id }, select: { statement: true }, take: 4 }) : [];
+  const motions = [...new Set([swarm.topic, ...hypotheses.map((h) => h.statement), brief?.researchQuestion].filter((m): m is string => Boolean(m && m.trim())))].slice(0, 4);
+  const approved = (cast?.personas ?? []).filter((p) => p.versions[0]?.approval === 'APPROVED').length;
+  const markets = [...new Set((cast?.personas ?? []).map((p) => (p.versions[0]?.profile as unknown as CastProfile | null)?.market).filter(Boolean))];
+  const qs: DecisionQuestion[] = [
+    { name: 'swarm_ready', type: 'predicate', instructions: 'The approved personas, built from survey data on these markets, can argue the leading motion from their own data.' },
+    choice('rounds', 'How many rebuttal rounds give a clear verdict without repetition.', ['rounds_1', 'rounds_2', 'rounds_3']),
+    choice('next', 'The most useful next step.', ['run_swarm_debate', 'run_roundtable_first', 'approve_cast_first', 'refine_motion']),
+  ];
+  if (motions.length >= 2) qs.unshift({ name: 'motion', type: 'choice', instructions: 'The motion most likely to give the team a clear, usable answer.', choices: motions.map((m) => ({ value: m, description: m })) });
+  if (swarm.focusSegments?.length === 2) qs.splice(2, 0, choice('compare', `Whether to compare ${swarm.focusSegments.join(' with ')}.`, ['compare_suggested', 'compare_none']));
+  return {
+    subjectId: cast?.id,
+    input: [
+      'Checkpoint: setting up an agent-swarm debate among simulated consumer personas built from survey data.',
+      `Brand and category context: ${brief?.businessContext ?? '—'}`,
+      `Roundtable question: ${brief?.researchQuestion ?? '—'}`,
+      `Candidate motions: ${motions.join(' | ') || '—'}`,
+      swarm.hypothesis ? `Hypothesis suggested by the brief: ${swarm.hypothesis}` : '',
+      swarm.focusSegments?.length ? `Segments the brief names: ${swarm.focusSegments.join(', ')}` : '',
+      `Personas: ${approved} approved of ${cast?.personas.length ?? 0}; markets ${markets.join(', ') || '—'}.`,
+    ].filter(Boolean).join('\n'),
+    questions: qs,
+  };
+}
+
 async function buildDebate(projectId: string, debateId?: string): Promise<Built> {
   const debate = await prisma.debate.findFirst({
     where: { projectId, status: 'COMPLETED', ...(debateId ? { id: debateId } : {}) },
@@ -220,6 +265,7 @@ export async function buildCheckpoint(projectId: string, checkpoint: Checkpoint,
     case 'DATA': return buildData(projectId);
     case 'BRIEF': return buildBrief(projectId);
     case 'CAST': return buildCast(projectId);
+    case 'SWARM_SETUP': return buildSwarmSetup(projectId);
     case 'DEBATE': return buildDebate(projectId, subjectId);
     case 'ROUNDTABLE': return buildRoundtable(projectId);
     case 'REPORT': return buildReport(projectId);

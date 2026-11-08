@@ -189,6 +189,11 @@ export async function latestRoundtable(projectId: string) {
   return prisma.roundtable.findFirst({ where: { projectId }, orderBy: { createdAt: 'desc' }, include: { answers: true } });
 }
 
+/** Every roundtable the project has run, newest first, with its answers — none is ever deleted. */
+export async function roundtableHistory(projectId: string) {
+  return prisma.roundtable.findMany({ where: { projectId }, orderBy: { createdAt: 'desc' }, include: { answers: true } });
+}
+
 export async function requestRoundtable(user: SessionUser, projectId: string, lang: Lang, mode: 'auto' | 'all' = 'auto'): Promise<{ roundtableId: string }> {
   await requirePermission(user, projectId, 'simulation.run');
   const saved = await latestBrief(projectId);

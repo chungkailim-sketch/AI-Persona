@@ -242,7 +242,7 @@ export default async function ResultsStepPage(props: PageProps<'/projects/[proje
         <dl className="mt-3 grid max-w-2xl grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-sm">
           <dt className="text-ink-subtle">Provider</dt>
           <dd className="font-mono text-xs text-ink">
-            {report.modelProvider} ({report.modelId})
+            {report.modelProvider === 'mock' ? 'Mock' : 'AI model'}
           </dd>
           <dt className="text-ink-subtle">Model calls</dt>
           <dd className="font-mono text-xs text-ink">

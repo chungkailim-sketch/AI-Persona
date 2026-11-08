@@ -1,8 +1,10 @@
 /**
  * POST /api/auth/request-code — issue a one-time sign-in code.
  *
- * The response is deliberately uninformative. Whether the address is unknown, deactivated, on a
- * domain nobody approved, or perfectly valid, the caller gets the same body and the same status.
+ * The response is deliberately uninformative. Whether an address on an approved domain is unknown,
+ * deactivated or perfectly valid, the caller gets the same body and the same status. An address on a
+ * domain that is not approved is told so: that is the published access policy (Ruder Finn and its
+ * group's domains), not a fact about any account.
  * Anything else turns this endpoint into an account-enumeration oracle. The real outcome is in the
  * audit log, where it belongs.
  *
@@ -21,6 +23,7 @@ import { ensureDevelopmentSignIn } from '@/auth/devBootstrap';
 import { emailAdapter, signInEmail } from '@/email/adapter';
 import {
   GENERIC_OTP_RESPONSE,
+  DOMAIN_NOT_ALLOWED_MESSAGE,
   OTP_CONFIG,
   createChallengeMaterial,
   createFixedChallengeMaterial,
@@ -112,7 +115,9 @@ export async function POST(request: Request): Promise<NextResponse> {
         'so either this domain is in neither, or it exists and was deactivated. Add it to .env and restart, ' +
         'or reactivate it under Admin → Approved domains. Run "npm run doctor" to see which.',
     );
-    return generic();
+    // The one refusal that is said out loud: the domain policy is not a secret, and it tells nobody
+    // whether a particular address has an account. Approved-domain outcomes stay uninformative.
+    return NextResponse.json({ error: DOMAIN_NOT_ALLOWED_MESSAGE }, { status: 403 });
   }
 
   const user = await prisma.user.findUnique({ where: { email } });

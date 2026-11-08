@@ -4,8 +4,8 @@ import { drawHeadshot } from '@/headshots/draw';
 
 describe('headshot catalog', () => {
   it('has fifty distinct portraits across regions, both genders and a wide age range', () => {
-    expect(HEADSHOTS).toHaveLength(50);
-    expect(new Set(HEADSHOTS.map((h) => h.key)).size).toBe(50);
+    expect(HEADSHOTS).toHaveLength(100);
+    expect(new Set(HEADSHOTS.map((h) => h.key)).size).toBe(100);
     expect(new Set(HEADSHOTS.map((h) => h.region)).size).toBe(7);
     expect(HEADSHOTS.filter((h) => h.gender === 'F').length).toBeGreaterThanOrEqual(20);
     expect(HEADSHOTS.filter((h) => h.gender === 'M').length).toBeGreaterThanOrEqual(20);
@@ -16,7 +16,7 @@ describe('headshot catalog', () => {
   it('draws a valid, deterministic SVG for each', () => {
     const svgs = HEADSHOTS.map(drawHeadshot);
     for (const s of svgs) expect(s).toMatch(/^<svg [^>]*viewBox="0 0 256 256"[\s\S]*<\/svg>$/);
-    expect(new Set(svgs).size).toBe(50);
+    expect(new Set(svgs).size).toBe(100);
     expect(drawHeadshot(HEADSHOTS[3]!)).toBe(svgs[3]);
   });
 });
@@ -55,7 +55,7 @@ describe('photo prompts', () => {
   it('describe the person, ask for a photographic result and never name a real person', async () => {
     const { headshotPrompt } = await import('@/headshots/photos');
     const p = headshotPrompt(HEADSHOTS.find((h) => h.style === 'hijab')!);
-    expect(p).toMatch(/Photorealistic/);
+    expect(p).toMatch(/photorealistic lifestyle/i);
     expect(p).toMatch(/hijab/);
     expect(p).toMatch(/entirely fictional/);
     expect((await import('@/headshots/photos')).NEGATIVE_PROMPT).toMatch(/cartoon/);

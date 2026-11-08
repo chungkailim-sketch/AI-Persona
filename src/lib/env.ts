@@ -211,8 +211,8 @@ export function integrationStatus(e: AppEnv): IntegrationStatus[] {
   return [
     {
       key: 'model',
-      label: 'AI model (Anthropic Claude)',
-      mode: e.MODEL_PROVIDER,
+      label: 'AI model',
+      mode: e.MODEL_PROVIDER === 'mock' ? 'mock' : 'live',
       connected: e.MODEL_PROVIDER === 'anthropic' && Boolean(e.ANTHROPIC_API_KEY),
       note: e.MODEL_PROVIDER === 'mock'
         ? 'Mock provider. Outputs are generated locally and labelled as mock throughout the interface.'
@@ -220,12 +220,12 @@ export function integrationStatus(e: AppEnv): IntegrationStatus[] {
     },
     {
       key: 'decisions',
-      label: 'Decision guidance (OpenAI Decisions API)',
-      mode: decisionsConfigured(e) ? e.DECISIONS_MODEL : 'off',
+      label: 'Decision guidance',
+      mode: decisionsConfigured(e) ? 'live' : 'off',
       connected: decisionsConfigured(e),
       note: decisionsConfigured(e)
         ? 'Live. Guidance is requested server-side when someone asks for it at a checkpoint.'
-        : 'No OpenAI key. Guidance is produced by a local stand-in and labelled as such. Set OPENAI_API_KEY to turn it on.',
+        : 'Not connected. Guidance is produced by a local stand-in and labelled as such. An administrator can connect it in the deployment settings.',
     },
     {
       key: 'email',

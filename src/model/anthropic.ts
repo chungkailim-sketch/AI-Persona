@@ -41,6 +41,28 @@ interface AnthropicSuccess {
   usage: { input_tokens: number; output_tokens: number };
 }
 
+/** Attachments ride on the first user message, ahead of its text, as the API expects. */
+function withAttachments(request: ModelRequest) {
+  const files = request.attachments ?? [];
+  if (files.length === 0) return request.messages;
+  const first = request.messages.findIndex((m) => m.role === 'user');
+  return request.messages.map((m, i) =>
+    i !== first
+      ? m
+      : {
+          role: m.role,
+          content: [
+            ...files.map((f) =>
+              f.mediaType === 'application/pdf'
+                ? { type: 'document', source: { type: 'base64', media_type: f.mediaType, data: f.base64 } }
+                : { type: 'image', source: { type: 'base64', media_type: f.mediaType, data: f.base64 } },
+            ),
+            { type: 'text', text: m.content },
+          ],
+        },
+  );
+}
+
 export class AnthropicProvider implements ModelProvider {
   readonly name = 'anthropic' as const;
   readonly modelId: string;
@@ -84,7 +106,7 @@ export class AnthropicProvider implements ModelProvider {
             ? { temperature: request.temperature ?? env().AI_TEMPERATURE }
             : { thinking: { type: 'between_tools' } }),
           system: request.system,
-          messages: request.messages,
+          messages: withAttachments(request),
         }),
       });
 

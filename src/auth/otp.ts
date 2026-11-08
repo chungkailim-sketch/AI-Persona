@@ -141,6 +141,9 @@ export function withinHourlyLimit(requestTimestamps: readonly Date[], now: Date 
  * allowlisted, to limit account enumeration (prompt §7). The distinction is recorded in the
  * audit log, not surfaced in the UI.
  */
+export const DOMAIN_NOT_ALLOWED_MESSAGE =
+  'Only Ruder Finn and Ruder Finn group email addresses can sign in. Please reach out to your Ruder Finn account manager for access.';
+
 export const GENERIC_OTP_RESPONSE =
   'If that address is eligible, a sign-in code is on its way. It expires in 10 minutes.';
 

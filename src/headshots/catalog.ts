@@ -1,5 +1,5 @@
 /**
- * The fifty illustrated headshots every cast draws its portraits from. The catalog (who each one
+ * The hundred illustrated headshots every cast draws its portraits from. The catalog (who each one
  * depicts) is plain data so a page can match a persona to a portrait without touching the database;
  * the artwork itself is drawn by `draw.ts`, stored in the `Headshot` table and served from there.
  *
@@ -93,6 +93,57 @@ const ROWS: Row[] = [
   ['latin', 'M', 57, '#d4a47c', HAIR.grey, 'buzz', 'shirt', 'glasses'],
   // One more to make fifty
   ['east_asian', 'F', 19, '#f2d6bb', HAIR.dark, 'wavy', 'tee'],
+  // Second fifty: more faces for the markets casts use most, so no face repeats within a cast
+  ['east_asian', 'F', 22, '#f3d8be', HAIR.black, 'bob', 'tee', 'earrings'],
+  ['east_asian', 'F', 30, '#eecfb0', HAIR.dark, 'long', 'turtle'],
+  ['east_asian', 'F', 41, '#ebc8a5', HAIR.black, 'wavy', 'shirt', 'earrings'],
+  ['east_asian', 'F', 55, '#e7c39e', HAIR.grey, 'bob', 'shirt', 'glasses'],
+  ['east_asian', 'F', 71, '#e6c3a1', HAIR.white, 'bun', 'turtle'],
+  ['east_asian', 'M', 19, '#f1d3b6', HAIR.black, 'curlyshort', 'tee'],
+  ['east_asian', 'M', 31, '#ecc8a4', HAIR.black, 'short', 'shirt'],
+  ['east_asian', 'M', 45, '#e8c39e', HAIR.dark, 'side', 'turtle', 'glasses'],
+  ['east_asian', 'M', 59, '#e4bf99', HAIR.grey, 'short', 'shirt'],
+  ['southeast_asian', 'F', 19, '#dbab7f', HAIR.black, 'wavy', 'tee', 'earrings'],
+  ['southeast_asian', 'F', 27, '#d2a076', HAIR.dark, 'hijab', 'tee'],
+  ['southeast_asian', 'F', 35, '#cd9c72', HAIR.black, 'bun', 'shirt'],
+  ['southeast_asian', 'F', 47, '#c99870', HAIR.black, 'hijab', 'turtle', 'glasses'],
+  ['southeast_asian', 'F', 63, '#c69469', HAIR.white, 'bun', 'shirt'],
+  ['southeast_asian', 'M', 21, '#d8a77a', HAIR.black, 'curlyshort', 'tee'],
+  ['southeast_asian', 'M', 32, '#d0a073', HAIR.black, 'buzz', 'tee', 'stubble'],
+  ['southeast_asian', 'M', 42, '#ca986c', HAIR.dark, 'short', 'turtle'],
+  ['southeast_asian', 'M', 55, '#c49264', HAIR.grey, 'side', 'shirt', 'glasses'],
+  ['southeast_asian', 'M', 68, '#c08e60', HAIR.white, 'short', 'turtle'],
+  ['south_asian', 'F', 21, '#bd8659', HAIR.black, 'long', 'tee'],
+  ['south_asian', 'F', 33, '#b07852', HAIR.black, 'bun', 'shirt', 'earrings'],
+  ['south_asian', 'F', 46, '#aa714b', HAIR.dark, 'wavy', 'turtle'],
+  ['south_asian', 'F', 64, '#a46c47', HAIR.silver, 'bun', 'shirt', 'glasses'],
+  ['south_asian', 'M', 33, '#b27852', HAIR.black, 'curlyshort', 'shirt', 'stubble'],
+  ['south_asian', 'M', 50, '#a56d47', HAIR.dark, 'short', 'turtle', 'glasses'],
+  ['south_asian', 'M', 68, '#9e6741', HAIR.white, 'bald', 'shirt', 'full'],
+  ['middle_eastern', 'F', 22, '#dbae84', HAIR.black, 'hijab', 'tee'],
+  ['middle_eastern', 'F', 43, '#d6a67d', HAIR.dark, 'wavy', 'shirt', 'earrings'],
+  ['middle_eastern', 'F', 60, '#cb9d77', HAIR.grey, 'hijab', 'turtle', 'glasses'],
+  ['middle_eastern', 'M', 22, '#d6a479', HAIR.black, 'curlyshort', 'tee', 'stubble'],
+  ['middle_eastern', 'M', 36, '#cf9e73', HAIR.black, 'short', 'shirt', 'full'],
+  ['middle_eastern', 'M', 52, '#c9976d', HAIR.dark, 'buzz', 'turtle', 'mustache'],
+  ['african', 'F', 19, '#664230', HAIR.black, 'curly', 'tee'],
+  ['african', 'F', 31, '#5d3c29', HAIR.black, 'long', 'shirt', 'earrings'],
+  ['african', 'F', 44, '#704a34', HAIR.black, 'bun', 'turtle'],
+  ['african', 'F', 66, '#7c5339', HAIR.white, 'curly', 'shirt', 'glasses'],
+  ['african', 'M', 33, '#5b3c2a', HAIR.black, 'buzz', 'tee', 'full'],
+  ['african', 'M', 48, '#6a4531', HAIR.black, 'bald', 'turtle'],
+  ['european', 'F', 19, '#f7dfca', HAIR.brown, 'wavy', 'tee', 'earrings'],
+  ['european', 'F', 29, '#f2d4bb', HAIR.auburn, 'long', 'shirt'],
+  ['european', 'F', 38, '#eecbad', HAIR.blond, 'bun', 'turtle', 'glasses'],
+  ['european', 'F', 50, '#f0cfb3', HAIR.brown, 'bob', 'shirt'],
+  ['european', 'M', 21, '#f4d8c0', HAIR.blond, 'short', 'tee'],
+  ['european', 'M', 34, '#eecaa9', HAIR.brown, 'curlyshort', 'shirt', 'full'],
+  ['european', 'M', 48, '#ebc6a5', HAIR.dark, 'side', 'turtle', 'stubble'],
+  ['european', 'M', 75, '#efd0b6', HAIR.white, 'short', 'shirt', 'glasses'],
+  ['latin', 'F', 20, '#d5a37d', HAIR.dark, 'curly', 'tee', 'earrings'],
+  ['latin', 'F', 64, '#d0a17c', HAIR.grey, 'bun', 'shirt', 'glasses'],
+  ['latin', 'M', 21, '#cc9a72', HAIR.black, 'curlyshort', 'tee'],
+  ['latin', 'M', 68, '#c99c78', HAIR.white, 'short', 'turtle', 'mustache'],
 ];
 
 export const HEADSHOTS: HeadshotSpec[] = ROWS.map((r, i) => {
@@ -159,7 +210,8 @@ export function pickHeadshot(p: { id: string; market: string; gender?: string | 
       (gender && h.gender !== gender ? 1000 : 0) +
       (h.region !== region ? 120 : 0) +
       Math.abs(h.age - age) +
-      (taken.has(h.key) ? 400 : 0) +
+      // A face already used in this cast is a last resort: only when every face of that gender is taken.
+      (taken.has(h.key) ? 100_000 : 0) +
       (hash(`${p.id}:${h.key}`) % 1000) / 500; // < 2 years of age, a stable tiebreak
     if (score < bestScore) {
       bestScore = score;

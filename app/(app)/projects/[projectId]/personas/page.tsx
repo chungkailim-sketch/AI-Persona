@@ -18,6 +18,7 @@ import { ApproveCastButton, BuildPersonasForm, RenamePersona } from './CastContr
 import { DebateDetail, DebateForm } from './DebatePanel';
 import { toDebateView } from './debateView';
 import { projectModules } from '@/modules/project';
+import { suggestedSwarm } from '@/advice/briefImport';
 
 export const metadata = { title: 'Personas · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -44,6 +45,10 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
     prisma.projectDataset.count({ where: { projectId, dataset: { deletedAt: null } } }),
   ]);
   const modules = await projectModules(projectId);
+  const [swarm, briefHypotheses] = await Promise.all([
+    suggestedSwarm(projectId),
+    brief ? prisma.hypothesis.findMany({ where: { briefId: brief.id }, select: { statement: true }, orderBy: { createdAt: 'asc' } }) : Promise.resolve([]),
+  ]);
   const canBuild = can(ctx, 'persona.create', projectId);
   const canApprove = can(ctx, 'persona.approve', projectId);
   const canEdit = can(ctx, 'persona.edit', projectId);
@@ -180,7 +185,7 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
         <section aria-labelledby="debate-heading" id="debate" className="scroll-mt-48 border-t border-line pt-6">
           <h2 id="debate-heading" className="text-lg">Agent swarm debate</h2>
           <p className="mt-1 max-w-prose text-xs text-ink-subtle">
-            Put a topic or hypothesis to these personas as a crew of agents, with a moderator, an evidence analyst, a devil&rsquo;s advocate and a judge. When it ends, the OpenAI Decisions API weighs the outcome and recommends what to do next.
+            Put a topic or hypothesis to these personas as a crew of agents, with a moderator, an evidence analyst, a devil&rsquo;s advocate and a judge. When it ends, the decision engine weighs the outcome and recommends what to do next.
           </p>
           <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
             <div className="flex flex-col gap-4">
@@ -190,9 +195,12 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
                 ) : !approved ? (
                   <p className="text-sm text-ink-muted">Approve the personas first. The debate runs on approved personas only.</p>
                 ) : (
-                  <DebateForm projectId={projectId} cohorts={[{ id: cast.id, name: cast.name, approved: people.length }]} runs={[]} hypotheses={[]} returnTo="journey" />
+                  <DebateForm projectId={projectId} cohorts={[{ id: cast.id, name: cast.name, approved: people.length }]} runs={[]} hypotheses={briefHypotheses.map((h) => h.statement)} suggested={swarm} returnTo="journey" />
                 )}
               </div>
+              {approved && modules.has('decisions') && (
+                <DecisionGuidance projectId={projectId} checkpoint="SWARM_SETUP" canAsk={can(ctx, 'project.edit', projectId)} title="Recommended swarm set-up" />
+              )}
               {debates.length > 0 && (
                 <nav aria-label="Recent debates" className="panel">
                   <div className="panel-head"><h3 className="font-sans text-sm font-medium text-ink">Recent debates</h3></div>

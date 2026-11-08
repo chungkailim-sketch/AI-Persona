@@ -184,3 +184,18 @@ export async function saveModulesAction(_prev: FormState, formData: FormData): P
   for (const step of ['data', 'brief', 'personas', 'simulate', 'results']) revalidatePath(`/projects/${projectId}/${step}`);
   return { ok: 'Set-up saved.' };
 }
+
+export async function importBriefAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  const file = formData.get('file');
+  if (!(file instanceof File) || file.size === 0) return { error: 'Choose a file to upload.' };
+  try {
+    const user = await requireUserApi();
+    const { requestBriefImport } = await import('@/advice/briefImport');
+    await requestBriefImport(user, projectId, { name: file.name, type: file.type, bytes: Buffer.from(await file.arrayBuffer()) }, await lang());
+  } catch (e) {
+    return toState(e);
+  }
+  refresh(projectId);
+  return { ok: 'Reading the brief. The form below fills in when it is done, usually within a minute.' };
+}

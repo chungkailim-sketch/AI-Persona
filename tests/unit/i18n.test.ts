@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseLang, translate } from '../../src/ui/i18n/translate';
+import { parseLang, registerTranslations, translate } from '../../src/ui/i18n/translate';
 import { ZH } from '../../src/ui/i18n/zh';
 
 describe('interface translation', () => {
@@ -29,6 +29,20 @@ describe('interface translation', () => {
       expect(zh.trim().length, en).toBeGreaterThan(0);
       expect(zh.split('#').length, en).toBe(en.split('#').length);
     }
+  });
+
+  it('translates text composed of interface phrases piece by piece, leaving data as it is', () => {
+    expect(translate('Indonesia · Premium Pioneers')).toBe('印度尼西亚 · 高端品质追求者');
+    expect(translate('Tech & digital 74 · Travel 71')).toBe('科技数码 74 · 旅游出行 71');
+    expect(translate('Source file: Completed; Validation: Completed')).toBe('源文件：已完成；验证：已完成');
+    expect(translate('Indonesia · Acme Snacks Ltd')).toBe('印度尼西亚 · Acme Snacks Ltd');
+    expect(translate('Openness to trying a foreign brand, 0 to 100. An illustration of the format, not study data.')).toContain('0 到 100');
+  });
+
+  it('uses a page’s registered content translations after the dictionary', () => {
+    expect(translate('A quote nobody wrote into the dictionary')).toBeNull();
+    registerTranslations({ 'A quote nobody wrote into the dictionary': '一句不在词典里的话' });
+    expect(translate('“A quote nobody wrote into the dictionary”')).toBe('“一句不在词典里的话”');
   });
 
   it('defaults to English for anything but zh', () => {

@@ -10,7 +10,7 @@
  * English and goes through the interface translation like the rest of the app.
  */
 import type { ReactNode } from 'react';
-import { BrandLogo } from '../shell/BrandLogo';
+import { ReportLogos } from './ReportLogos';
 import { cn } from '../cn';
 import { band, ENTRY_WEIGHTS, GEO_GATE, PILLAR_LABEL, PILLAR_SHORT, POTENTIAL_WEIGHTS, TIERS, type Pillar, type TierKey } from '@/roundtable/marketIndex';
 import type { Report, ReportPersona } from '@/roundtable/report';
@@ -44,7 +44,7 @@ function Slide({ section, title, source = SOURCE, page, children, className }: {
             <p className="text-[13px] font-bold uppercase tracking-[0.14em] text-brand-mark">{section}</p>
             <h2 className="mt-1 text-[30px] font-extrabold leading-tight text-ink">{title}</h2>
           </div>
-          <BrandLogo height={20} className="mt-1 shrink-0" />
+          <ReportLogos height={18} className="mt-1 shrink-0" />
         </header>
         <div className={cn('mt-5 min-h-0 flex-1', className)}>{children}</div>
         <footer className="mt-3 flex items-end justify-between gap-6 border-t border-line pt-2 text-[10.5px] text-ink-subtle">
@@ -70,7 +70,7 @@ function Cover({ r }: { r: Report }) {
       <div aria-hidden className="absolute inset-x-0 bottom-0 h-[3px] bg-brand-mark" />
       <div className="grid h-full grid-cols-[1fr_380px]">
         <div className="flex flex-col justify-between px-16 py-14">
-          <BrandLogo height={40} />
+          <ReportLogos height={36} />
           <div>
             <p className="text-[15px] font-bold uppercase tracking-[0.16em] text-brand-mark">AI Persona Roundtable</p>
             <h1 className="mt-3 text-[50px] font-normal leading-[1.08] tracking-[-0.03em] text-ink">{r.projectName}</h1>

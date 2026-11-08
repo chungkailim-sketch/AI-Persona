@@ -1507,3 +1507,17 @@ model Headshot {
 
   @@index([region, gender])
 }
+
+/// A machine translation of report content (model-written text, survey statements, categories) into
+/// an interface language, so a report viewed in Chinese reads entirely in Chinese. Keyed by a hash
+/// of the source text; written once and reused by every report that shows the same text.
+model ContentTranslation {
+  id         String   @id @default(cuid())
+  lang       String
+  sourceHash String
+  source     String
+  text       String
+  createdAt  DateTime @default(now())
+
+  @@unique([lang, sourceHash])
+}

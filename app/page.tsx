@@ -13,7 +13,7 @@ const STEPS = [
 const GET = [
   ['01', 'Personas with names', 'Each segment gets an illustrative person, a decision logic and the published figures behind it.'],
   ['02', 'A heatmap', 'Openness by market and category, computed in code from every persona’s scores.'],
-  ['03', 'Decision guidance', 'The OpenAI Decisions API weighs each checkpoint and suggests what to do next.'],
+  ['03', 'Decision guidance', 'A decision engine weighs each checkpoint and suggests what to do next.'],
   ['04', 'A plan', 'PR, comms and marketing recommendations grounded in the data and recognised frameworks.'],
 ] as const;
 
