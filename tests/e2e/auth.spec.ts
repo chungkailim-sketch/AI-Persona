@@ -10,8 +10,8 @@ test.describe('unauthenticated visitors', () => {
   test('can read the public landing page', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { level: 1, name: 'Ask a question. Hear the market answer.' })).toBeVisible();
-    // Integration state is declared, not hidden.
-    await expect(page.getByRole('heading', { name: 'Integration status' })).toBeVisible();
+    // Integration status is not shown on the public page.
+    await expect(page.getByRole('heading', { name: 'Integration status' })).toHaveCount(0);
   });
 
   test('are told that only Ruder Finn group addresses can sign in', async ({ page }) => {
