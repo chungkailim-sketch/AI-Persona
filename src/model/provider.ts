@@ -33,9 +33,16 @@ export interface ModelRequest {
   messages: { role: 'user' | 'assistant'; content: string }[];
   /** JSON shape the answer must satisfy. The provider asks for it; the caller validates it. */
   schemaName: string;
+  /** Files the model reads alongside the first user message (a PDF or an image of a brief). */
+  attachments?: ModelAttachment[];
   seed?: number;
   maxTokens?: number;
   temperature?: number;
+}
+
+export interface ModelAttachment {
+  mediaType: 'application/pdf' | 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp';
+  base64: string;
 }
 
 export interface ModelResponse {

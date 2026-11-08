@@ -60,6 +60,7 @@ export interface CallOptions<T> {
   personaKey?: string;
   system: string;
   messages: ModelRequest['messages'];
+  attachments?: ModelRequest['attachments'];
   schemaName: string;
   // The input may differ from the output (defaults fill missing arrays); what is returned is the output.
   schema: z.ZodType<T, z.ZodTypeDef, unknown>;
@@ -164,6 +165,7 @@ export async function callModel<T>(options: CallOptions<T>): Promise<CallResult<
       personaKey: options.personaKey,
       system: options.system,
       messages,
+      attachments: options.attachments,
       schemaName: options.schemaName,
       seed: options.seed,
       maxTokens: options.maxTokens,

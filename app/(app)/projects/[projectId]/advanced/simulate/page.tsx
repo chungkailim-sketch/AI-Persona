@@ -147,7 +147,7 @@ export default async function SimulateStepPage(props: PageProps<'/projects/[proj
             cohortSize: room.personaKeys.length,
             personaKeys: room.personaKeys,
             variants: room.config?.stimulusIds.length ?? 0,
-            modelLabel: `${room.config?.modelProvider ?? 'unknown'} · ${room.config?.modelId ?? ''}`,
+            modelLabel: (room.config?.modelProvider ?? 'mock') === 'mock' ? 'Mock' : 'AI model',
             seeds: room.config?.seeds ?? [],
             createdAt: selected.createdAt.toISOString(),
             isMock: (room.config?.modelProvider ?? 'mock') === 'mock',

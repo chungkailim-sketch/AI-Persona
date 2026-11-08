@@ -29,7 +29,7 @@ export default async function AdminHeadshotsPage() {
       <header>
         <h1 className="text-2xl">Persona headshots</h1>
         <p className="mt-1 max-w-prose text-sm text-ink-muted">
-          Fifty portraits are pre-loaded and matched to each persona by gender, market and age. They start as illustrations; generating photographs replaces them with synthetic photographic portraits of people who do not exist ({env().IMAGE_MODEL} via {env().IMAGE_PROVIDER}; billed to the account that owns the key).
+          A hundred portraits are pre-loaded and matched to each persona by gender, market and age. They start as illustrations; generating photographs replaces them with synthetic photographic portraits of people who do not exist (billed to the account that owns the image key).
         </p>
       </header>
       <section className="panel flex flex-col gap-3 px-5 py-5">

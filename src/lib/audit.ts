@@ -53,6 +53,7 @@ export const AUDIT_ACTIONS = [
   'debate.requested',
   'persona.cast.requested',
   'roundtable.requested',
+  'brief.imported',
   'market_inputs.saved',
   'debate.completed',
   'debate.failed',

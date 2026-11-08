@@ -113,3 +113,24 @@ export const CommsPlan = z
   })
   .refine((r) => r.answer.length > 0, { message: 'No answer.' });
 export type CommsPlan = z.infer<typeof CommsPlan>;
+
+/** A client brief read from an uploaded file: the document as Markdown, plus what the journey's forms need. */
+export const BriefImport = z.object({
+  markdown: text(20000),
+  title: text(120),
+  businessContext: text(3000),
+  markets: strings(20, 60),
+  researchQuestion: text(600),
+  categories: strings(12, 60),
+  targetAudience: text(400),
+  objective: text(600),
+  hypotheses: list(
+    z.object({ label: text(80), statement: text(500), nullHypothesis: text(500), minimumEvidenceThreshold: text(300) }),
+    6,
+  ).transform((a) => a.filter((h) => h.statement)),
+  swarm: z.preprocess(
+    (v) => (v && typeof v === 'object' ? v : {}),
+    z.object({ topic: text(1000), hypothesis: text(1000), focusSegments: strings(2, 40), rounds: z.preprocess((v) => Number(v) || 2, z.number()) }),
+  ),
+});
+export type BriefImport = z.infer<typeof BriefImport>;

@@ -138,12 +138,12 @@ export async function decide(input: string, questions: DecisionQuestion[]): Prom
       const detail = await res.json().catch(() => null) as { error?: { type?: string; code?: string; message?: string } } | null;
       const what = detail?.error?.code ?? detail?.error?.type ?? '';
       const message = detail?.error?.message ? `: ${detail.error.message.slice(0, 200)}` : '';
-      throw new DecisionFailed(`The Decisions API answered ${res.status}${what ? ` (${what})` : ''}${message}`);
+      throw new DecisionFailed(`The decision engine answered ${res.status}${what ? ` (${what})` : ''}${message}`);
     }
     return { answers: parseDecisionResponse(await res.json(), questions), isMock: false, modelId: e.DECISIONS_MODEL };
   } catch (err) {
     if (err instanceof DecisionFailed) throw err;
-    throw new DecisionFailed(controller.signal.aborted ? 'The Decisions API did not answer within 30 seconds.' : 'The Decisions API could not be reached.');
+    throw new DecisionFailed(controller.signal.aborted ? 'The decision engine did not answer within 30 seconds.' : 'The decision engine could not be reached.');
   } finally {
     clearTimeout(timer);
   }

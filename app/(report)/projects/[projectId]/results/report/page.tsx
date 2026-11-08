@@ -49,7 +49,7 @@ export default async function ReportModePage(props: PageProps<'/projects/[projec
         { label: 'Run', value: report.runId },
         { label: 'Completed', value: report.completedAt ? fmtDateTime(report.completedAt) : '—' },
         { label: 'Mode', value: run.mode.toLowerCase().replace(/_/g, ' ') },
-        { label: 'Provider', value: `${report.modelProvider} · ${report.modelId}` },
+        { label: 'Provider', value: report.modelProvider === 'mock' ? 'Mock' : 'AI model' },
         { label: 'Seeds', value: report.seeds.join(', ') },
         { label: 'Plan hash', value: report.planHash.slice(0, 16) + '…' },
       ]}

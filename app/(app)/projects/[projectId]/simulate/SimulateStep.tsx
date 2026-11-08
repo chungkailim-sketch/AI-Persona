@@ -124,7 +124,7 @@ export function ConfirmRunPanel({ projectId, plan }: { projectId: string; plan: 
         </div>
         <div className="flex justify-between gap-4 border-b border-line pb-1">
           <dt className="text-sm text-ink-subtle">Provider</dt>
-          <dd className="font-mono text-sm text-ink">{plan.modelId}</dd>
+          <dd className="font-mono text-sm text-ink">{plan.isMock ? 'Mock' : 'AI model'}</dd>
         </div>
         <div className="flex justify-between gap-4 border-b border-line pb-1">
           <dt className="text-sm text-ink-subtle">Estimated cost</dt>

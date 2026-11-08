@@ -1,5 +1,6 @@
 'use client';
 
+import { localize } from '@/ui/i18n/translate';
 import { useActionState, useRef, useEffect } from 'react';
 import { askPersonaAction } from '../../journeyActions';
 import { FormMessages, SubmitButton, TextArea } from '@/ui/forms';
@@ -35,7 +36,7 @@ export function InterviewForm({ projectId, personaId }: { projectId: string; per
             className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-muted hover:border-brand hover:text-ink"
             onClick={() => {
               const el = ref.current?.elements.namedItem('question') as HTMLTextAreaElement | null;
-              if (el) el.value = s;
+              if (el) el.value = localize(s);
             }}
           >
             {s}

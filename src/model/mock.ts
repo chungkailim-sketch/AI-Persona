@@ -90,6 +90,35 @@ function body(schemaName: string, rng: () => number, personaKey: string, request
         statIds: listed(request, 'STAT IDS').slice(0, 2),
       };
 
+    case 'brief_import': {
+      const doc = (request?.messages ?? []).map((m) => m.content).join('\n');
+      const asked = /[^.\n?]{10,200}\?/.exec(doc)?.[0]?.trim() ?? '';
+      return {
+        markdown: `# [MOCK] Brief\n\nPlaceholder Markdown produced locally; the brief was not read by a model.\n\n${doc.slice(0, 600)}`,
+        title: '[MOCK] Imported brief',
+        businessContext: '[MOCK] Placeholder context read from the uploaded brief.',
+        markets: listed(request, 'MARKETS IN THE DATA').slice(0, 2),
+        researchQuestion: asked,
+        categories: listed(request, 'DEFAULT CATEGORIES').slice(0, 6),
+        targetAudience: '[MOCK] Placeholder audience.',
+        objective: '[MOCK] Placeholder objective.',
+        hypotheses: [
+          { label: 'H1', statement: '[MOCK] Younger consumers are more open to new brands than older consumers.', nullHypothesis: '[MOCK] Openness does not differ by age.', minimumEvidenceThreshold: '[MOCK] A gap of 10 points or more.' },
+        ],
+        swarm: { topic: '[MOCK] Should the brand lead with price or with quality in its first market?', hypothesis: '[MOCK] Quality-led messaging earns more trust than price-led messaging.', focusSegments: ['18-24', '25-34'], rounds: 2 },
+      };
+    }
+
+    case 'report_translation': {
+      const text = (request?.messages ?? []).map((m) => m.content).join('\n');
+      const items = [...text.matchAll(/^(T\d+): (.*)$/gm)].map((m) => {
+        let source = m[2]!;
+        try { source = JSON.parse(source) as string; } catch { /* keep as is */ }
+        return { id: m[1]!, zh: `【模拟译文】${source}` };
+      });
+      return { items };
+    }
+
     case 'comms_plan':
       return {
         title: '[MOCK] Communications and marketing plan',

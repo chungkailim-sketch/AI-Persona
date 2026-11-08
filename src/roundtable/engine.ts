@@ -194,7 +194,8 @@ export async function executeCast(input: CastJobInput): Promise<{ cohortId: stri
       const v = p.versions[0];
       const profile = (v?.profile ?? null) as CastProfile | null;
       if (!v || !profile) continue;
-      const key = profile.headshot ?? pickHeadshot({ id: p.id, market: profile.market, gender: profile.identity?.gender, age: profile.identity?.age }, taken);
+      // Keep an earlier assignment only while it is unique in this cast.
+      const key = profile.headshot && !taken.has(profile.headshot) ? profile.headshot : pickHeadshot({ id: p.id, market: profile.market, gender: profile.identity?.gender, age: profile.identity?.age }, taken);
       taken.add(key);
       if (profile.headshot !== key) await prisma.personaVersion.update({ where: { id: v.id }, data: { profile: { ...profile, headshot: key } as object } });
     }

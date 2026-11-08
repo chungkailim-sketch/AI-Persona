@@ -1,5 +1,5 @@
 /**
- * Decision guidance at a checkpoint: the latest answers from the OpenAI Decisions API, with their
+ * Decision guidance at a checkpoint: the latest answers from the decision engine, with their
  * probabilities, and a button to ask again. Guidance only — nothing is gated on it.
  */
 import { CHOICE_LABEL, QUESTION_LABEL, latestGuidance, type Checkpoint, type DecisionAnswer } from '@/decision/checkpoints';
@@ -64,7 +64,7 @@ export async function DecisionGuidance({ projectId, checkpoint, subjectId, canAs
         <div>
           <p className="eyebrow">{title}</p>
           <p className="text-xs text-ink-subtle">
-            {g ? `${g.isMock ? 'Local stand-in (no OpenAI key set)' : `OpenAI Decisions API · ${g.modelId}`} · ${fmtDateTime(g.createdAt)} ${TZ_LABEL}` : 'Ask the Decisions API what to do next at this point.'}
+            {g ? <>{g.isMock ? 'Local stand-in' : 'Decision engine'}{' · '}{fmtDateTime(g.createdAt)} {TZ_LABEL}</> : 'Ask the decision engine what to do next at this point.'}
           </p>
         </div>
         {canAsk && <GuidanceButton projectId={projectId} checkpoint={checkpoint} subjectId={subjectId} label={g ? 'Ask again' : 'Get decision guidance'} />}
@@ -75,7 +75,7 @@ export async function DecisionGuidance({ projectId, checkpoint, subjectId, canAs
           {questions.map((q) => <Answer key={q.name} q={q} a={answers.find((a) => a.name === q.name)} />)}
         </ul>
       )}
-      {g?.isMock && g.status === 'COMPLETED' && <p className="mt-2 text-xs text-warn">These answers come from a local stand-in, not the Decisions API. Set OPENAI_API_KEY in Railway to use gpt-6-luna.</p>}
+      {g?.isMock && g.status === 'COMPLETED' && <p className="mt-2 text-xs text-warn">These answers come from a local stand-in, not the live decision engine. An administrator needs to connect the decision engine in the deployment settings.</p>}
     </section>
   );
 }

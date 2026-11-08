@@ -6,7 +6,9 @@ import { authContextFor } from '@/auth/session';
 import { can } from '@/auth/permissions';
 import { prisma } from '@/lib/prisma';
 import { env } from '@/lib/env';
-import { latestBrief, latestCast, latestRoundtable } from '@/roundtable/service';
+import { latestBrief, latestCast, roundtableHistory } from '@/roundtable/service';
+import type { RoundtableSummary } from '@/roundtable/schemas';
+import { fmtDateTime, TZ_LABEL } from '@/lib/time';
 import type { CastProfile } from '@/roundtable/engine';
 import { band, BAND_LABEL } from '@/roundtable/marketIndex';
 import { PersonaAvatar } from '@/ui/report/PersonaCard';
@@ -31,14 +33,16 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });
   if (!project) notFound();
 
-  const [brief, cast, rt] = await Promise.all([latestBrief(projectId), latestCast(projectId), latestRoundtable(projectId)]);
+  const [brief, cast, history] = await Promise.all([latestBrief(projectId), latestCast(projectId), roundtableHistory(projectId)]);
+  const rt = history[0] ?? null;
+  const earlier = history.slice(1);
   const canRun = can(ctx, 'simulation.run', projectId) && (await projectModules(projectId)).has('roundtable');
   const roundtableOn = (await projectModules(projectId)).has('roundtable');
   const castReady = Boolean(cast && cast.buildStatus === 'COMPLETED' && cast.personas.length > 0 && cast.personas.every((p) => p.versions[0]?.approval === 'APPROVED'));
   const running = rt?.status === 'QUEUED' || rt?.status === 'RUNNING';
   const personas = new Map((cast?.personas ?? []).map((p) => [p.id, { name: p.name, profile: p.versions[0]?.profile as unknown as CastProfile | null }]));
   // Answers may belong to an earlier cast; read their names from the personas themselves.
-  const answerPersonas = rt ? await prisma.persona.findMany({ where: { id: { in: rt.answers.map((a) => a.personaId) } }, select: { id: true, name: true } }) : [];
+  const answerPersonas = await prisma.persona.findMany({ where: { id: { in: history.flatMap((r) => r.answers.map((a) => a.personaId)) } }, select: { id: true, name: true } });
   for (const p of answerPersonas) if (!personas.has(p.id)) personas.set(p.id, { name: p.name, profile: null });
   const answers = [...(rt?.answers ?? [])].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   const isMock = env().MODEL_PROVIDER === 'mock';
@@ -73,7 +77,7 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
             <li key={c} className="rounded-sm border border-line bg-bg px-2 py-0.5 text-xs text-ink-muted">{c}</li>
           ))}
         </ul>
-        {!rt || (!running && (rt.status === 'FAILED' || stale)) ? (
+        {!running ? (
           <div className="mt-5 flex flex-col gap-2">
             {!castReady ? (
               <p className="text-sm text-ink-muted">
@@ -82,8 +86,9 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
             ) : (
               <>
                 <p className="text-sm text-ink">{`Up to ${cast!.personas.length} personas will answer, then a strategist writes the takeaways.`}</p>
+                {rt && <p className="text-xs text-ink-subtle">A new roundtable uses the question and categories saved in the Brief. Earlier roundtables are kept below.</p>}
                 {isMock && <p className="text-xs text-warn">The mock model provider is configured: answers will be placeholders.</p>}
-                {canRun ? <StartRoundtableButton projectId={projectId} label={rt ? 'Run the roundtable again' : 'Start the roundtable'} /> : <p className="text-sm text-ink-muted">Starting a roundtable needs the simulation.run permission.</p>}
+                {canRun ? <StartRoundtableButton projectId={projectId} label={rt ? 'Run a new roundtable' : 'Start the roundtable'} /> : <p className="text-sm text-ink-muted">Starting a roundtable needs the simulation.run permission.</p>}
               </>
             )}
           </div>
@@ -151,6 +156,68 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
               })}
             </ul>
           </div>
+        </section>
+      )}
+
+      {earlier.length > 0 && (
+        <section aria-labelledby="rt-history" className="flex max-w-3xl flex-col gap-2">
+          <h2 id="rt-history" className="font-sans text-sm font-semibold text-ink">Earlier roundtables</h2>
+          {earlier.map((r) => {
+            const summary = r.summary as unknown as RoundtableSummary | null;
+            const ok = r.answers.filter((a) => a.ok);
+            const avg = ok.length ? Math.round(ok.reduce((t, a) => t + (a.overall ?? 0), 0) / ok.length) : null;
+            const rows = [...r.answers].sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
+            return (
+              <details key={r.id} className="panel">
+                <summary className="flex cursor-pointer flex-col gap-0.5 px-5 py-3">
+                  <span className="text-xs text-ink-subtle">
+                    {fmtDateTime(r.createdAt)} {TZ_LABEL}
+                    {' · '}
+                    {r.status === 'COMPLETED' ? 'Completed' : r.status === 'FAILED' ? 'Failed' : 'Stopped'}
+                    {' · '}
+                    {`${r.answers.length} of ${r.total} answered`}
+                    {avg !== null && <>{' · '}{`Average openness ${avg}`}</>}
+                  </span>
+                  <span className="text-sm font-semibold text-ink">{r.question}</span>
+                  {summary?.consensus && <span className="text-sm text-ink-muted">{summary.consensus}</span>}
+                </summary>
+                <div className="flex flex-col gap-4 border-t border-line px-5 py-4">
+                  <ul className="flex flex-wrap gap-1.5">
+                    {r.categories.map((c) => (
+                      <li key={c} className="rounded-sm border border-line bg-bg px-2 py-0.5 text-xs text-ink-muted">{c}</li>
+                    ))}
+                  </ul>
+                  {summary && summary.takeaways.length > 0 && (
+                    <div>
+                      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Key takeaways</h3>
+                      <ul className="mt-1 list-disc pl-5 text-sm text-ink">
+                        {summary.takeaways.map((t) => <li key={t}>{t}</li>)}
+                      </ul>
+                    </div>
+                  )}
+                  {r.failureReason && <p className="text-sm text-warn">{r.failureReason}</p>}
+                  <ul className="flex flex-col divide-y divide-line">
+                    {rows.map((a) => {
+                      const p = personas.get(a.personaId);
+                      const b = band(a.overall ?? 0);
+                      return (
+                        <li key={a.id} className="flex gap-3 py-2.5">
+                          <PersonaAvatar name={p?.name ?? '?'} profile={p?.profile} size={32} />
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-ink">
+                              {p?.name ?? 'Persona'} <span className="font-normal text-ink-subtle">· {a.market}</span>
+                            </p>
+                            {a.ok ? <p className="text-sm text-ink-muted">“{a.quote}”</p> : <p className="text-sm text-warn">No usable answer.</p>}
+                          </div>
+                          {a.ok && <span className={`h-fit shrink-0 rounded-sm border px-2 py-0.5 text-xs font-medium ${BAND_CLS[b]}`}>{`${Math.round(a.overall ?? 0)} · ${BAND_LABEL[b]}`}</span>}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              </details>
+            );
+          })}
         </section>
       )}
 

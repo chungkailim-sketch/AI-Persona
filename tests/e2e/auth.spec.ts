@@ -9,15 +9,23 @@ test.describe('unauthenticated visitors', () => {
 
   test('can read the public landing page', async ({ page }) => {
     await page.goto('/');
-    await expect(page.getByRole('heading', { name: 'RF AI Persona Intelligence' })).toBeVisible();
+    await expect(page.getByRole('heading', { level: 1, name: 'Ask a question. Hear the market answer.' })).toBeVisible();
     // Integration state is declared, not hidden.
     await expect(page.getByRole('heading', { name: 'Integration status' })).toBeVisible();
   });
 
-  test('see the same response whether or not an address is eligible', async ({ page }) => {
+  test('are told that only Ruder Finn group addresses can sign in', async ({ page }) => {
+    await goAndHydrate(page, '/sign-in');
+    await page.getByLabel('Email address').fill('definitely-not-a-user@nowhere.invalid');
+    await page.getByRole('button', { name: 'Send code' }).click();
+    await expect(page.getByText(/Only Ruder Finn and Ruder Finn group email addresses can sign in/)).toBeVisible();
+    await expect(page.getByText(/account manager/)).toBeVisible();
+  });
+
+  test('see the same response whether or not an approved-domain address has an account', async ({ page }) => {
     await goAndHydrate(page, '/sign-in');
 
-    await page.getByLabel('Email address').fill('definitely-not-a-user@nowhere.invalid');
+    await page.getByLabel('Email address').fill(`nobody-${Date.now()}@example.com`);
     await page.getByRole('button', { name: 'Send code' }).click();
     const first = await page.getByText(/sign-in code is on its way/i).textContent();
 

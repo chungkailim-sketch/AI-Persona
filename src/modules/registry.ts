@@ -9,8 +9,8 @@
 export const MODULES = [
   { key: 'roundtable', label: 'Roundtable', description: 'Every persona scores the categories; heatmaps and voices in the report.' },
   { key: 'interviews', label: 'Persona interviews', description: 'Open any persona and interview it.' },
-  { key: 'debate', label: 'Agent swarm debate', description: 'Personas debate a motion; a judge and the Decisions API weigh the outcome.' },
-  { key: 'decisions', label: 'Decision guidance', description: 'OpenAI Decisions API recommendations at each checkpoint.' },
+  { key: 'debate', label: 'Agent swarm debate', description: 'Personas debate a motion; a judge and the decision engine weigh the outcome.' },
+  { key: 'decisions', label: 'Decision guidance', description: 'Decision-engine recommendations at each checkpoint.' },
   { key: 'market_potential', label: 'Market potential map', description: 'Composite index and map of priority markets.' },
   { key: 'market_entry', label: 'Market entry heatmap', description: 'Entry index and category barriers by market.' },
   { key: 'persona_profiles', label: 'Persona profile slides', description: 'One report slide per persona.' },

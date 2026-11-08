@@ -18,7 +18,7 @@ export default async function DashboardPage() {
   return (
     <div className="">
       <h1 className="text-2xl">
-        {user.displayName ? `Welcome, ${user.displayName}` : 'Welcome'}
+        {user.displayName ? <><span>Welcome,</span> {user.displayName}</> : 'Welcome'}
       </h1>
       <p className="mt-2 text-sm text-ink-muted">
         Signed in as <span className="font-mono text-xs">{user.email}</span> ·{' '}

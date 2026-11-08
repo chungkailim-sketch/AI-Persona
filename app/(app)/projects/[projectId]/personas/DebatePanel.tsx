@@ -126,18 +126,22 @@ export function DebateForm({
   cohorts,
   runs,
   hypotheses,
+  suggested,
   returnTo,
 }: {
   projectId: string;
   cohorts: { id: string; name: string; approved: number }[];
   runs: { id: string; label: string }[];
   hypotheses: string[];
+  /** The set-up suggested by an uploaded brief: pre-fills the form. */
+  suggested?: { topic: string; hypothesis: string; focusSegments: string[]; rounds: number } | null;
   /** "journey" returns to the Personas step after starting; otherwise the Advanced persona tools. */
   returnTo?: 'journey';
 }) {
   const [state, action] = useActionState(startDebateAction, empty);
   return (
     <form action={action} className="flex flex-col gap-3" aria-label="Start a swarm debate">
+      {suggested?.topic && <p className="rounded border border-info/40 bg-info-soft px-3 py-2 text-xs text-ink">Pre-filled from the uploaded brief. Change anything before you run it.</p>}
       <input type="hidden" name="projectId" value={projectId} />
       {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
       <Field id="debate-topic" label="Topic or motion to debate" required hint="What the persona agents argue about. Phrase it as a question or a claim.">
@@ -148,7 +152,8 @@ export function DebateForm({
           required
           minLength={10}
           maxLength={1000}
-          placeholder="e.g. Can advertising inside AI assistants such as ChatGPT be trusted, or will it be biased towards sponsored products?"
+          defaultValue={suggested?.topic || undefined}
+          placeholder="e.g. Can advertising inside AI assistants be trusted, or will it be biased towards sponsored products?"
           aria-describedby="debate-topic-hint"
         />
       </Field>
@@ -158,6 +163,7 @@ export function DebateForm({
           name="hypothesis"
           list="debate-hypotheses"
           maxLength={1000}
+          defaultValue={suggested?.hypothesis || hypotheses[0] || undefined}
           placeholder="e.g. 16-24s are more susceptible to AI advertising than 25-34s"
           aria-describedby="debate-hypothesis-hint"
         />
@@ -166,7 +172,7 @@ export function DebateForm({
         </datalist>
       </Field>
       <Field id="debate-focus" label="Segments to compare (optional)" hint='Two segments, comma-separated. Age ranges are matched to the closest published break ("15-24" → "16-24") and the mapping is shown. Left blank, ranges in the topic are used.'>
-        <TextInput id="debate-focus" name="focusSegments" placeholder="15-24, 25-34" aria-describedby="debate-focus-hint" />
+        <TextInput id="debate-focus" name="focusSegments" defaultValue={suggested?.focusSegments.length === 2 ? suggested.focusSegments.join(', ') : undefined} placeholder="15-24, 25-34" aria-describedby="debate-focus-hint" />
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field id="debate-cohort" label="Persona cohort" required>
@@ -177,19 +183,15 @@ export function DebateForm({
           </Select>
         </Field>
         <Field id="debate-rounds" label="Rebuttal rounds">
-          <Select id="debate-rounds" name="rounds" defaultValue="2">
+          <Select id="debate-rounds" name="rounds" defaultValue={String(Math.min(3, Math.max(1, suggested?.rounds ?? 2)))}>
             <option value="1">1 — quick</option>
             <option value="2">2 — standard</option>
             <option value="3">3 — thorough</option>
           </Select>
         </Field>
       </div>
-      <Field id="debate-run" label="Simulation context" hint="The swarm can read a completed simulation's synthesis, labelled as simulated.">
-        <Select id="debate-run" name="contextRunId" defaultValue={runs[0]?.id ?? ''} aria-describedby="debate-run-hint">
-          <option value="">None</option>
-          {runs.map((r) => <option key={r.id} value={r.id}>{r.label}</option>)}
-        </Select>
-      </Field>
+      {/* The swarm reads the latest completed simulation, if there is one, labelled as simulated. */}
+      <input type="hidden" name="contextRunId" value={runs[0]?.id ?? ''} />
       <FormMessages state={state} />
       <div>
         <SubmitButton pendingLabel="Queuing the debate…">Run the swarm debate</SubmitButton>
@@ -376,8 +378,15 @@ export function DebateDetail({ debate }: { debate: DebateView }) {
 
       {running && (
         <p role="status" className="rounded border border-info/40 bg-info-soft px-3 py-2 text-sm text-ink">
-          Debate {debate.status === 'QUEUED' ? 'queued — waiting for the worker' : `in progress: ${(PHASE_LABEL[(debate.phase ?? '').split(':')[0]!] ?? debate.phase ?? 'starting').toLowerCase()}${debate.phase?.includes(':') ? `, round ${debate.phase.split(':')[1]}` : ''}`}.
-          {' '}{debate.turns.length} turn(s) so far. This page updates on its own.
+          {debate.status === 'QUEUED' ? (
+            <span>Debate queued — waiting for the worker.</span>
+          ) : (
+            <>
+              <span>Debate in progress:</span> <span>{PHASE_LABEL[(debate.phase ?? '').split(':')[0]!] ?? 'Starting'}</span>
+              {debate.phase?.includes(':') && <> <span>{`Round ${debate.phase.split(':')[1]}`}</span></>}
+            </>
+          )}{' '}
+          <span>{`${debate.turns.length} turn(s) so far.`}</span> <span>This page updates on its own.</span>
         </p>
       )}
       {debate.status === 'FAILED' && (

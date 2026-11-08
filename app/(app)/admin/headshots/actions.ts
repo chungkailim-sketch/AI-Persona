@@ -23,5 +23,5 @@ export async function generateHeadshotsAction(_prev: HeadshotActionState, formDa
   const force = formData.get('force') === 'on';
   await enqueue({ kind: 'headshots', input: { force }, idempotencyKey: `headshots:${Date.now()}`, maxAttempts: 1 });
   revalidatePath('/admin/headshots');
-  return { ok: 'Started. Fifty portraits take a few minutes; reload this page to see progress.' };
+  return { ok: 'Started. A hundred portraits take a few minutes; reload this page to see progress.' };
 }

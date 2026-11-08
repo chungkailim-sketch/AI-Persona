@@ -36,6 +36,8 @@ import { executeInsight } from './src/debate/insights';
 import { generatePhotoHeadshots } from './src/headshots/photos';
 import { executeCast, executeRoundtable, type CastJobInput } from './src/roundtable/engine';
 import { executePlan } from './src/advice/planner';
+import { executeBriefImport } from './src/advice/briefImport';
+import { executeReportTranslation } from './src/roundtable/reportLocale';
 
 const WORKER_ID = `${process.env.RAILWAY_REPLICA_ID ?? 'local'}-${randomUUID().slice(0, 8)}`;
 
@@ -124,6 +126,18 @@ async function handle(job: ClaimedJob): Promise<Record<string, unknown>> {
       const input = job.input as { adviceId?: string };
       if (!input.adviceId) throw new Error('Job input does not name a plan.');
       const outcome = await executePlan(input.adviceId);
+      return outcome as unknown as Record<string, unknown>;
+    }
+    case 'brief_import': {
+      const input = job.input as { adviceId?: string };
+      if (!input.adviceId) throw new Error('Job input does not name a brief import.');
+      const outcome = await executeBriefImport(input.adviceId);
+      return outcome as unknown as Record<string, unknown>;
+    }
+    case 'report_translate': {
+      const input = job.input as { projectId?: string; roundtableId?: string };
+      if (!input.projectId || !input.roundtableId) throw new Error('Job input does not name a report.');
+      const outcome = await executeReportTranslation({ projectId: input.projectId, roundtableId: input.roundtableId });
       return outcome as unknown as Record<string, unknown>;
     }
     case 'demo_provision': {
@@ -234,7 +248,7 @@ async function loop(): Promise<void> {
     }
     let job: ClaimedJob | null = null;
     try {
-      job = await claimNext(WORKER_ID, ['ingest', 'simulate', 'export', 'demo_provision', 'trend_analysis', 'debate', 'debate_insight', 'cast', 'roundtable', 'advice', 'headshots']);
+      job = await claimNext(WORKER_ID, ['ingest', 'simulate', 'export', 'demo_provision', 'trend_analysis', 'debate', 'debate_insight', 'cast', 'roundtable', 'advice', 'headshots', 'brief_import', 'report_translate']);
     } catch (e) {
       log('could not reach the queue', { error: e instanceof Error ? e.message : String(e) });
       await new Promise((r) => setTimeout(r, 5_000));

@@ -48,14 +48,13 @@ export function driverScores(profile: CastProfile): { factor: string; score: num
     .map(({ d, s }) => ({ factor: d.factor, score: Math.round(s.share), diff: Math.round(s.diff) }));
 }
 
-/** Market column head: the name in small capitals over a rule; the English name and ISO code in the Chinese interface. */
+/** Market column head: the name in small capitals over a rule; and its ISO code. */
 export function MarketHeader({ market, className }: { market: string; className?: string }) {
   const iso = isoCode(market);
   return (
     <div className={cn('border-b border-ink pb-2', className)}>
       <p className="text-[11px] font-semibold uppercase leading-tight tracking-[0.2em] text-ink">{market}</p>
-      <p data-no-translate className="zh-only text-[10.5px] text-ink-subtle">{iso ? `${market} - ${iso}` : market}</p>
-      {iso && <p data-no-translate className="en-only text-[10.5px] text-ink-subtle">{iso}</p>}
+      {iso && <p data-no-translate className="text-[10.5px] text-ink-subtle">{iso}</p>}
     </div>
   );
 }
@@ -66,7 +65,6 @@ export function TierHeader({ index, group, label, className }: { index: number; 
     <div className={cn('flex h-full flex-col justify-start border-t border-line pt-5', className)}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-subtle">{`Tier ${index + 1}`}</p>
       <p className="mt-1.5 text-[15px] font-medium leading-snug text-ink">{label}</p>
-      <p data-no-translate className="zh-only mt-0.5 text-[10.5px] text-ink-subtle">{label}</p>
       {group && <p className="mt-1 text-[10.5px] text-ink-subtle">{group}</p>}
     </div>
   );

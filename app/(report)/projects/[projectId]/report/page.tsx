@@ -8,6 +8,11 @@ import { loadReport } from '@/roundtable/report';
 import { SlideDeck } from '@/ui/report/Slides';
 import { PrintButton } from '@/ui/components/PrintButton';
 import { projectModules } from '@/modules/project';
+import { cookies } from 'next/headers';
+import { LANG_COOKIE, parseLang } from '@/ui/i18n/translate';
+import { reportTranslations, requestReportTranslation } from '@/roundtable/reportLocale';
+import { ExtraTranslations } from '@/ui/i18n/ExtraTranslations';
+import { RefreshWhileImporting } from '../../../../(app)/projects/[projectId]/data/RefreshWhileImporting';
 
 export const metadata = { title: 'Roundtable report · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -23,6 +28,11 @@ export default async function RoundtableReportPage(props: PageProps<'/projects/[
   if (!can(ctx, 'report.view', projectId)) notFound();
   const report = await loadReport(projectId);
   if (!report) notFound();
+  // In Chinese, the report's own content (model-written text, survey statements, categories) is
+  // shown in Chinese too: translated once on the worker, stored, and applied with the interface wording.
+  const zh = parseLang((await cookies()).get(LANG_COOKIE)?.value) === 'zh';
+  const t = zh ? await reportTranslations(report) : { entries: {}, missing: 0 };
+  if (zh && t.missing > 0) await requestReportTranslation(projectId, report.roundtable.id, t.missing);
 
   return (
     <div className="min-h-dvh bg-bg">
@@ -33,6 +43,13 @@ export default async function RoundtableReportPage(props: PageProps<'/projects/[
           <PrintButton />
         </div>
       </div>
+      {zh && <ExtraTranslations entries={t.entries} />}
+      <RefreshWhileImporting active={zh && t.missing > 0} />
+      {zh && t.missing > 0 && (
+        <p role="status" className="no-print mx-auto mt-4 max-w-[1320px] rounded border border-info/40 bg-info-soft px-4 py-2 text-sm text-ink">
+          Preparing the Chinese version of the report content. This page updates on its own; wait for it before saving the PDF.
+        </p>
+      )}
       <main id="main" className="mx-auto max-w-[1320px] px-5 py-6 print:max-w-none print:p-0">
         <SlideDeck r={report} modules={await projectModules(projectId)} />
       </main>

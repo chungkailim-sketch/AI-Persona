@@ -1,5 +1,6 @@
 'use client';
 
+import { localize } from '@/ui/i18n/translate';
 import { useActionState } from 'react';
 import { requestPlanAction } from '../journeyActions';
 import { Field, FormMessages, Select, SubmitButton, TextArea } from '@/ui/forms';
@@ -30,7 +31,7 @@ export function PlannerForm({ projectId, industries }: { projectId: string; indu
               className="rounded-full border border-line px-2.5 py-1 text-xs text-ink-muted hover:border-brand hover:text-ink"
               onClick={(ev) => {
                 const el = (ev.currentTarget.form?.elements.namedItem('question') ?? null) as HTMLTextAreaElement | null;
-                if (el) el.value = e;
+                if (el) el.value = localize(e);
               }}
             >
               {e}

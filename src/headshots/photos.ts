@@ -2,7 +2,7 @@
  * Replace the illustrated headshots with synthetic photographic portraits (server only).
  *
  * Each catalog entry is described to an image model (OpenAI gpt-image-1-mini by default, or a
- * Hugging Face provider) as a studio headshot of an invented person; the result is cropped square, resized and stored in the Headshot table. These are
+ * Hugging Face provider) as a candid lifestyle portrait of an invented person; the result is cropped square, resized and stored in the Headshot table. These are
  * AI-generated faces of people who do not exist — never photographs of real people — and the app
  * keeps saying the personas are illustrative.
  */
@@ -27,20 +27,26 @@ const STYLE_WORD: Record<string, string> = {
   long: 'long hair', bob: 'a chin-length bob', bun: 'hair in a neat bun', pixie: 'a short cropped cut', curly: 'natural curly hair', wavy: 'wavy shoulder-length hair',
   short: 'short hair', side: 'short side-parted hair', buzz: 'very short buzzed hair', curlyshort: 'short curly hair', bald: 'a shaved head', hijab: 'a hijab',
 };
-const OUTFIT_WORD: Record<string, string> = { tee: 'a plain crew-neck top', shirt: 'a collared shirt', blazer: 'a business blazer over a shirt', turtle: 'a smart roll-neck top' };
+const OUTFIT_WORD: Record<string, string> = { tee: 'a casual t-shirt', shirt: 'a relaxed linen shirt', blazer: 'a light casual jacket', turtle: 'a cosy knit sweater' };
+/** Everyday places, so the portraits read as lifestyle photographs rather than office headshots. */
+const SETTINGS = [
+  'at a sunny neighbourhood café', 'in a leafy city park', 'at a busy street market', 'at home in a bright living room', 'on a city street at golden hour',
+  'in a small bookshop', 'on a seaside promenade', 'in a home kitchen', 'at a weekend food court', 'on a shopping street', 'on a garden terrace', 'on a rooftop at sunset',
+];
 
-export const NEGATIVE_PROMPT = 'cartoon, illustration, painting, drawing, 3d render, anime, deformed, distorted face, extra fingers, blurry, low quality, text, watermark, logo, hat, sunglasses';
+export const NEGATIVE_PROMPT = 'cartoon, illustration, painting, drawing, 3d render, anime, deformed, distorted face, extra fingers, blurry, low quality, text, watermark, logo, hat, sunglasses, suit and tie, corporate headshot, studio backdrop';
 
 export function headshotPrompt(s: HeadshotSpec): string {
   const who = `${s.age} year old ${WHO[s.region]} ${s.gender === 'F' ? 'woman' : 'man'}`;
   const hair = s.style === 'hijab' ? 'wearing a hijab' : s.style === 'bald' ? 'shaved head' : `${HAIR_WORD[s.hair] ?? ''} ${STYLE_WORD[s.style]}`.trim();
   const extras = [s.beard === 'full' ? 'full beard' : s.beard === 'stubble' ? 'light stubble' : s.beard === 'mustache' ? 'moustache' : '', s.glasses ? 'glasses' : '', s.earrings ? 'small earrings' : ''].filter(Boolean);
   return [
-    `Photorealistic professional corporate headshot photo of a ${who}`,
+    `Candid photorealistic lifestyle portrait photo of a ${who}`,
     hair,
     ...extras,
     `wearing ${OUTFIT_WORD[s.outfit]}`,
-    'head and shoulders, looking at camera, friendly natural smile, soft studio lighting, plain light grey background, sharp focus, detailed natural skin texture, 85mm portrait photography, entirely fictional person',
+    `${SETTINGS[Number(s.key.replace(/\D/g, '')) % SETTINGS.length]}, softly blurred background`,
+    'head and shoulders, relaxed genuine smile, natural daylight, shallow depth of field, sharp focus on the face, detailed natural skin texture, editorial lifestyle photography, 50mm, entirely fictional person',
   ].join(', ');
 }
 
@@ -88,7 +94,7 @@ async function generateOne(s: HeadshotSpec, key: string): Promise<Buffer> {
 export async function generatePhotoHeadshots(opts: { force?: boolean; onProgress?: (done: number, total: number) => void } = {}): Promise<PhotoRun> {
   const e = env();
   const key = imageKey(e);
-  if (!imagesConfigured(e) || !key) throw new Error(e.IMAGE_PROVIDER === 'openai' ? 'No image API key is set (IMAGE_API_KEY), so photographs cannot be generated.' : 'No Hugging Face token is set (HF_TOKEN), so photographs cannot be generated.');
+  if (!imagesConfigured(e) || !key) throw new Error(e.IMAGE_PROVIDER === 'openai' ? 'No image key is set (IMAGE_API_KEY in the deployment settings), so photographs cannot be generated.' : 'No image key is set (HF_TOKEN in the deployment settings), so photographs cannot be generated.');
   await ensureHeadshots();
   const have = new Map((await prisma.headshot.findMany({ select: { key: true, source: true } })).map((h) => [h.key, h.source]));
   const todo = HEADSHOTS.filter((h) => opts.force || have.get(h.key) !== 'photo');
@@ -104,7 +110,7 @@ export async function generatePhotoHeadshots(opts: { force?: boolean; onProgress
         run.generated += 1;
       } catch (err) {
         run.failed.push({ key: s.key, reason: err instanceof Error ? err.message : 'failed' });
-        // A key or quota problem will fail every call; stop early rather than make fifty failing requests.
+        // A key or quota problem will fail every call; stop early rather than make a hundred failing requests.
         if (/\b(401|402|403|429)\b|unauthorized|credit|quota|rate limit/i.test(String(err))) next = todo.length;
       }
       opts.onProgress?.(++done, todo.length);

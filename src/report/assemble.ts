@@ -413,7 +413,7 @@ export function renderMarkdown(report: AssembledReport): string {
 
   lines.push('## How this run was produced');
   lines.push('');
-  lines.push(`- Provider: ${report.modelProvider} (${report.modelId})`);
+  lines.push(`- Provider: ${report.modelProvider === 'mock' ? 'Mock' : 'AI model'}`);
   lines.push(`- Model calls: ${report.callCount} · recorded spend $${report.spendUsd.toFixed(4)}`);
   lines.push(`- Seeds: ${report.seeds.join(', ')}`);
   lines.push(`- Plan hash: \`${report.planHash}\``);

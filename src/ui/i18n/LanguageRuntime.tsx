@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { LANG_EVENT, translate, type Lang } from './translate';
+import { LANG_EVENT, translate, untranslate, type Lang } from './translate';
 
 /**
  * Applies the chosen interface language to the page, and keeps applying it as React updates it.
@@ -13,6 +13,8 @@ import { LANG_EVENT, translate, type Lang } from './translate';
  */
 const ATTRS = ['placeholder', 'aria-label', 'title', 'alt'] as const;
 const SKIP = 'script,style,noscript,textarea,pre,code,[data-no-translate],[contenteditable="true"]';
+// Attributes (a placeholder, a label) are interface wording even on a field whose content is not.
+const SKIP_ATTRS = 'script,style,noscript,[data-no-translate],[contenteditable="true"]';
 
 // Original English per node, and the value last written here (to tell our own writes apart from
 // React's). Module-level on purpose: the root layout re-renders when the language cookie changes,
@@ -21,6 +23,25 @@ const SKIP = 'script,style,noscript,textarea,pre,code,[data-no-translate],[conte
 const textOrig = new Map<Text, { orig: string; set: string }>();
 const attrOrig = new Map<Element, Map<string, { orig: string; set: string }>>();
 let titleOrig: { orig: string; set: string } | null = null;
+// Prefilled text in fields (a suggested question, a default value) follows the interface language
+// until the person types in the field; what they type is never touched.
+const FIELD = 'textarea, input[type="text"], input[type="search"], input:not([type])';
+type Field = HTMLInputElement | HTMLTextAreaElement;
+const fieldOrig = new Map<Field, { orig: string; set: string }>();
+const edited = new WeakSet<Field>();
+let writing = false;
+
+/** Set a field's value so React's own state follows it (the same way a keystroke would). */
+function setFieldValue(el: Field, value: string) {
+  const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+  Object.getOwnPropertyDescriptor(proto, 'value')?.set?.call(el, value);
+  writing = true;
+  try {
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+  } finally {
+    writing = false;
+  }
+}
 let lang: Lang = 'en';
 let started = false;
 
@@ -54,7 +75,7 @@ export function LanguageRuntime({ initial }: { initial: Lang }) {
     };
 
     const doAttrs = (el: Element) => {
-      if (skipped(el)) return;
+      if (el.closest(SKIP_ATTRS)) return;
       for (const a of ATTRS) {
         const value = el.getAttribute(a);
         if (value === null) continue;
@@ -70,10 +91,30 @@ export function LanguageRuntime({ initial }: { initial: Lang }) {
       }
     };
 
+    const doField = (el: Field) => {
+      if (edited.has(el) || el.closest('[data-no-translate]') || el.readOnly) return;
+      const value = el.value;
+      // Only prefilled sentences (a question, a description) — never a short value such as a market
+      // or a name, which is data the form submits.
+      if (!value || (!value.includes('\n') && (lang === 'zh' ? value.trim().split(/\s+/).length < 4 : value.trim().length < 8))) return;
+      const rec = fieldOrig.get(el);
+      if (rec && value === rec.set) return;
+      // A field the server filled in Chinese, shown after switching to English.
+      // A list in a field (one category per line) is translated line by line.
+      const one = (v: string) => (lang === 'zh' ? translate(v) : untranslate(v));
+      const lines = value.split('\n');
+      const t = lines.length > 1 ? (lines.some((l) => l.trim() && one(l) !== null) ? lines.map((l) => (l.trim() ? one(l) ?? l : l)).join('\n') : null) : one(value);
+      if (t === null || t === value) return;
+      fieldOrig.set(el, { orig: value, set: t });
+      setFieldValue(el, t);
+    };
+
     const walk = (root: Node) => {
       if (root.nodeType === Node.TEXT_NODE) return doText(root as Text);
       if (root.nodeType !== Node.ELEMENT_NODE) return;
       doAttrs(root as Element);
+      if ((root as Element).matches(FIELD)) doField(root as Field);
+      (root as Element).querySelectorAll<Field>(FIELD).forEach(doField);
       const tw = document.createTreeWalker(root, NodeFilter.SHOW_TEXT | NodeFilter.SHOW_ELEMENT);
       let n: Node | null;
       while ((n = tw.nextNode())) {
@@ -96,6 +137,8 @@ export function LanguageRuntime({ initial }: { initial: Lang }) {
       for (const [node, rec] of textOrig) if (node.nodeValue === rec.set) node.nodeValue = rec.orig;
       for (const [el, recs] of attrOrig) for (const [a, rec] of recs) if (el.getAttribute(a) === rec.set) el.setAttribute(a, rec.orig);
       if (titleOrig && document.title === titleOrig.set) document.title = titleOrig.orig;
+      for (const [el, rec] of fieldOrig) if (el.isConnected && el.value === rec.set && !edited.has(el)) setFieldValue(el, rec.orig);
+      fieldOrig.clear();
       textOrig.clear();
       attrOrig.clear();
       titleOrig = null;
@@ -105,8 +148,10 @@ export function LanguageRuntime({ initial }: { initial: Lang }) {
       lang = next;
       document.documentElement.lang = next === 'zh' ? 'zh-CN' : 'en';
       document.documentElement.dataset.lang = next;
-      if (next === 'en') restore();
-      else {
+      if (next === 'en') {
+        restore();
+        document.body.querySelectorAll<Field>(FIELD).forEach(doField);
+      } else {
         walk(document.body);
         doTitle();
       }
@@ -125,6 +170,28 @@ export function LanguageRuntime({ initial }: { initial: Lang }) {
     observer.observe(document.body, { subtree: true, childList: true, characterData: true, attributes: true, attributeFilter: [...ATTRS] });
     const titleObserver = new MutationObserver(() => lang === 'zh' && doTitle());
     titleObserver.observe(document.head, { subtree: true, childList: true, characterData: true });
+
+    // Typing in a field makes its text the person's own.
+    document.addEventListener(
+      'input',
+      (e) => {
+        const el = e.target as Field;
+        if (!writing && e.isTrusted && el?.matches?.(FIELD)) {
+          edited.add(el);
+          fieldOrig.delete(el);
+        }
+      },
+      true,
+    );
+    // A form reset puts the original (English) defaults back.
+    document.addEventListener('reset', (e) => {
+      const form = e.target as HTMLFormElement;
+      setTimeout(() => form.querySelectorAll<Field>(FIELD).forEach((el) => {
+        edited.delete(el);
+        fieldOrig.delete(el);
+        doField(el);
+      }), 0);
+    }, true);
 
     const onSwitch = (e: Event) => apply((e as CustomEvent<Lang>).detail);
     window.addEventListener(LANG_EVENT, onSwitch);
