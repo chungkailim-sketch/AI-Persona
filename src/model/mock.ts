@@ -123,7 +123,9 @@ function body(schemaName: string, rng: () => number, personaKey: string, request
     case 'creative_brief': {
       const keys = listed(request, 'FIELDS');
       return {
-        fields: Object.fromEntries(keys.map((k) => [k, `[MOCK] Placeholder ${k}.`])),
+        // One row left empty, as a model sometimes does: the brief fills it with a sensible default.
+        fields: Object.fromEntries(keys.filter((k) => k !== 'lens').map((k) => [k, `[MOCK] Placeholder ${k}.`])),
+        inferred: ['platform', 'runtime'],
         shots: [1, 2, 3].map((n) => ({ title: `[MOCK] Shot ${n}`, prompt: `[MOCK] Medium shot, slow push-in: placeholder subject walks in a placeholder market, morning. Soft daylight. Cinematic, warm palette.` })),
       };
     }

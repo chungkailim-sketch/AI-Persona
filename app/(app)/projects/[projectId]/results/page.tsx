@@ -11,6 +11,7 @@ import { SlideDeck } from '@/ui/report/Slides';
 import { listCreativeBriefs } from '@/creative/brief';
 import type { CreativeBriefContent } from '@/creative/fields';
 import { CreativeBriefButton } from './CreativeBriefButton';
+import { OpenSectionFromHash } from '@/ui/OpenSectionFromHash';
 import { WorkflowNav } from '../WorkflowNav';
 import { DecisionGuidance } from '../DecisionGuidance';
 import { MarketInputsForm } from './MarketInputsForm';
@@ -54,6 +55,7 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
     <div className="flex flex-col gap-6">
       <WorkflowNav projectId={projectId} projectName={project.name} current="RESULTS" />
       <RefreshWhileImporting active={planning} />
+      <OpenSectionFromHash />
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl">Results</h1>
@@ -106,16 +108,18 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
         </section>
       )}
 
-      <section id="creative" aria-labelledby="creative-heading" className="flex scroll-mt-48 flex-col gap-4 border-t border-line pt-6">
-        <div>
+      <details id="creative" className="group scroll-mt-48 border-t border-line pt-6">
+        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 [&::-webkit-details-marker]:hidden">
+          <div>
           <h2 id="creative-heading" className="text-xl">Creative brief for AI content generation</h2>
           <p className="mt-1 max-w-prose text-sm text-ink-muted">
-            The communication preference and creative treatment from the Brief, combined with the roundtable&rsquo;s key messaging and hero persona, written into the AIGC Creative Brief template: concept, subject, camera, look and a ready prompt for every shot. Download it as a Word file to brief Runway, Figma Weave or another AIGC tool.
+            Written for you from the whole study — every persona, the roundtable results and key messaging, the report&rsquo;s market indices, the latest plan and debate — into the AIGC Creative Brief template: objective, audience, concept, subject, camera, look and a ready prompt for every shot. Where the study is silent, the brief infers the best fit and says which rows it inferred. Download it as a Word file for Runway, Figma Weave or another AIGC tool.
           </p>
-          <p className="mt-1 text-xs text-ink-subtle">
-            Set the preferences under <Link href={`/projects/${projectId}/brief#creative-heading` as Route} className="text-link underline">Brief → Communication and creative</Link>. Prompts are written in English, which video models follow best.
-          </p>
-        </div>
+          <p className="mt-1 text-xs text-ink-subtle">Prompts are written in English, which video models follow best.</p>
+          </div>
+          <span aria-hidden className="mt-1 shrink-0 text-ink-subtle transition-transform group-open:rotate-180">▾</span>
+        </summary>
+        <div className="mt-4 flex flex-col gap-4">
         {can(ctx, 'simulation.run', projectId) && <div className="panel max-w-3xl px-5 py-4"><CreativeBriefButton projectId={projectId} again={creative.length > 0} /></div>}
         {creative.length > 0 && (
           <ul className="flex max-w-3xl flex-col divide-y divide-line rounded-lg border border-line bg-surface">
@@ -140,14 +144,19 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
             })}
           </ul>
         )}
-      </section>
+        </div>
+      </details>
 
       {modules.has('comms_planner') && (
-        <section id="plans" aria-labelledby="plans-heading" className="flex scroll-mt-48 flex-col gap-4 border-t border-line pt-6">
-          <div>
+        <details id="plans" className="group scroll-mt-48 border-t border-line pt-6">
+          <summary className="flex cursor-pointer list-none items-start justify-between gap-4 [&::-webkit-details-marker]:hidden">
+            <div>
             <h2 id="plans-heading" className="text-xl">PR, communications and marketing plans</h2>
             <p className="mt-1 max-w-prose text-sm text-ink-muted">Ask a question; the plan answers it purely from the survey data, the personas and the roundtable, applying recognised frameworks from the knowledge library. Every insight shows the data it rests on.</p>
-          </div>
+            </div>
+            <span aria-hidden className="mt-1 shrink-0 text-ink-subtle transition-transform group-open:rotate-180">▾</span>
+          </summary>
+          <div className="mt-4 flex flex-col gap-4">
           {can(ctx, 'simulation.run', projectId) && (
             <div className="panel max-w-3xl px-5 py-4"><PlannerForm projectId={projectId} industries={INDUSTRIES} /></div>
           )}
@@ -171,17 +180,23 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
               </article>
             );
           })}
-        </section>
+          </div>
+        </details>
       )}
 
       {modules.has('knowledge') && (
-        <section id="knowledge" aria-labelledby="knowledge-heading" className="flex scroll-mt-48 flex-col gap-4 border-t border-line pt-6">
-          <div>
+        <details id="knowledge" className="group scroll-mt-48 border-t border-line pt-6">
+          <summary className="flex cursor-pointer list-none items-start justify-between gap-4 [&::-webkit-details-marker]:hidden">
+            <div>
             <h2 id="knowledge-heading" className="text-xl">Knowledge library</h2>
             <p className="mt-1 max-w-prose text-sm text-ink-muted">Recognised PR, communications and marketing frameworks, and market-entry knowledge for foreign brands across industries — summarised for this platform, each linked to its original source (professional bodies, governments, multilateral institutions and peer-reviewed research). The planner draws on these.</p>
-          </div>
+            </div>
+            <span aria-hidden className="mt-1 shrink-0 text-ink-subtle transition-transform group-open:rotate-180">▾</span>
+          </summary>
+          <div className="mt-4 flex flex-col gap-4">
           <KnowledgeLibrary entries={KNOWLEDGE} industries={INDUSTRIES} />
-        </section>
+          </div>
+        </details>
       )}
     </div>
   );

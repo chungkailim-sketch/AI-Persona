@@ -200,27 +200,6 @@ export async function importBriefAction(_prev: FormState, formData: FormData): P
   return { ok: 'Reading the brief. The form below fills in when it is done, usually within a minute.' };
 }
 
-export async function saveCreativePrefsAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const projectId = String(formData.get('projectId') ?? '');
-  const one = (k: string) => String(formData.get(k) ?? '');
-  try {
-    const user = await requireUserApi();
-    const { saveCreativePrefs } = await import('@/creative/save');
-    await saveCreativePrefs(user, projectId, {
-      brand: one('brand'), owner: one('owner'), objective: one('objective'),
-      platforms: formData.getAll('platforms').map(String), ratios: formData.getAll('ratios').map(String), tones: formData.getAll('tones').map(String),
-      languages: one('languages'), cta: one('cta'), mandatories: one('mandatories'), noGos: one('noGos'),
-      mode: one('mode'), deliverable: one('deliverable'), style: one('style'), mood: one('mood'), pacing: one('pacing'),
-      lighting: one('lighting'), palette: one('palette'), filmLook: one('filmLook'), references: one('references'), heroPersonaId: one('heroPersonaId'),
-      runtimeSeconds: one('runtimeSeconds'), clipSeconds: one('clipSeconds'), frameRate: one('frameRate'), resolution: one('resolution'),
-    });
-  } catch (e) {
-    return toState(e);
-  }
-  refresh(projectId);
-  return { ok: 'Communication preference and creative treatment saved.' };
-}
-
 export async function requestCreativeBriefAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const projectId = String(formData.get('projectId') ?? '');
   try {
