@@ -2634,4 +2634,6 @@ export const ZH: Record<string, string> = {
   "Translating the report into": "正在将报告翻译为",
   "# item(s) to go.": "还剩 # 项。",
   "This page updates on its own; wait for it before saving the PDF.": "本页会自动更新；请在完成后再保存 PDF。",
+  "Written for you from the whole study — every persona, the roundtable results and key messaging, the report’s market indices, the latest plan and debate — into the AIGC Creative Brief template: objective, audience, concept, subject, camera, look and a ready prompt for every shot. Where the study is silent, the brief infers the best fit and says which rows it inferred. Download it as a Word file for Runway, Figma Weave or another AIGC tool.": "根据整个研究自动撰写——所有画像、圆桌讨论结果与核心信息、报告中的市场指数、最新方案与辩论——填入 AIGC 创意简报模板：目标、受众、概念、主体、镜头、视觉风格，以及每个镜头可直接使用的提示词。研究中没有涉及的内容，简报会推断最合适的选择，并注明哪些栏目是推断的。下载 Word 文件，用于 Runway、Figma Weave 或其他 AIGC 工具。",
+  "Run the roundtable first: the creative brief is written from its results.": "请先运行圆桌讨论：创意简报根据其结果撰写。",
 };

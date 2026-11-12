@@ -7,7 +7,7 @@ import { authContextFor } from '@/auth/session';
 import { can } from '@/auth/permissions';
 import { prisma } from '@/lib/prisma';
 import { LANG_COOKIE, parseLang } from '@/ui/i18n/translate';
-import { availableMarkets, DEFAULT_CATEGORIES, DEFAULT_QUESTION, latestBrief, latestCast, studyBriefMissing } from '@/roundtable/service';
+import { availableMarkets, DEFAULT_CATEGORIES, DEFAULT_QUESTION, latestBrief, studyBriefMissing } from '@/roundtable/service';
 import { WorkflowNav } from '../WorkflowNav';
 import { DecisionGuidance } from '../DecisionGuidance';
 import { StudyBriefForm } from './StudyBriefForm';
@@ -17,9 +17,6 @@ import { latestBriefImport, type ImportContent } from '@/advice/briefImport';
 import { Markdown } from '@/ui/Markdown';
 import { RefreshWhileImporting } from '../data/RefreshWhileImporting';
 import { BriefUpload } from './BriefUpload';
-import { CreativeForm } from './CreativeForm';
-import { readPrefs } from '@/creative/prefs';
-import type { CastProfile } from '@/roundtable/engine';
 
 export const metadata = { title: 'Brief · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -39,11 +36,6 @@ export default async function BriefStepPage(props: PageProps<'/projects/[project
   const read = imported?.status === 'COMPLETED' ? (imported.content as unknown as ImportContent) : null;
   const hypothesisCount = brief ? await prisma.hypothesis.count({ where: { briefId: brief.id } }) : 0;
   const canEdit = can(ctx, 'project.edit', projectId);
-  const [creative, cast] = await Promise.all([prisma.project.findUnique({ where: { id: projectId }, select: { creative: true } }), latestCast(projectId)]);
-  const castOptions = (cast?.personas ?? []).map((p) => {
-    const pr = p.versions[0]?.profile as unknown as CastProfile | null;
-    return { id: p.id, label: pr ? `${p.name} · ${pr.market} · ${pr.tierLabel}` : p.name };
-  });
   const missing = studyBriefMissing(brief);
   const view = {
     context: brief?.businessContext ?? '',
@@ -123,13 +115,6 @@ export default async function BriefStepPage(props: PageProps<'/projects/[project
       )}
       <section className="panel max-w-3xl px-5 py-5">
         <StudyBriefForm key={`${brief?.id ?? 'new'}-${brief?.updatedAt.getTime() ?? 0}`} projectId={projectId} brief={view} available={available} canEdit={canEdit} locked={brief?.status === 'LOCKED'} />
-      </section>
-      <section aria-labelledby="creative-heading" className="flex max-w-3xl flex-col gap-3">
-        <div>
-          <h2 id="creative-heading" className="text-lg">Communication and creative</h2>
-          <p className="mt-1 text-sm text-ink-muted">Guides content creation. Combined with the roundtable&rsquo;s key messaging, these settings make the AIGC creative brief on the Results step, for Runway, Figma Weave or similar tools.</p>
-        </div>
-        <CreativeForm projectId={projectId} prefs={readPrefs(creative?.creative)} personas={castOptions} canEdit={canEdit} />
       </section>
       {brief && <div className="max-w-3xl"><DecisionGuidance projectId={projectId} checkpoint="BRIEF" canAsk={can(ctx, 'project.edit', projectId)} /></div>}
       {brief && missing.length === 0 && (
