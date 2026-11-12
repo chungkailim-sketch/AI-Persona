@@ -3,7 +3,7 @@ import { HEADSHOTS, genderOf, pickHeadshot, regionOfMarket } from '@/headshots/c
 import { drawHeadshot } from '@/headshots/draw';
 
 describe('headshot catalog', () => {
-  it('has fifty distinct portraits across regions, both genders and a wide age range', () => {
+  it('has a hundred distinct portraits across regions, both genders and a wide age range', () => {
     expect(HEADSHOTS).toHaveLength(100);
     expect(new Set(HEADSHOTS.map((h) => h.key)).size).toBe(100);
     expect(new Set(HEADSHOTS.map((h) => h.region)).size).toBe(7);
@@ -74,5 +74,34 @@ describe('image key selection', () => {
     expect(imageKey({ ...(base as object), IMAGE_API_KEY: 'not-a-key' } as never)).toBeNull();
     expect(imagesConfigured({ IMAGE_PROVIDER: 'fal-ai', HF_TOKEN: 'hf_abcdefghijk' } as never)).toBe(true);
     expect(imagesConfigured({ IMAGE_PROVIDER: 'fal-ai', IMAGE_API_KEY: 'sk-x' } as never)).toBe(false);
+  });
+});
+
+describe('matching a portrait to the persona’s occupation', () => {
+  it('reads the occupation family from the occupation, or from age and income tier', async () => {
+    const { roleOf } = await import('@/headshots/catalog');
+    expect(roleOf('Staff nurse at a public hospital', 34)).toBe('healthcare');
+    expect(roleOf('Software engineer', 29)).toBe('tech');
+    expect(roleOf('Owner of a small bakery', 47)).toBe('entrepreneur');
+    expect(roleOf('University student', 20)).toBe('student');
+    expect(roleOf('Retired teacher', 68)).toBe('retired');
+    expect(roleOf('', 45, 1)).toBe('executive');
+    expect(roleOf('', 30, 3)).toBe('service');
+  });
+
+  it('gives a persona a face of the same gender, region and occupation where one exists', async () => {
+    const { pickHeadshot, HEADSHOTS } = await import('@/headshots/catalog');
+    const key = pickHeadshot({ id: 'p1', market: 'Indonesia', gender: 'Female', age: 33, occupation: 'Nurse' });
+    const h = HEADSHOTS.find((x) => x.key === key)!;
+    expect([h.gender, h.region]).toEqual(['F', 'southeast_asian']);
+    expect(['healthcare', 'service']).toContain(h.role);
+  });
+
+  it('writes the occupation’s clothes and setting into the photo prompt', async () => {
+    const { headshotPrompt } = await import('@/headshots/photos');
+    const nurse = HEADSHOTS.find((h) => h.role === 'healthcare')!;
+    expect(headshotPrompt(nurse)).toMatch(/scrubs|pharmacist/);
+    const student = HEADSHOTS.find((h) => h.role === 'student')!;
+    expect(headshotPrompt(student)).toMatch(/campus/);
   });
 });

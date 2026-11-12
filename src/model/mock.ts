@@ -114,9 +114,18 @@ function body(schemaName: string, rng: () => number, personaKey: string, request
       const items = [...text.matchAll(/^(T\d+): (.*)$/gm)].map((m) => {
         let source = m[2]!;
         try { source = JSON.parse(source) as string; } catch { /* keep as is */ }
-        return { id: m[1]!, zh: `【模拟译文】${source}` };
+        const lang = /^LANGUAGE: (.+)$/m.exec(text)?.[1] ?? 'Simplified Chinese';
+        return { id: m[1]!, text: lang === 'Simplified Chinese' ? `【模拟译文】${source}` : `[${lang}] ${source}` };
       });
       return { items };
+    }
+
+    case 'creative_brief': {
+      const keys = listed(request, 'FIELDS');
+      return {
+        fields: Object.fromEntries(keys.map((k) => [k, `[MOCK] Placeholder ${k}.`])),
+        shots: [1, 2, 3].map((n) => ({ title: `[MOCK] Shot ${n}`, prompt: `[MOCK] Medium shot, slow push-in: placeholder subject walks in a placeholder market, morning. Soft daylight. Cinematic, warm palette.` })),
+      };
     }
 
     case 'comms_plan':

@@ -21,7 +21,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { SESSION_CONFIG } from '@/auth/config';
 
-const PUBLIC_PATHS = ['/', '/sign-in', '/api/health', '/api/auth'];
+// /api/context carries its own bearer-token check.
+const PUBLIC_PATHS = ['/', '/sign-in', '/api/health', '/api/auth', '/api/context'];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));

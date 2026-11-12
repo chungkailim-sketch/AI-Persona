@@ -11,6 +11,11 @@ export type Gender = 'F' | 'M';
 
 export type HairStyle = 'long' | 'bob' | 'bun' | 'pixie' | 'curly' | 'wavy' | 'short' | 'side' | 'buzz' | 'curlyshort' | 'bald' | 'hijab';
 export type Outfit = 'tee' | 'shirt' | 'blazer' | 'turtle';
+/** What the person does: shapes the photo's clothes and setting, and is matched to a persona's occupation. */
+export type Role = 'student' | 'office' | 'executive' | 'tech' | 'creative' | 'healthcare' | 'service' | 'trades' | 'entrepreneur' | 'homemaker' | 'retired';
+
+/** Bumped when the photo prompt changes: photos made with an older style are regenerated on deploy. */
+export const PHOTO_STYLE = 'lifestyle-role-v1';
 
 export interface HeadshotSpec {
   key: string;
@@ -21,6 +26,7 @@ export interface HeadshotSpec {
   hair: string;
   style: HairStyle;
   outfit: Outfit;
+  role: Role;
   color: string; // clothing
   bg: string;
   beard?: 'stubble' | 'full' | 'mustache';
@@ -146,9 +152,27 @@ const ROWS: Row[] = [
   ['latin', 'M', 68, '#c99c78', HAIR.white, 'short', 'turtle', 'mustache'],
 ];
 
+const YOUNG: Role[] = ['office', 'creative', 'tech', 'service', 'healthcare', 'trades', 'entrepreneur'];
+const MIDDLE: Role[] = ['office', 'entrepreneur', 'healthcare', 'executive', 'trades', 'homemaker', 'tech', 'service'];
+const SENIOR: Role[] = ['executive', 'entrepreneur', 'homemaker', 'trades', 'office', 'healthcare'];
+
+/** A spread of occupations over the catalog, plausible for each age: each age band takes its
+ *  occupations in turn, separately for women and men, so every region gets a mix. */
+const turn = new Map<string, number>();
+function roleFor(age: number, gender: Gender): Role {
+  if (age < 23) return 'student';
+  const band = age >= 62 ? 'senior+' : age < 35 ? 'young' : age < 50 ? 'middle' : 'senior';
+  const pool: Role[] = band === 'senior+' ? ['retired', 'retired', 'entrepreneur'] : band === 'young' ? YOUNG : band === 'middle' ? MIDDLE : SENIOR;
+  const k = `${band}:${gender}`;
+  const n = turn.get(k) ?? 0;
+  turn.set(k, n + 1);
+  return pool[n % pool.length]!;
+}
+
 export const HEADSHOTS: HeadshotSpec[] = ROWS.map((r, i) => {
   const flags = [r[7], r[8]].filter(Boolean) as string[];
   return {
+    role: roleFor(r[2], r[1]),
     key: `hs-${String(i + 1).padStart(2, '0')}`,
     region: r[0],
     gender: r[1],
@@ -195,24 +219,62 @@ function hash(s: string): number {
   return h >>> 0;
 }
 
+const ROLE_WORDS: [Role, RegExp][] = [
+  ['retired', /retire|pension/i],
+  ['student', /student|undergrad|graduate student|intern\b|universit|college/i],
+  ['homemaker', /home ?maker|housewife|househusband|stay[- ]at[- ]home|full[- ]time (mum|mom|parent)/i],
+  ['healthcare', /nurse|doctor|physician|pharmac|clinic|medical|dentist|therapist|midwife|caregiver|health/i],
+  ['tech', /engineer|developer|software|programmer|\bit\b|data|tech|analyst/i],
+  ['creative', /design|artist|creative|photograph|content creator|influencer|media|writer|architect|marketing|stylist/i],
+  ['executive', /director|executive|head of|vice president|\bvp\b|ceo|cfo|partner|lawyer|banker|senior manager|general manager/i],
+  ['entrepreneur', /owner|entrepreneur|founder|self[- ]employed|merchant|trader|vendor|seller|shopkeeper|business/i],
+  ['service', /retail|cashier|waiter|waitress|barista|hospitality|shop assistant|sales assistant|call cent|customer service|salon|beaut|cook|chef|server/i],
+  ['trades', /driver|mechanic|technician|construction|factory|farmer|electrician|plumber|labou?r|worker|delivery|courier|logistics|security|fisher/i],
+  ['office', /manager|officer|clerk|admin|accountant|teacher|lecturer|civil servant|assistant|coordinator|executive assistant|sales|bank/i],
+]
+
+/** The occupation family a persona's occupation belongs to; by age and income tier when it says nothing. */
+export function roleOf(occupation: string | null | undefined, age: number, tier?: number | null): Role {
+  const o = (occupation ?? '').trim();
+  for (const [role, re] of ROLE_WORDS) if (o && re.test(o)) return role;
+  if (age >= 62) return 'retired';
+  if (age < 23) return 'student';
+  return tier === 1 ? (age >= 40 ? 'executive' : 'office') : tier === 3 ? (age >= 40 ? 'trades' : 'service') : 'office';
+}
+
+const NEAR: Partial<Record<Role, Role[]>> = {
+  office: ['executive', 'tech'], executive: ['office', 'entrepreneur'], tech: ['office', 'creative'], creative: ['tech', 'office'],
+  service: ['trades', 'entrepreneur'], trades: ['service'], entrepreneur: ['executive', 'service'], homemaker: ['retired'], retired: ['homemaker'],
+  healthcare: ['service'], student: ['service', 'creative'],
+};
+
 /**
- * The best portrait for a persona: same gender, the market's region, the closest age. `taken` keeps
- * faces from repeating within a cast; ties break on the persona's id so the choice is stable.
+ * The best portrait for a persona: same gender, the market's region, the occupation family (from
+ * the persona's occupation, or its age and income tier), the closest age. `taken` keeps faces
+ * from repeating within a cast; ties break on the persona's id so the choice is stable.
  */
-export function pickHeadshot(p: { id: string; market: string; gender?: string | null; age?: number | null }, taken: ReadonlySet<string> = new Set()): string {
+export function pickHeadshot(
+  p: { id: string; market: string; gender?: string | null; age?: number | null; occupation?: string | null; tier?: number | null },
+  taken: ReadonlySet<string> = new Set(),
+): string {
   const gender = genderOf(p.gender);
   const region = regionOfMarket(p.market);
   const age = p.age && p.age > 0 ? p.age : 40;
+  const role = roleOf(p.occupation, age, p.tier);
+  // A stated occupation weighs about fifteen years of age; one guessed from age and tier, a few.
+  const stated = Boolean(p.occupation && p.occupation.trim());
+  const [miss, near] = stated ? [24, 10] : [8, 3];
   let best = HEADSHOTS[0]!;
   let bestScore = Infinity;
   for (const h of HEADSHOTS) {
     const score =
       (gender && h.gender !== gender ? 1000 : 0) +
       (h.region !== region ? 120 : 0) +
-      Math.abs(h.age - age) +
+      (h.role === role ? 0 : NEAR[role]?.includes(h.role) ? near : miss) +
+      Math.abs(h.age - age) * 1.5 +
       // A face already used in this cast is a last resort: only when every face of that gender is taken.
       (taken.has(h.key) ? 100_000 : 0) +
-      (hash(`${p.id}:${h.key}`) % 1000) / 500; // < 2 years of age, a stable tiebreak
+      (hash(`${p.id}:${h.key}`) % 1000) / 500; // a stable tiebreak
     if (score < bestScore) {
       bestScore = score;
       best = h;

@@ -33,10 +33,13 @@ import { provisionDemoWorkspace } from './src/demo/provision';
 import { runForecastAnalysis } from './src/forecast/analysis';
 import { executeDebate } from './src/debate/engine';
 import { executeInsight } from './src/debate/insights';
-import { generatePhotoHeadshots } from './src/headshots/photos';
+import { generatePhotoHeadshots, headshotsOutdated, reassignHeadshots } from './src/headshots/photos';
+import { imagesConfigured } from './src/lib/env';
+import { enqueue } from './src/queue/queue';
 import { executeCast, executeRoundtable, type CastJobInput } from './src/roundtable/engine';
 import { executePlan } from './src/advice/planner';
 import { executeBriefImport } from './src/advice/briefImport';
+import { executeCreativeBrief } from './src/creative/brief';
 import { executeReportTranslation } from './src/roundtable/reportLocale';
 
 const WORKER_ID = `${process.env.RAILWAY_REPLICA_ID ?? 'local'}-${randomUUID().slice(0, 8)}`;
@@ -120,7 +123,9 @@ async function handle(job: ClaimedJob): Promise<Record<string, unknown>> {
     case 'headshots': {
       const input = job.input as { force?: boolean };
       const run = await generatePhotoHeadshots({ force: Boolean(input.force) });
-      return run as unknown as Record<string, unknown>;
+      // Every built cast then gets the portraits that best fit its personas.
+      const reassigned = await reassignHeadshots();
+      return { ...run, reassigned } as unknown as Record<string, unknown>;
     }
     case 'advice': {
       const input = job.input as { adviceId?: string };
@@ -135,9 +140,15 @@ async function handle(job: ClaimedJob): Promise<Record<string, unknown>> {
       return outcome as unknown as Record<string, unknown>;
     }
     case 'report_translate': {
-      const input = job.input as { projectId?: string; roundtableId?: string };
+      const input = job.input as { projectId?: string; roundtableId?: string; lang?: string; strings?: unknown[] };
       if (!input.projectId || !input.roundtableId) throw new Error('Job input does not name a report.');
-      const outcome = await executeReportTranslation({ projectId: input.projectId, roundtableId: input.roundtableId });
+      const outcome = await executeReportTranslation({ projectId: input.projectId, roundtableId: input.roundtableId, lang: input.lang, strings: input.strings });
+      return outcome as unknown as Record<string, unknown>;
+    }
+    case 'creative_brief': {
+      const input = job.input as { adviceId?: string };
+      if (!input.adviceId) throw new Error('Job input does not name a creative brief.');
+      const outcome = await executeCreativeBrief(input.adviceId);
       return outcome as unknown as Record<string, unknown>;
     }
     case 'demo_provision': {
@@ -231,9 +242,32 @@ async function processOne(job: ClaimedJob): Promise<void> {
   }
 }
 
+/**
+ * The hundred portraits are photographs, made once: when the worker starts and any portrait is
+ * not yet a photo in the current style, it queues their generation itself (nothing to press in
+ * Admin). Needs the image key; without it the drawn portraits stay and this says so in the log.
+ */
+async function ensurePhotoHeadshots(): Promise<void> {
+  try {
+    const outdated = await headshotsOutdated();
+    if (outdated === 0) return;
+    if (!imagesConfigured(env())) {
+      log('headshots: photos not generated', { outdated, reason: 'no image key (IMAGE_API_KEY or OPENAI_API_KEY)' });
+      return;
+    }
+    const busy = await prisma.job.findFirst({ where: { kind: 'headshots', status: { in: ['PENDING', 'CLAIMED', 'RUNNING'] } }, select: { id: true } });
+    if (busy) return;
+    await enqueue({ kind: 'headshots', input: { auto: true }, maxAttempts: 1 });
+    log('headshots: generation queued', { outdated });
+  } catch (e) {
+    log('headshots: check failed', { error: e instanceof Error ? e.message.slice(0, 200) : 'unknown' });
+  }
+}
+
 async function loop(): Promise<void> {
   const concurrency = env().WORKER_CONCURRENCY;
   log('worker started', { concurrency });
+  void ensurePhotoHeadshots();
 
   const reclaimTimer = setInterval(() => {
     void reclaimStalled()
@@ -248,7 +282,7 @@ async function loop(): Promise<void> {
     }
     let job: ClaimedJob | null = null;
     try {
-      job = await claimNext(WORKER_ID, ['ingest', 'simulate', 'export', 'demo_provision', 'trend_analysis', 'debate', 'debate_insight', 'cast', 'roundtable', 'advice', 'headshots', 'brief_import', 'report_translate']);
+      job = await claimNext(WORKER_ID, ['ingest', 'simulate', 'export', 'demo_provision', 'trend_analysis', 'debate', 'debate_insight', 'cast', 'roundtable', 'advice', 'headshots', 'brief_import', 'report_translate', 'creative_brief']);
     } catch (e) {
       log('could not reach the queue', { error: e instanceof Error ? e.message : String(e) });
       await new Promise((r) => setTimeout(r, 5_000));

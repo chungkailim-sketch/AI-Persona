@@ -25,6 +25,8 @@ const schema = z.object({
   AI_PROJECT_MONTHLY_BUDGET_USD: z.coerce.number().nonnegative().default(200),
   /** OpenAI Decisions API — decision guidance at the checkpoints of the journey. Optional. */
   OPENAI_API_KEY: z.string().optional(),
+  /** Bearer token for the read-only /api/context endpoint; unset, the endpoint is off. */
+  CONTEXT_API_TOKEN: z.string().min(32, 'CONTEXT_API_TOKEN must be at least 32 characters').optional().or(z.literal('')),
   DECISIONS_MODEL: z.string().default('gpt-6-luna'),
   /** Hugging Face token for the image model that generates the photographic persona headshots. */
   HF_TOKEN: z.string().optional(),
