@@ -55,6 +55,8 @@ export const AUDIT_ACTIONS = [
   'roundtable.requested',
   'brief.imported',
   'project.context.read',
+  'creative_brief.requested',
+  'project.creative.saved',
   'market_inputs.saved',
   'debate.completed',
   'debate.failed',

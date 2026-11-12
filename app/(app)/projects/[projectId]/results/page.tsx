@@ -8,6 +8,9 @@ import { prisma } from '@/lib/prisma';
 import { loadReport } from '@/roundtable/report';
 import { PILLARS } from '@/roundtable/marketIndex';
 import { SlideDeck } from '@/ui/report/Slides';
+import { listCreativeBriefs } from '@/creative/brief';
+import type { CreativeBriefContent } from '@/creative/fields';
+import { CreativeBriefButton } from './CreativeBriefButton';
 import { WorkflowNav } from '../WorkflowNav';
 import { DecisionGuidance } from '../DecisionGuidance';
 import { MarketInputsForm } from './MarketInputsForm';
@@ -37,9 +40,9 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
   const project = await prisma.project.findUnique({ where: { id: projectId }, select: { name: true } });
   if (!project) notFound();
 
-  const [report, modules, plans] = await Promise.all([loadReport(projectId), projectModules(projectId), listPlans(projectId)]);
-  const planning = plans.some((p) => p.status === 'QUEUED' || p.status === 'RUNNING');
-  const sections = [report && { id: 'report', label: 'Report' }, modules.has('comms_planner') && { id: 'plans', label: 'Comms & marketing plans' }, modules.has('knowledge') && { id: 'knowledge', label: 'Knowledge library' }].filter(Boolean) as { id: string; label: string }[];
+  const [report, modules, plans, creative] = await Promise.all([loadReport(projectId), projectModules(projectId), listPlans(projectId), listCreativeBriefs(projectId)]);
+  const planning = [...plans, ...creative].some((p) => p.status === 'QUEUED' || p.status === 'RUNNING');
+  const sections = [report && { id: 'report', label: 'Report' }, { id: 'creative', label: 'Creative brief (AIGC)' }, modules.has('comms_planner') && { id: 'plans', label: 'Comms & marketing plans' }, modules.has('knowledge') && { id: 'knowledge', label: 'Knowledge library' }].filter(Boolean) as { id: string; label: string }[];
   const rows = report
     ? report.potential.map((p) => {
         const input = report.inputs.find((i) => i.market.toLowerCase() === p.market.toLowerCase());
@@ -91,9 +94,53 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
             </div>
           </details>
           <DecisionGuidance projectId={projectId} checkpoint="REPORT" canAsk={can(ctx, 'project.edit', projectId)} />
-          <SlideDeck r={report} modules={modules} />
+          {/* The slides are long; collapsed by default so every section of the page is in reach. */}
+          <details className="panel">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">
+              Report preview <span className="font-normal text-ink-subtle">— the slides as they print to PDF; open to read them here</span>
+            </summary>
+            <div className="border-t border-line px-4 py-4">
+              <SlideDeck r={report} modules={modules} />
+            </div>
+          </details>
         </section>
       )}
+
+      <section id="creative" aria-labelledby="creative-heading" className="flex scroll-mt-48 flex-col gap-4 border-t border-line pt-6">
+        <div>
+          <h2 id="creative-heading" className="text-xl">Creative brief for AI content generation</h2>
+          <p className="mt-1 max-w-prose text-sm text-ink-muted">
+            The communication preference and creative treatment from the Brief, combined with the roundtable&rsquo;s key messaging and hero persona, written into the AIGC Creative Brief template: concept, subject, camera, look and a ready prompt for every shot. Download it as a Word file to brief Runway, Figma Weave or another AIGC tool.
+          </p>
+          <p className="mt-1 text-xs text-ink-subtle">
+            Set the preferences under <Link href={`/projects/${projectId}/brief#creative-heading` as Route} className="text-link underline">Brief → Communication and creative</Link>. Prompts are written in English, which video models follow best.
+          </p>
+        </div>
+        {can(ctx, 'simulation.run', projectId) && <div className="panel max-w-3xl px-5 py-4"><CreativeBriefButton projectId={projectId} again={creative.length > 0} /></div>}
+        {creative.length > 0 && (
+          <ul className="flex max-w-3xl flex-col divide-y divide-line rounded-lg border border-line bg-surface">
+            {creative.map((c) => {
+              const content = c.content as unknown as CreativeBriefContent | null;
+              return (
+                <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-ink">{content?.fields.concept || c.question}</p>
+                    <p className="text-xs text-ink-subtle">
+                      {c.question}{' · '}{fmtDateTime(c.createdAt)} {TZ_LABEL}{content ? <>{' · '}{`${content.shots.length} shot prompts`}</> : null}{c.isMock && c.status === 'COMPLETED' ? ' · mock' : ''}
+                    </p>
+                    {c.status === 'FAILED' && <p className="text-xs text-danger">{c.failureReason}</p>}
+                  </div>
+                  {c.status === 'COMPLETED' ? (
+                    <a href={`/api/projects/${projectId}/creative-brief/${c.id}`} className="rounded-full border border-line-strong px-4 py-1.5 text-[13px] font-medium text-ink hover:border-brand">Download .docx</a>
+                  ) : c.status === 'FAILED' ? null : (
+                    <span className="text-xs font-semibold text-ink-muted">Writing…</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
 
       {modules.has('comms_planner') && (
         <section id="plans" aria-labelledby="plans-heading" className="flex scroll-mt-48 flex-col gap-4 border-t border-line pt-6">

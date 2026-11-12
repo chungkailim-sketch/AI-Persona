@@ -29,13 +29,16 @@ export default async function AdminHeadshotsPage() {
       <header>
         <h1 className="text-2xl">Persona headshots</h1>
         <p className="mt-1 max-w-prose text-sm text-ink-muted">
-          A hundred portraits are pre-loaded and matched to each persona by gender, market and age. They start as illustrations; generating photographs replaces them with synthetic photographic portraits of people who do not exist (billed to the account that owns the image key).
+          A hundred fixed portraits, each with an occupation (student, office, executive, tech, creative, healthcare, service, trades, business owner, homemaker, retired), are matched to each persona by gender, market, occupation, age and income tier; no face repeats within a cast. The photographs are generated once, automatically, when the app deploys with an image key, and kept; nothing needs pressing here. They are synthetic portraits of people who do not exist.
         </p>
       </header>
       <section className="panel flex flex-col gap-3 px-5 py-5">
         <p className="text-sm text-ink"><strong>{status.photos}</strong> of {HEADSHOTS.length} are photographs.</p>
-        {!configured && <p className="text-sm text-warn">No image API key is set (IMAGE_API_KEY in Railway → Variables, on web and worker).</p>}
-        <GenerateForm disabled={!configured} />
+        {!configured && <p className="text-sm text-warn">No image API key is set (IMAGE_API_KEY or OPENAI_API_KEY on the worker), so the drawn portraits are shown until one is added.</p>}
+        <details>
+          <summary className="cursor-pointer text-xs text-ink-subtle">Regenerate manually</summary>
+          <div className="mt-2"><GenerateForm disabled={!configured} /></div>
+        </details>
         {job && (
           <p className="text-sm text-ink-muted">
             Last run: {job.status.toLowerCase()}
@@ -49,6 +52,7 @@ export default async function AdminHeadshotsPage() {
         {HEADSHOTS.map((h) => (
           <li key={h.key} className="flex flex-col items-center gap-1 text-[10px] text-ink-subtle">
             <img src={headshotUrl(h.key)} alt="" width={56} height={56} className="h-14 w-14 rounded-full object-cover" />
+            <span>{h.role}</span>
             <span>{photo.has(h.key) ? 'photo' : 'drawn'}</span>
           </li>
         ))}

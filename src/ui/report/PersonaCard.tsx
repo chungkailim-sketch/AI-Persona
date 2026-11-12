@@ -18,7 +18,7 @@ export function initials(name: string): string {
 /** The persona's headshot: the one it was given, or (for a cast built before headshots) the best match. */
 export function portraitOf(profile: CastProfile | null | undefined, seed: string): string | null {
   if (!profile) return null;
-  const key = profile.headshot ?? pickHeadshot({ id: seed, market: profile.market, gender: profile.identity?.gender, age: profile.identity?.age });
+  const key = profile.headshot ?? pickHeadshot({ id: seed, market: profile.market, gender: profile.identity?.gender, age: profile.identity?.age, occupation: profile.identity?.occupation, tier: profile.tier });
   return headshotUrl(key);
 }
 
