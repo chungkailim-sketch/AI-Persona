@@ -11,6 +11,7 @@ import { SlideDeck } from '@/ui/report/Slides';
 import { listCreativeBriefs } from '@/creative/brief';
 import type { CreativeBriefContent } from '@/creative/fields';
 import { CreativeBriefButton } from './CreativeBriefButton';
+import { CreativeBriefActions } from './CreativeBriefActions';
 import { OpenSectionFromHash } from '@/ui/OpenSectionFromHash';
 import { WorkflowNav } from '../WorkflowNav';
 import { DecisionGuidance } from '../DecisionGuidance';
@@ -108,37 +109,38 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
         </section>
       )}
 
-      <details id="creative" className="group scroll-mt-48 border-t border-line pt-6">
-        <summary className="flex cursor-pointer list-none items-start justify-between gap-4 [&::-webkit-details-marker]:hidden">
-          <div>
-          <h2 id="creative-heading" className="text-xl">Creative brief for AI content generation</h2>
-          <p className="mt-1 max-w-prose text-sm text-ink-muted">
-            Written for you from the whole study — every persona, the roundtable results and key messaging, the report&rsquo;s market indices, the latest plan and debate — into the AIGC Creative Brief template: objective, audience, concept, subject, camera, look and a ready prompt for every shot. Where the study is silent, the brief infers the best fit and says which rows it inferred. Download it as a Word file for Runway, Figma Weave or another AIGC tool.
-          </p>
-          <p className="mt-1 text-xs text-ink-subtle">Prompts are written in English, which video models follow best.</p>
-          </div>
-          <span aria-hidden className="mt-1 shrink-0 text-ink-subtle transition-transform group-open:rotate-180">▾</span>
+      {/* Collapsible like the report preview: each opens from the navigation above. */}
+      <details id="creative" className="panel scroll-mt-48">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">
+          <span id="creative-heading">Creative brief for AI content generation</span>{' '}
+          <span className="font-normal text-ink-subtle">— Written for you from the whole study — every persona, the roundtable results and key messaging, the report&rsquo;s market indices, the latest plan and debate, into the AIGC Creative Brief.</span>
         </summary>
-        <div className="mt-4 flex flex-col gap-4">
+        <div className="flex flex-col gap-4 border-t border-line px-4 py-4">
+          <p className="text-xs text-ink-subtle">Download it as Word or Markdown for Runway, Figma Weave or another AIGC tool. Rows the study does not cover are inferred and listed at the end. Prompts are written in English, which video models follow best.</p>
         {can(ctx, 'simulation.run', projectId) && <div className="panel max-w-3xl px-5 py-4"><CreativeBriefButton projectId={projectId} again={creative.length > 0} /></div>}
         {creative.length > 0 && (
           <ul className="flex max-w-3xl flex-col divide-y divide-line rounded-lg border border-line bg-surface">
             {creative.map((c) => {
               const content = c.content as unknown as CreativeBriefContent | null;
               return (
-                <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-ink">{content?.fields.concept || c.question}</p>
-                    <p className="text-xs text-ink-subtle">
-                      {c.question}{' · '}{fmtDateTime(c.createdAt)} {TZ_LABEL}{content ? <>{' · '}{`${content.shots.length} shot prompts`}</> : null}{c.isMock && c.status === 'COMPLETED' ? ' · mock' : ''}
-                    </p>
-                    {c.status === 'FAILED' && <p className="text-xs text-danger">{c.failureReason}</p>}
+                <li key={c.id} className="flex flex-col gap-2 px-4 py-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold text-ink">{content?.fields.concept || c.question}</p>
+                      <p className="text-xs text-ink-subtle">
+                        {c.question}{' · '}{fmtDateTime(c.createdAt)} {TZ_LABEL}{content ? <>{' · '}{`${content.shots.length} shot prompts`}</> : null}
+                        {(content as { edited?: boolean } | null)?.edited ? <>{' · '}<span>edited</span></> : null}
+                        {c.isMock && c.status === 'COMPLETED' ? ' · mock' : ''}
+                      </p>
+                      {c.status === 'FAILED' && <p className="text-xs text-danger">{c.failureReason}</p>}
+                    </div>
+                    {c.status === 'COMPLETED' ? (
+                      <a href={`/api/projects/${projectId}/creative-brief/${c.id}`} className="shrink-0 rounded-full border border-line-strong px-4 py-1.5 text-[13px] font-medium text-ink hover:border-brand">Download .docx</a>
+                    ) : c.status === 'FAILED' ? null : (
+                      <span className="text-xs font-semibold text-ink-muted">Writing…</span>
+                    )}
                   </div>
-                  {c.status === 'COMPLETED' ? (
-                    <a href={`/api/projects/${projectId}/creative-brief/${c.id}`} className="rounded-full border border-line-strong px-4 py-1.5 text-[13px] font-medium text-ink hover:border-brand">Download .docx</a>
-                  ) : c.status === 'FAILED' ? null : (
-                    <span className="text-xs font-semibold text-ink-muted">Writing…</span>
-                  )}
+                  <CreativeBriefActions projectId={projectId} briefId={c.id} status={c.status} canManage={can(ctx, 'simulation.run', projectId)} />
                 </li>
               );
             })}
@@ -148,15 +150,12 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
       </details>
 
       {modules.has('comms_planner') && (
-        <details id="plans" className="group scroll-mt-48 border-t border-line pt-6">
-          <summary className="flex cursor-pointer list-none items-start justify-between gap-4 [&::-webkit-details-marker]:hidden">
-            <div>
-            <h2 id="plans-heading" className="text-xl">PR, communications and marketing plans</h2>
-            <p className="mt-1 max-w-prose text-sm text-ink-muted">Ask a question; the plan answers it purely from the survey data, the personas and the roundtable, applying recognised frameworks from the knowledge library. Every insight shows the data it rests on.</p>
-            </div>
-            <span aria-hidden className="mt-1 shrink-0 text-ink-subtle transition-transform group-open:rotate-180">▾</span>
+        <details id="plans" className="panel scroll-mt-48">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">
+            <span id="plans-heading">PR, communications and marketing plans</span>{' '}
+            <span className="font-normal text-ink-subtle">— ask a question; the plan answers it purely from the survey data, the personas and the roundtable, applying recognised frameworks. Every insight shows the data it rests on.</span>
           </summary>
-          <div className="mt-4 flex flex-col gap-4">
+          <div className="flex flex-col gap-4 border-t border-line px-4 py-4">
           {can(ctx, 'simulation.run', projectId) && (
             <div className="panel max-w-3xl px-5 py-4"><PlannerForm projectId={projectId} industries={INDUSTRIES} /></div>
           )}
@@ -185,16 +184,13 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
       )}
 
       {modules.has('knowledge') && (
-        <details id="knowledge" className="group scroll-mt-48 border-t border-line pt-6">
-          <summary className="flex cursor-pointer list-none items-start justify-between gap-4 [&::-webkit-details-marker]:hidden">
-            <div>
-            <h2 id="knowledge-heading" className="text-xl">Knowledge library</h2>
-            <p className="mt-1 max-w-prose text-sm text-ink-muted">Recognised PR, communications and marketing frameworks, and market-entry knowledge for foreign brands across industries — summarised for this platform, each linked to its original source (professional bodies, governments, multilateral institutions and peer-reviewed research). The planner draws on these.</p>
-            </div>
-            <span aria-hidden className="mt-1 shrink-0 text-ink-subtle transition-transform group-open:rotate-180">▾</span>
+        <details id="knowledge" className="panel scroll-mt-48">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">
+            <span id="knowledge-heading">Knowledge library</span>{' '}
+            <span className="font-normal text-ink-subtle">— recognised PR, communications and marketing frameworks and market-entry knowledge, each linked to its original source. The planner draws on these.</span>
           </summary>
-          <div className="mt-4 flex flex-col gap-4">
-          <KnowledgeLibrary entries={KNOWLEDGE} industries={INDUSTRIES} />
+          <div className="border-t border-line px-4 py-4">
+            <KnowledgeLibrary entries={KNOWLEDGE} industries={INDUSTRIES} />
           </div>
         </details>
       )}

@@ -12,6 +12,7 @@
  */
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
+import { Prisma } from '@/generated/prisma/client';
 import { env } from '@/lib/env';
 import { can } from '@/auth/permissions';
 import { authContextFor, type SessionUser } from '@/auth/session';
@@ -252,4 +253,42 @@ export async function executeCreativeBrief(adviceId: string): Promise<{ adviceId
     await prisma.advice.update({ where: { id: adviceId }, data: { status: 'FAILED', failureReason: reason.slice(0, 1000), completedAt: new Date() } });
     return { adviceId, status: 'FAILED', reason };
   }
+}
+
+// ── Managing a written brief ──────────────────────────────────────────────────
+
+async function ownBrief(user: SessionUser, projectId: string, briefId: string) {
+  const ctx = await authContextFor(user, projectId);
+  if (!can(ctx, 'simulation.run', projectId)) throw new AuthorizationError('simulation.run', projectId);
+  const advice = await prisma.advice.findFirst({ where: { id: briefId, projectId, kind: 'CREATIVE_BRIEF' } });
+  if (!advice) throw new JourneyRefused(['That creative brief no longer exists.']);
+  return advice;
+}
+
+export async function deleteCreativeBrief(user: SessionUser, projectId: string, briefId: string): Promise<void> {
+  const advice = await ownBrief(user, projectId, briefId);
+  if (advice.status === 'QUEUED' || advice.status === 'RUNNING') throw new JourneyRefused(['This brief is still being written. Wait for it to finish.']);
+  await prisma.advice.delete({ where: { id: briefId } });
+  await recordAudit({ action: 'creative_brief.deleted', targetType: 'project', targetId: projectId, projectId, actorUserId: user.userId, actorEmail: user.email, reason: advice.question });
+}
+
+/** Write the same brief again from the current state of the study; it keeps its version number. */
+export async function regenerateCreativeBrief(user: SessionUser, projectId: string, briefId: string): Promise<void> {
+  const advice = await ownBrief(user, projectId, briefId);
+  if (advice.status === 'QUEUED' || advice.status === 'RUNNING') throw new JourneyRefused(['This brief is already being written.']);
+  await prisma.advice.update({ where: { id: briefId }, data: { status: 'QUEUED', content: Prisma.DbNull, failureReason: null, completedAt: null, createdAt: new Date() } });
+  await enqueue({ kind: 'creative_brief', input: { adviceId: briefId }, idempotencyKey: `creative_brief:${briefId}:${Date.now()}`, maxAttempts: 1 });
+  await recordAudit({ action: 'creative_brief.requested', targetType: 'project', targetId: projectId, projectId, actorUserId: user.userId, actorEmail: user.email, reason: `${advice.question} (regenerated)` });
+}
+
+/** Save a person's edits to a written brief: every row and every shot prompt. */
+export async function updateCreativeBrief(user: SessionUser, projectId: string, briefId: string, edit: { fields: Record<string, string>; shots: { title: string; prompt: string }[] }): Promise<void> {
+  const advice = await ownBrief(user, projectId, briefId);
+  const current = advice.content as unknown as CreativeBriefContent | null;
+  if (advice.status !== 'COMPLETED' || !current) throw new JourneyRefused(['Only a finished brief can be edited.']);
+  const fields: Record<string, string> = {};
+  for (const f of BRIEF_FIELDS) fields[f.key] = (edit.fields[f.key] ?? current.fields[f.key] ?? '').toString().slice(0, 2000).trim();
+  const shots = edit.shots.map((s) => ({ title: s.title.slice(0, 120).trim(), prompt: s.prompt.slice(0, 2000).trim() })).filter((s) => s.prompt).slice(0, MAX_SHOTS);
+  await prisma.advice.update({ where: { id: briefId }, data: { content: { ...current, fields, shots, edited: true } as object } });
+  await recordAudit({ action: 'creative_brief.edited', targetType: 'project', targetId: projectId, projectId, actorUserId: user.userId, actorEmail: user.email, reason: advice.question });
 }
