@@ -15,7 +15,8 @@ import { createProject } from '../../src/server/projects';
 import { setModelProvider } from '../../src/model/client';
 import { MockProvider } from '../../src/model/mock';
 import { saveStudyBrief, JourneyRefused } from '../../src/roundtable/service';
-import { executeCreativeBrief, requestCreativeBrief } from '../../src/creative/brief';
+import { deleteCreativeBrief, executeCreativeBrief, regenerateCreativeBrief, requestCreativeBrief, updateCreativeBrief } from '../../src/creative/brief';
+import { creativeBriefMarkdown } from '../../src/creative/markdown';
 import { creativeBriefDocx } from '../../src/creative/docx';
 import type { CreativeBriefContent } from '../../src/creative/fields';
 
@@ -59,5 +60,29 @@ describe('creative brief', () => {
     // Every template row keeps its Field and Guidance text.
     expect(xml).toContain('Short name, reused in file names and version labels');
     expect(xml.match(/<w:tbl>/g)?.length).toBe(7);
+
+    // Edit: a row and the shots change; the downloads carry the edit.
+    await updateCreativeBrief(owner, projectId, adviceId, { fields: { concept: 'A morning ritual in Jakarta.' }, shots: [{ title: 'Open', prompt: 'Medium shot, slow push-in: a woman in a sage shirt pours tea, morning.' }] });
+    const edited = (await db.advice.findUniqueOrThrow({ where: { id: adviceId } })).content as unknown as CreativeBriefContent;
+    expect(edited.fields.concept).toBe('A morning ritual in Jakarta.');
+    expect(edited.fields.keyMessage).toBe(content.fields.keyMessage);
+    expect(edited.shots).toHaveLength(1);
+    const md = creativeBriefMarkdown(edited, { projectName: 'CBGA Outlook 2027', generatedOn: '2026-11-13' });
+    expect(md).toContain('# AIGC Creative Brief — CBGA Outlook 2027');
+    expect(md).toContain('## 3. Concept and creative direction');
+    expect(md).toContain('| One-line concept | A morning ritual in Jakarta. |');
+    expect(md).toContain('**Shot 1 — Open**');
+
+    // Regenerate: the same brief is written again and keeps its version.
+    await regenerateCreativeBrief(owner, projectId, adviceId);
+    expect((await db.advice.findUniqueOrThrow({ where: { id: adviceId } })).status).toBe('QUEUED');
+    expect((await executeCreativeBrief(adviceId)).status).toBe('COMPLETED');
+    const again = (await db.advice.findUniqueOrThrow({ where: { id: adviceId } })).content as unknown as CreativeBriefContent;
+    expect(again.fields.version).toBe('v1');
+    expect(again.fields.concept).toContain('[MOCK]');
+
+    // Delete.
+    await deleteCreativeBrief(owner, projectId, adviceId);
+    expect(await db.advice.count({ where: { id: adviceId } })).toBe(0);
   });
 });

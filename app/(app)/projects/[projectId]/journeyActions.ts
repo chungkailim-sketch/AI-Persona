@@ -212,3 +212,38 @@ export async function requestCreativeBriefAction(_prev: FormState, formData: For
   revalidatePath(`/projects/${projectId}/results`);
   return { ok: 'Writing the creative brief. It appears below in a minute or two.' };
 }
+
+export async function manageCreativeBriefAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  const briefId = String(formData.get('briefId') ?? '');
+  const op = String(formData.get('op') ?? '');
+  try {
+    const user = await requireUserApi();
+    const brief = await import('@/creative/brief');
+    if (op === 'delete') await brief.deleteCreativeBrief(user, projectId, briefId);
+    else if (op === 'regenerate') await brief.regenerateCreativeBrief(user, projectId, briefId);
+    else return { error: 'Invalid request.' };
+  } catch (e) {
+    return toState(e);
+  }
+  revalidatePath(`/projects/${projectId}/results`);
+  return { ok: op === 'delete' ? 'Creative brief deleted.' : 'Writing the brief again. It updates here in a minute or two.' };
+}
+
+export async function saveCreativeBriefAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  const briefId = String(formData.get('briefId') ?? '');
+  const fields: Record<string, string> = {};
+  for (const [k, v] of formData.entries()) if (k.startsWith('f.')) fields[k.slice(2)] = String(v);
+  const titles = formData.getAll('shotTitle').map(String);
+  const prompts = formData.getAll('shotPrompt').map(String);
+  try {
+    const user = await requireUserApi();
+    const { updateCreativeBrief } = await import('@/creative/brief');
+    await updateCreativeBrief(user, projectId, briefId, { fields, shots: prompts.map((prompt, i) => ({ title: titles[i] ?? '', prompt })) });
+  } catch (e) {
+    return toState(e);
+  }
+  revalidatePath(`/projects/${projectId}/results`);
+  return { ok: 'Creative brief saved. The Word and Markdown downloads now carry your edits.' };
+}
