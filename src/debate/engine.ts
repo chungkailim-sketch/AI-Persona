@@ -263,6 +263,9 @@ export async function executeDebate(debateId: string): Promise<DebateOutcome> {
         seed: deriveSeed(debate.seed, o.phase, String(o.round ?? 0), o.agent.key),
         evidenceManifestHash: evidence.manifestHashes[0],
         budgetCapUsd: cap,
+        // Room for a full turn in any language: a reply cut off at the default limit is not valid
+        // JSON and would lose the turn (the verdict is the longest answer).
+        maxTokens: Math.max(env().AI_MAX_TOKENS, o.phase === 'VERDICT' ? 10_000 : 8000),
         promptTemplate: `debate.${o.phase.toLowerCase()}`,
         promptVersion: DEBATE_PROMPT_VERSION,
       });
