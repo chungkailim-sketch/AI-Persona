@@ -274,9 +274,10 @@ function body(schemaName: string, rng: () => number, personaKey: string, request
 
     case 'debate_verdict':
       return {
-        answer: 'insufficient_evidence',
+        answer: 'mixed',
         conclusion: '[MOCK] Placeholder verdict. Produced by the mock provider, not by a model. Read the segment comparison, which is computed from the data.',
-        confidence: 'low',
+        basis: 'inferred',
+        inferences: [],
         segmentFindings: [],
         argumentsFor: ['[MOCK] Placeholder argument for.'],
         argumentsAgainst: ['[MOCK] Placeholder argument against.'],

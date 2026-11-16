@@ -202,6 +202,10 @@ export async function executeBriefImport(adviceId: string): Promise<{ adviceId: 
       throw new ImportFailed('No readable text was found in this file. Upload the brief as a PDF, Word, PowerPoint or text file.');
     }
     const markets = await availableMarkets(advice.projectId);
+    // A PDF or an image has no text of its own, so the model writes the document; for every other
+    // format the extracted text is the document, and the model returns only the fields. (Asking for
+    // a long brief to be copied back inside the answer overran the reply limit and broke the JSON.)
+    const fromFile = file.attachments.length > 0;
     const r = await callModel({
       adviceId,
       stage: 'BRIEF_IMPORT',
@@ -212,7 +216,9 @@ export async function executeBriefImport(adviceId: string): Promise<{ adviceId: 
         'personas debates a motion. You extract; you do not invent. Where the brief is silent, leave the field empty.',
         '',
         'Rules:',
-        '1. "markdown": the whole brief as a clean, faithful Markdown document (headings, lists, tables), keeping every substantive point.',
+        fromFile
+          ? '1. "markdown": the brief as a clean Markdown document (headings, lists, tables). Keep it under 1,500 words: summarise long sections rather than copying them.'
+          : '1. The brief\'s own text is kept as the document; do not repeat it. Return only the fields below.',
         '2. "markets": only markets the brief names, spelled as in the list of markets in the data where one matches.',
         '3. "researchQuestion": one question the roundtable answers, phrased to consumers (e.g. "In the next year, which of these categories would you try a Chinese brand in?").',
         '4. "categories": 4–8 product or service categories the personas score, from the brief.',
@@ -231,7 +237,8 @@ export async function executeBriefImport(adviceId: string): Promise<{ adviceId: 
             `DEFAULT CATEGORIES: ${DEFAULT_CATEGORIES[lang].join(' | ')}`,
             file.attachments.length ? 'The brief is the attached file.' : wrapUntrusted('client brief', file.text),
             '',
-            'Respond with JSON: { "markdown": string, "title": string, "businessContext": string, "markets": string[], "researchQuestion": string, ' +
+            `Respond with JSON: { ${fromFile ? '"markdown": string, ' : ''}"title": string,` + ' ' +
+              ' "businessContext": string, "markets": string[], "researchQuestion": string, ' +
               '"categories": string[], "targetAudience": string, "objective": string, ' +
               '"hypotheses": [{ "label": string, "statement": string, "nullHypothesis": string, "minimumEvidenceThreshold": string }], ' +
               '"swarm": { "topic": string, "hypothesis": string, "focusSegments": string[], "rounds": number } }',
@@ -291,7 +298,7 @@ export async function executeBriefImport(adviceId: string): Promise<{ adviceId: 
         });
       }
     }
-    const content: ImportContent = { ...v, researchQuestion: question, categories, briefId: brief.id, unmatchedMarkets: unmatched, notes };
+    const content: ImportContent = { ...v, markdown: fromFile ? v.markdown : file.text.slice(0, 60_000), researchQuestion: question, categories, briefId: brief.id, unmatchedMarkets: unmatched, notes };
     await prisma.advice.update({
       where: { id: adviceId },
       data: { status: 'COMPLETED', content: content as object, isMock: r.isMock, spendUsd: r.costUsd, completedAt: new Date() },

@@ -116,7 +116,6 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
           <span className="font-normal text-ink-subtle">— Written for you from the whole study — every persona, the roundtable results and key messaging, the report&rsquo;s market indices, the latest plan and debate, into the AIGC Creative Brief.</span>
         </summary>
         <div className="flex flex-col gap-4 border-t border-line px-4 py-4">
-          <p className="text-xs text-ink-subtle">Download it as Word or Markdown for Runway, Figma Weave or another AIGC tool. Rows the study does not cover are inferred and listed at the end. Prompts are written in English, which video models follow best.</p>
         {can(ctx, 'simulation.run', projectId) && <div className="panel max-w-3xl px-5 py-4"><CreativeBriefButton projectId={projectId} again={creative.length > 0} /></div>}
         {creative.length > 0 && (
           <ul className="flex max-w-3xl flex-col divide-y divide-line rounded-lg border border-line bg-surface">

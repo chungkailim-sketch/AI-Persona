@@ -21,6 +21,8 @@ const schema = z.object({
   ANTHROPIC_MODEL_ID: z.string().default('claude-sonnet-5-5'),
   AI_MAX_TOKENS: z.coerce.number().int().positive().default(4000),
   AI_TEMPERATURE: z.coerce.number().min(0).max(1).default(0.7),
+  /** Web research for supporting data points when the project's data does not settle a question. 'off' disables it. */
+  AI_WEB_RESEARCH: z.enum(['on', 'off']).default('on'),
   AI_RUN_BUDGET_USD: z.coerce.number().nonnegative().default(5),
   AI_PROJECT_MONTHLY_BUDGET_USD: z.coerce.number().nonnegative().default(200),
   /** OpenAI Decisions API — decision guidance at the checkpoints of the journey. Optional. */

@@ -313,7 +313,7 @@ export function compareSegments(
 // ── Rendering for prompts ─────────────────────────────────────────────────────
 
 export function renderEvidenceItems(items: readonly EvidenceItem[]): string {
-  if (items.length === 0) return 'No evidence item addresses the motion. Say so rather than arguing from general knowledge.';
+  if (items.length === 0) return 'No survey item addresses the motion directly. Reason from the segment attributes, the closest related findings and any external data points given, and mark what is inferred.';
   const lines: string[] = [];
   let last = '';
   for (const e of items) {

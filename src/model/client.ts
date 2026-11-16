@@ -70,6 +70,8 @@ export interface CallOptions<T> {
   budgetCapUsd?: number;
   /** Output ceiling for this call; defaults to AI_MAX_TOKENS. Long reports need more. */
   maxTokens?: number;
+  /** Let the model look up published data points on the web before answering. */
+  webSearch?: ModelRequest['webSearch'];
   promptTemplate: string;
   promptVersion: string;
   /** Called before each attempt, so a caller can record that a call (or a repair) is in flight. */
@@ -87,6 +89,8 @@ export interface CallResult<T> {
   inputTokens: number;
   outputTokens: number;
   latencyMs: number;
+  /** Pages the web search returned, when the call was allowed to search. */
+  sources?: ModelResponse['sources'];
 }
 
 /** The running total for a debate, read from the calls already recorded. */
@@ -157,6 +161,7 @@ export async function callModel<T>(options: CallOptions<T>): Promise<CallResult<
   let outputTokens = 0;
   let latencyMs = 0;
   let attempts = 0;
+  let sources: ModelResponse['sources'];
 
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     await options.onAttempt?.(attempt);
@@ -169,7 +174,10 @@ export async function callModel<T>(options: CallOptions<T>): Promise<CallResult<
       schemaName: options.schemaName,
       seed: options.seed,
       maxTokens: options.maxTokens,
+      // A repair only reshapes the answer already given; it does not search again.
+      webSearch: attempt === 1 ? options.webSearch : undefined,
     });
+    if (response.sources?.length) sources = response.sources;
     totalCost += response.costUsd;
     inputTokens += response.inputTokens;
     outputTokens += response.outputTokens;
@@ -230,6 +238,7 @@ export async function callModel<T>(options: CallOptions<T>): Promise<CallResult<
         inputTokens,
         outputTokens,
         latencyMs,
+        sources,
       };
     }
 

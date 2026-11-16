@@ -95,7 +95,7 @@ async function load(debateId: string): Promise<Loaded> {
   const list = (k: string) => (Array.isArray(verdict?.[k]) ? (verdict![k] as unknown[]).map((x) => `- ${typeof x === 'string' ? x : JSON.stringify(x)}`).join('\n') : '');
   const verdictText = verdict
     ? [
-        `Verdict: ${String(verdict.answer ?? '')} (${String(verdict.confidence ?? '')} confidence)`,
+        `Verdict: ${String(verdict.answer ?? '')}`,
         String(verdict.conclusion ?? ''),
         list('segmentFindings') && `Segment findings:\n${list('segmentFindings')}`,
         list('consensus') && `Consensus:\n${list('consensus')}`,
@@ -159,8 +159,9 @@ function personaSystem(agent: PanelPersona, l: Loaded, extraEvidence: EvidenceIt
     '## Rules',
     '1. Ground what you say in the evidence items and your segment attributes, and cite items by id (e.g. "E4", "Q2").',
     '   Never state a figure that is not in them.',
-    '2. When a question goes beyond the evidence, you may answer as your segment would plausibly feel, but say so',
-    '   plainly and keep your confidence low.',
+    '2. When a question goes beyond the evidence, give the closest answer: reason from the nearest related items and',
+    '   your segment attributes and mark it "inferred from" with the ids. Never reply that the evidence is',
+    '   insufficient or that you cannot judge.',
     '3. Stay consistent with what you said in the focus group unless you give a reason to differ.',
     '4. Reply with a single JSON object in the shape you are given. No prose outside it.',
   ]

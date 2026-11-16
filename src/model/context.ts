@@ -224,7 +224,7 @@ export function renderEvidence(context: EvidenceContext): string {
   lines.push('- Do not state a figure that is not above, or that you have computed from thin air.');
   lines.push('- Do not treat a construct graded "partial" or "weak" as measuring the thing asked about.');
   lines.push('- Do not generalise from a small base without saying the base is small.');
-  lines.push('- Say "the evidence does not show this" when it does not. That is a complete answer.');
+  lines.push('- When the evidence does not address a point directly, infer from the nearest related fields and mark it as inferred.');
 
   return lines.join('\n');
 }
