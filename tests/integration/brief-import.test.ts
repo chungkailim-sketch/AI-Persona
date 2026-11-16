@@ -79,6 +79,26 @@ describe('brief upload', () => {
     expect(checks.map((c) => c.checkpoint).sort()).toEqual(['BRIEF', 'SWARM_SETUP']);
   });
 
+  it('keeps a long text brief as the document itself and asks the model only for the fields', async () => {
+    const owner = asSession(await seedUser(`bi-${randomUUID().slice(0, 8)}@example.com`));
+    const { id: projectId } = await createProject(owner, { name: 'Long brief' });
+    // A long Chinese brief: copying it back inside the answer used to overrun the reply limit.
+    const long = `# 研究简报\n\n${'本品牌计划在新加坡、泰国和印度尼西亚推出折叠屏旗舰手机。'.repeat(700)}\n\n未来一年内，您愿意在哪些品类中尝试这个品牌？`;
+    const seen: string[] = [];
+    const mock = new MockProvider();
+    setModelProvider({ name: mock.name, modelId: mock.modelId, complete: (req) => { seen.push(req.messages.map((m) => m.content).join('\n')); return mock.complete(req); } });
+    try {
+      const { adviceId } = await requestBriefImport(owner, projectId, { name: '简报.md', type: 'text/markdown', bytes: Buffer.from(long, 'utf8') }, 'zh');
+      expect((await executeBriefImport(adviceId)).status).toBe('COMPLETED');
+      const content = (await db.advice.findUniqueOrThrow({ where: { id: adviceId } })).content as unknown as ImportContent;
+      expect(content.markdown).toBe(long);
+      expect(seen[0]).not.toContain('"markdown": string');
+      expect(seen[0]).toContain('"title": string');
+    } finally {
+      setModelProvider(new MockProvider());
+    }
+  });
+
   it('refuses an empty file and reports a file with no readable text', async () => {
     const owner = asSession(await seedUser(`bi-${randomUUID().slice(0, 8)}@example.com`));
     const { id: projectId } = await createProject(owner, { name: 'Brief import 2' });
