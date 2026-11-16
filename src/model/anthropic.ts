@@ -14,6 +14,7 @@ import {
   type ModelProvider,
   type ModelRequest,
   type ModelResponse,
+  type WebSource,
 } from '@/model/provider';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
@@ -33,12 +34,41 @@ function isLegacySampling(modelId: string): boolean {
 interface AnthropicContentBlock {
   type: string;
   text?: string;
+  /** web_search_tool_result: a list of results on success, a single error object otherwise. */
+  content?: unknown;
 }
 
 interface AnthropicSuccess {
   content: AnthropicContentBlock[];
   stop_reason: string | null;
-  usage: { input_tokens: number; output_tokens: number };
+  usage: { input_tokens: number; output_tokens: number; server_tool_use?: { web_search_requests?: number } };
+}
+
+// A long search turn can pause; it is sent back as it is and the server carries on.
+const MAX_CONTINUATIONS = 3;
+const WEB_SEARCH_USD = 0.01;
+
+/** The answer is the text written after the last search; what came before is narration. */
+function answerText(blocks: AnthropicContentBlock[]): string {
+  let from = 0;
+  blocks.forEach((b, i) => {
+    if (b.type === 'web_search_tool_result' || b.type === 'server_tool_use') from = i + 1;
+  });
+  const text = (list: AnthropicContentBlock[]) => list.filter((b) => b.type === 'text' && typeof b.text === 'string').map((b) => b.text as string).join('');
+  return text(blocks.slice(from)) || text(blocks);
+}
+
+function searchSources(blocks: AnthropicContentBlock[]): WebSource[] {
+  const out = new Map<string, WebSource>();
+  for (const b of blocks) {
+    if (b.type !== 'web_search_tool_result' || !Array.isArray(b.content)) continue;
+    for (const r of b.content as { type?: string; url?: unknown; title?: unknown }[]) {
+      if (r?.type === 'web_search_result' && typeof r.url === 'string' && /^https?:\/\//.test(r.url)) {
+        out.set(r.url, { url: r.url, title: typeof r.title === 'string' ? r.title.slice(0, 300) : r.url });
+      }
+    }
+  }
+  return [...out.values()];
 }
 
 /** Attachments ride on the first user message, ahead of its text, as the API expects. */
@@ -90,59 +120,78 @@ export class AnthropicProvider implements ModelProvider {
     };
 
     try {
-      const response = await fetch(API_URL, {
-        method: 'POST',
-        signal: controller.signal,
-        headers: {
-          'content-type': 'application/json',
-          'anthropic-version': API_VERSION,
-          // The only place this value appears.
-          'x-api-key': env().ANTHROPIC_API_KEY as string,
-        },
-        body: JSON.stringify({
-          model: this.modelId,
-          max_tokens: request.maxTokens ?? env().AI_MAX_TOKENS,
-          ...(isLegacySampling(this.modelId)
-            ? { temperature: request.temperature ?? env().AI_TEMPERATURE }
-            : { thinking: { type: 'between_tools' } }),
-          system: request.system,
-          messages: withAttachments(request),
-        }),
-      });
+      const post = (messages: unknown, search: boolean) =>
+        fetch(API_URL, {
+          method: 'POST',
+          signal: controller.signal,
+          headers: {
+            'content-type': 'application/json',
+            'anthropic-version': API_VERSION,
+            // The only place this value appears.
+            'x-api-key': env().ANTHROPIC_API_KEY as string,
+          },
+          body: JSON.stringify({
+            model: this.modelId,
+            max_tokens: request.maxTokens ?? env().AI_MAX_TOKENS,
+            ...(isLegacySampling(this.modelId)
+              ? { temperature: request.temperature ?? env().AI_TEMPERATURE }
+              : { thinking: { type: 'between_tools' } }),
+            system: request.system,
+            messages,
+            ...(search
+              ? { tools: [{ type: isLegacySampling(this.modelId) ? 'web_search_20250305' : 'web_search_20260209', name: 'web_search', max_uses: request.webSearch!.maxUses }] }
+              : {}),
+          }),
+        });
 
-      const latencyMs = Date.now() - startedAt;
-
-      if (response.status === 429) {
-        return { ...base, latencyMs, text: '', outcome: 'rate_limited', errorMessage: 'Rate limited.' };
-      }
-      if (!response.ok) {
-        // The provider's error body can echo prompt content, so it is summarised, never passed on.
-        return {
-          ...base,
-          latencyMs,
-          text: '',
-          outcome: response.status >= 500 ? 'error' : 'invalid',
-          errorMessage: `Provider returned HTTP ${response.status}.`,
-        };
+      const first = withAttachments(request);
+      let search = Boolean(request.webSearch);
+      let response = await post(first, search);
+      // Web search may not be switched on for the account: answer without it rather than fail.
+      if (search && response.status === 400) {
+        search = false;
+        response = await post(first, false);
       }
 
-      const payload = (await response.json()) as AnthropicSuccess;
-      const text = payload.content
-        .filter((b) => b.type === 'text' && typeof b.text === 'string')
-        .map((b) => b.text as string)
-        .join('');
+      let inputTokens = 0;
+      let outputTokens = 0;
+      let searches = 0;
+      const blocks: AnthropicContentBlock[] = [];
+      let stopReason: string | null = null;
+      for (let turn = 0; ; turn += 1) {
+        if (response.status === 429) {
+          return { ...base, latencyMs: Date.now() - startedAt, text: '', outcome: 'rate_limited', errorMessage: 'Rate limited.' };
+        }
+        if (!response.ok) {
+          // The provider's error body can echo prompt content, so it is summarised, never passed on.
+          return {
+            ...base,
+            latencyMs: Date.now() - startedAt,
+            text: '',
+            outcome: response.status >= 500 ? 'error' : 'invalid',
+            errorMessage: `Provider returned HTTP ${response.status}.`,
+          };
+        }
+        const payload = (await response.json()) as AnthropicSuccess;
+        blocks.push(...payload.content);
+        inputTokens += payload.usage?.input_tokens ?? 0;
+        outputTokens += payload.usage?.output_tokens ?? 0;
+        searches += payload.usage?.server_tool_use?.web_search_requests ?? 0;
+        stopReason = payload.stop_reason;
+        if (stopReason !== 'pause_turn' || turn >= MAX_CONTINUATIONS) break;
+        response = await post([...first, { role: 'assistant', content: blocks }], search);
+      }
 
-      const inputTokens = payload.usage?.input_tokens ?? 0;
-      const outputTokens = payload.usage?.output_tokens ?? 0;
-
+      const sources = searchSources(blocks);
       return {
         ...base,
-        text,
+        text: answerText(blocks),
         inputTokens,
         outputTokens,
-        costUsd: estimateCostUsd(this.modelId, inputTokens, outputTokens),
-        latencyMs,
-        outcome: payload.stop_reason === 'refusal' ? 'refused' : 'ok',
+        costUsd: estimateCostUsd(this.modelId, inputTokens, outputTokens) + searches * WEB_SEARCH_USD,
+        latencyMs: Date.now() - startedAt,
+        outcome: stopReason === 'refusal' ? 'refused' : 'ok',
+        ...(sources.length ? { sources } : {}),
       };
     } catch (e) {
       const latencyMs = Date.now() - startedAt;

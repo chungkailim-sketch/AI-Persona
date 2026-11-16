@@ -77,7 +77,9 @@ export interface DebateMetricsView {
 export interface VerdictView {
   answer: string;
   conclusion: string;
-  confidence: string;
+  confidence?: string;
+  basis?: string;
+  inferences?: string[];
   segmentFindings: { segment: string; assessment: string; evidenceIds: string[] }[];
   argumentsFor: string[];
   argumentsAgainst: string[];
@@ -113,7 +115,7 @@ export interface DebateView {
     simulation: string | null;
   } | null;
   metrics: DebateMetricsView | null;
-  conclusion: { verdict: VerdictView | null; caveats: string[]; comparison: ComparisonView | null } | null;
+  conclusion: { verdict: VerdictView | null; caveats: string[]; comparison: ComparisonView | null; research?: { id: string; claim: string; source: string; url: string; year: string }[] } | null;
   turns: DebateTurnView[];
 }
 
@@ -222,7 +224,13 @@ const ANSWER: Record<string, { label: string; tone: string }> = {
   supported: { label: 'Supported', tone: 'border-ok/40 bg-ok-soft text-ok' },
   not_supported: { label: 'Not supported', tone: 'border-danger/40 bg-danger-soft text-danger' },
   mixed: { label: 'Mixed', tone: 'border-warn/40 bg-warn-soft text-warn' },
-  insufficient_evidence: { label: 'Insufficient evidence', tone: 'border-line bg-pending-soft text-pending' },
+  // Debates concluded before the judge was asked to always give the closest conclusion.
+  insufficient_evidence: { label: 'Directional', tone: 'border-warn/40 bg-warn-soft text-warn' },
+};
+const BASIS: Record<string, string> = {
+  direct: 'Based on survey figures',
+  inferred: 'Inferred from related findings',
+  external: 'Supported by external sources',
 };
 const PHASE_LABEL: Record<string, string> = {
   FRAMING: 'Framing',
@@ -401,7 +409,7 @@ export function DebateDetail({ debate }: { debate: DebateView }) {
             {verdict && (
               <>
                 <span className={`rounded-sm border px-1.5 font-mono text-[10.5px] uppercase ${ANSWER[verdict.answer]?.tone ?? ''}`}>{ANSWER[verdict.answer]?.label ?? verdict.answer}</span>
-                <span className="font-mono text-[10.5px] text-ink-subtle">confidence {verdict.confidence}</span>
+                {verdict.basis && BASIS[verdict.basis] && <span className="font-mono text-[10.5px] text-ink-subtle">{BASIS[verdict.basis]}</span>}
               </>
             )}
           </div>
@@ -424,12 +432,26 @@ export function DebateDetail({ debate }: { debate: DebateView }) {
                 <List title="Arguments against" items={verdict.argumentsAgainst} tone="bg-danger" />
                 <List title="Where the panel agreed" items={verdict.consensus} />
                 <List title="Recorded dissent" items={verdict.dissent} tone="bg-warn" />
-                <List title="What the evidence cannot answer" items={verdict.evidenceGaps} tone="bg-warn" />
+                <List title="How the conclusion was inferred" items={verdict.inferences ?? []} />
+                <List title="What to validate in market next" items={verdict.evidenceGaps} tone="bg-warn" />
                 <List title="Recommendations" items={verdict.recommendations} tone="bg-brand" />
               </div>
             </div>
           ) : (
             <p className="mt-2 text-sm text-ink-muted">The judge produced no valid verdict. The data comparison and the transcript below still stand.</p>
+          )}
+          {(debate.conclusion?.research ?? []).length > 0 && (
+            <div className="mt-3">
+              <p className="text-xs font-medium text-ink">External sources (web research)</p>
+              <ul className="mt-1 flex flex-col gap-1">
+                {debate.conclusion!.research!.map((w) => (
+                  <li key={w.id} className="text-xs text-ink-muted">
+                    <span className="font-mono text-ink-subtle">{w.id}</span> {w.claim}{' '}
+                    <a href={w.url} target="_blank" rel="noopener noreferrer nofollow" className="underline">{w.source || w.url}{w.year ? `, ${w.year}` : ''}</a>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {(debate.conclusion?.caveats ?? []).length > 0 && (
             <div className="mt-3 rounded border border-warn/40 bg-warn-soft/40 px-3 py-2">

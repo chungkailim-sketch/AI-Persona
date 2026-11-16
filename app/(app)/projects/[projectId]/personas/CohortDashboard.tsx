@@ -34,7 +34,7 @@ export function CohortDashboard({ personas, segmentField, events }: { personas: 
     }))
     .sort((a, b) => b.count - a.count);
 
-  const confidenceRows = (['HIGH', 'MEDIUM', 'LOW'] as const).map((k) => ({ key: k, label: k.toLowerCase(), count: s.confidence[k] }));
+  const confidenceRows = (['HIGH', 'MEDIUM', 'LOW'] as const).map((k) => ({ key: k, label: { HIGH: 'large base', MEDIUM: 'moderate base', LOW: 'directional' }[k], count: s.confidence[k] }));
   const provenanceRows = Object.entries(s.provenance)
     .map(([k, n]) => ({ key: k, label: ORIGIN_WORD[k] ?? k, count: n }))
     .sort((a, b) => b.count - a.count);
@@ -46,7 +46,7 @@ export function CohortDashboard({ personas, segmentField, events }: { personas: 
         <MetricCard compact label="Approved" value={s.approved} tone={s.approved === s.total && s.total > 0 ? 'ok' : undefined} definition="Persona versions approved for use in a run. Approved versions are immutable." />
         <MetricCard compact label="Pending" value={s.pending} tone={s.pending > 0 ? 'warn' : undefined} definition="Candidates awaiting approval." />
         <MetricCard compact label="Excluded" value={s.excluded} definition="Personas excluded from use by a reviewer." />
-        <MetricCard compact label="Weak evidence" value={s.weakEvidence} tone={s.weakEvidence > 0 ? 'warn' : undefined} definition="Personas marked low confidence — most often because the segment's base is small." />
+        <MetricCard compact label="Directional" value={s.weakEvidence} tone={s.weakEvidence > 0 ? 'warn' : undefined} definition="Personas built on a small respondent base: read their figures as directional." />
         <MetricCard compact label="Conflicts" value={s.conflicting} definition="Personas with contradicting attributes recorded. The generator produces none; edits can." />
         <MetricCard compact label="Segments" value={s.segments} definition="Distinct segment values the cohort covers." />
         <MetricCard compact label="Sample covered" value={pct(s.sampleCoverage)} definition="Share of the sample in the segments this cohort covers, from segment weights." />
@@ -59,7 +59,7 @@ export function CohortDashboard({ personas, segmentField, events }: { personas: 
           rows={segmentRows}
           caption="Bar length is the segment's respondent base. Evidence is the share of that persona's attributes grounded in the data."
         />
-        <SegmentDistributionBar title="Confidence" rows={confidenceRows} caption="Low confidence usually means a small base." />
+        <SegmentDistributionBar title="Evidence base" rows={confidenceRows} caption="Directional means a small respondent base." />
         <SegmentDistributionBar title="Attribute provenance" rows={provenanceRows} caption="Simulated attributes measure nothing." />
       </div>
       <p className="text-[11.5px] text-ink-subtle">

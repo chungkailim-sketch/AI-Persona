@@ -25,8 +25,11 @@ describe('debate schemas: lenient in form, strict in substance', () => {
     expect([o.stance, o.confidence, o.keyPoints]).toEqual(['support', 0.8, ['一点']]);
     const c = DebateClosing.parse({ stance: 'Oppose', confidence: 65, changed: 'yes', reason: 'r', finalArgument: 'f' });
     expect([c.stance, c.confidence, c.changed]).toEqual(['oppose', 0.65, true]);
-    const v = DebateVerdict.parse({ answer: 'Not supported', conclusion: 'c', confidence: 'High' });
-    expect([v.answer, v.confidence, v.dissent]).toEqual(['not_supported', 'high', []]);
+    const v = DebateVerdict.parse({ answer: 'Not supported', conclusion: 'c', basis: 'Direct' });
+    expect([v.answer, v.basis, v.dissent]).toEqual(['not_supported', 'direct', []]);
+    // The judge always lands on the closest conclusion: an older "insufficient" answer reads as mixed, inferred.
+    const old = DebateVerdict.parse({ answer: 'insufficient_evidence', conclusion: 'c', confidence: 'low' });
+    expect([old.answer, old.basis]).toEqual(['mixed', 'inferred']);
   });
 
   it('still refuses an answer whose core content is missing', () => {

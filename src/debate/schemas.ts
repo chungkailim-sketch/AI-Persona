@@ -105,9 +105,13 @@ export type DebateClosing = z.infer<typeof DebateClosing>;
 
 /** The judge's reference conclusion. Dissent and evidence gaps are required, not optional extras. */
 export const DebateVerdict = z.object({
-  answer: oneOf(['supported', 'not_supported', 'mixed', 'insufficient_evidence'] as const, 'insufficient_evidence'),
+  // Always the closest conclusion the data, related findings and external sources point to.
+  answer: oneOf(['supported', 'not_supported', 'mixed'] as const, 'mixed'),
   conclusion: required(2500),
-  confidence: oneOf(['high', 'medium', 'low'] as const, 'low'),
+  /** What the conclusion rests on: figures that address the motion, related figures, or outside sources. */
+  basis: oneOf(['direct', 'inferred', 'external'] as const, 'inferred'),
+  /** Each step of inference, stated so a reader can see what was measured and what was reasoned. */
+  inferences: strings(8, 500),
   segmentFindings: list(z.object({ segment: text(120), assessment: text(800), evidenceIds }), 8),
   argumentsFor: strings(6, 500),
   argumentsAgainst: strings(6, 500),
@@ -117,3 +121,9 @@ export const DebateVerdict = z.object({
   recommendations: strings(6, 500),
 });
 export type DebateVerdict = z.infer<typeof DebateVerdict>;
+
+/** Published data points found on the web for a motion the project's own data only partly covers. */
+export const DebateResearch = z.object({
+  findings: list(z.object({ claim: text(600), source: text(200), url: text(500), year: text(12) }), 10).transform((a) => a.filter((f) => f.claim && /^https?:\/\//.test(f.url))),
+});
+export type DebateResearch = z.infer<typeof DebateResearch>;

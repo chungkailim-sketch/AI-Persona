@@ -132,7 +132,7 @@ export async function projectContext(projectId: string): Promise<string | null> 
     const verdict = ((debate.conclusion ?? {}) as { verdict?: { answer?: unknown; confidence?: unknown; conclusion?: unknown } }).verdict;
     out.push('', '## Latest agent swarm debate', `Motion: ${debate.topic}`);
     if (debate.hypothesis) out.push(`Hypothesis: ${debate.hypothesis}`);
-    if (verdict) out.push(`Verdict: ${String(verdict.answer ?? '—')} (${String(verdict.confidence ?? '—')}) — ${String(verdict.conclusion ?? '').slice(0, 1200)}`);
+    if (verdict) out.push(`Verdict: ${String(verdict.answer ?? '—')} (basis: ${String((verdict as { basis?: unknown }).basis ?? 'inferred')}) — ${String(verdict.conclusion ?? '').slice(0, 1200)}`);
   }
 
   if (plan) {

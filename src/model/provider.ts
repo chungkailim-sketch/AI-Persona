@@ -38,6 +38,14 @@ export interface ModelRequest {
   seed?: number;
   maxTokens?: number;
   temperature?: number;
+  /** Let the model search the web for published data points before it answers (live provider only). */
+  webSearch?: { maxUses: number };
+}
+
+/** A page the model's web search returned. Titles and addresses come from the search, not the model. */
+export interface WebSource {
+  title: string;
+  url: string;
 }
 
 export interface ModelAttachment {
@@ -57,6 +65,8 @@ export interface ModelResponse {
   outcome: 'ok' | 'refused' | 'invalid' | 'timeout' | 'rate_limited' | 'error';
   /** Present only when the outcome is not ok. Never shown to the browser. */
   errorMessage?: string;
+  /** Pages returned by web search during this call, when it was allowed to search. */
+  sources?: WebSource[];
 }
 
 export interface ModelProvider {
