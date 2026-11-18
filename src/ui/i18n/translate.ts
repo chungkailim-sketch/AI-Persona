@@ -42,9 +42,42 @@ export function registerTranslations(entries: Record<string, string>): void {
   for (const [en, zh] of Object.entries(entries)) EXTRA[en.replace(/\s+/g, ' ').trim()] = zh;
 }
 
-function translateCore(core: string, dict: Record<string, string>): string | null {
+// Keys with `{}` slots stand for any text (a file name, a market, a person), not only numbers. The
+// slot's text is itself translated where it is interface wording, and kept as it is otherwise. In the
+// translation, `{}` takes the slots in order and `{1}`, `{2}` … by position.
+let patterns: { re: RegExp; zh: string }[] | null = null;
+function slotPatterns(dict: Record<string, string>) {
+  if (!patterns) {
+    patterns = Object.entries(dict)
+      .filter(([en]) => en.includes('{}'))
+      // The most specific pattern (the most fixed text) is tried first.
+      .sort((a, b) => b[0].replace(/\{\}/g, '').length - a[0].replace(/\{\}/g, '').length)
+      .map(([en, zh]) => ({ re: new RegExp(`^${en.split('{}').map((x) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('(.+?)')}$`), zh }));
+  }
+  return patterns;
+}
+
+function slotted(core: string, dict: Record<string, string>, depth: number): string | null {
+  if (depth > 2) return null;
+  for (const { re, zh } of slotPatterns(dict)) {
+    const m = re.exec(core);
+    if (!m) continue;
+    const slots = m.slice(1).map((v) => translateCore(v, dict, depth + 1) ?? piecewise(v, dict) ?? v);
+    let i = 0;
+    return zh.replace(/\{(\d?)\}/g, (_, n: string) => (n ? slots[Number(n) - 1] : slots[i++]) ?? '');
+  }
+  return null;
+}
+
+function translateCore(core: string, dict: Record<string, string>, depth = 0): string | null {
   const exact = dict[core] ?? (dict === ZH ? EXTRA[core] : undefined);
   if (exact !== undefined) return exact;
+  const viaNumbers = numbered(core, dict);
+  if (viaNumbers !== null || dict !== ZH) return viaNumbers;
+  return slotted(core, dict, depth);
+}
+
+function numbered(core: string, dict: Record<string, string>): string | null {
 
   // Numbers are first read greedily ("100." whole, as most keys were written), then strictly, so a
   // key whose number is followed by a full stop ("0 to 100. An…") also matches.
@@ -104,6 +137,12 @@ function piecewise(core: string, dict: Record<string, string>, depth = 0): strin
     const head = part(bracketed[1]!);
     const inner = items.map((x) => part(x) ?? x);
     if (head !== null || inner.some((x, i) => x !== items[i])) return `${head ?? bracketed[1]}（${inner.join('、')}）${bracketed[3] ? '。' : ''}`;
+  }
+  // A plain list ("Indonesia, Malaysia, Thailand") when every item is interface wording.
+  if (core.includes(', ') && !/[.!?]$/.test(core)) {
+    const items = core.split(', ');
+    const out = items.map((x) => translateCore(x, dict));
+    if (out.every((x) => x !== null)) return out.join('、');
   }
   const labelled = /^([A-Za-z][A-Za-z &'-]{1,40}): (.+)$/.exec(core);
   if (labelled) {

@@ -62,7 +62,13 @@ export function WorkflowStepper({ projectId, current, state }: { projectId: stri
                 </span>
                 {st.reason && st.status !== 'complete' && <span className="line-clamp-2 text-[11px] leading-snug text-ink-subtle">{st.reason}</span>}
                 <span className="sr-only">
-                  {`Step ${s.index} of 5: ${s.label}. ${isCurrent ? 'Current step. ' : ''}${meta.label}.${st.reason ? ` ${st.reason}` : ''}${st.unresolved > 0 ? ` ${st.unresolved} unresolved item(s).` : ''} ${savedLabel(st.lastSavedAt)}.`}
+                  {/* One sentence per span, so each is translated on its own. */}
+                  <span>{`Step ${s.index} of 5: ${s.label}.`}</span>{' '}
+                  {isCurrent && <><span>Current step.</span>{' '}</>}
+                  <span>{`${meta.label}.`}</span>{' '}
+                  {st.reason && <><span>{st.reason}</span>{' '}</>}
+                  {st.unresolved > 0 && <><span>{`${st.unresolved} unresolved item(s).`}</span>{' '}</>}
+                  <span>{`${savedLabel(st.lastSavedAt)}.`}</span>
                 </span>
               </Link>
             </li>
