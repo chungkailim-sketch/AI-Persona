@@ -44,6 +44,7 @@ export const AUDIT_ACTIONS = [
   'dataset.trend.requested',
   'dataset.structured.exported',
   'dataset.deleted',
+  'debate.deleted',
   'population.sample.built',
   'governance.recorded',
   'governance.model_processing.granted',

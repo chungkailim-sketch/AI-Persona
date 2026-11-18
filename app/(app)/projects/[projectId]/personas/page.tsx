@@ -15,6 +15,7 @@ import { WorkflowNav } from '../WorkflowNav';
 import { DecisionGuidance } from '../DecisionGuidance';
 import { RefreshWhileImporting } from '../data/RefreshWhileImporting';
 import { ApproveCastButton, BuildPersonasForm, RenamePersona } from './CastControls';
+import { DebateRecordActions } from './DebateRecordActions';
 import { DebateDetail, DebateForm } from './DebatePanel';
 import { toDebateView } from './debateView';
 import { projectModules } from '@/modules/project';
@@ -73,6 +74,9 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
   // The swarm debate runs on the approved personas.
   const debates = (await listDebates(user, projectId)).filter((d) => d.cohortId === cast?.id).slice(0, 5);
   const requested = typeof search.debate === 'string' ? search.debate : debates[0]?.id;
+  // "Edit" on a recent debate opens the set-up form pre-filled with that debate, to change and run again.
+  const editRow = typeof search.edit === 'string' ? await getDebate(user, projectId, search.edit) : null;
+  const editing = editRow ? { topic: editRow.topic, hypothesis: editRow.hypothesis ?? '', focusSegments: editRow.focusSegments, rounds: editRow.rounds } : null;
   const debateRow = requested ? await getDebate(user, projectId, requested) : null;
   const debate = debateRow ? toDebateView(debateRow) : null;
   const debateRunning = debate?.status === 'QUEUED' || debate?.status === 'RUNNING';
@@ -195,7 +199,7 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
                 ) : !approved ? (
                   <p className="text-sm text-ink-muted">Approve the personas first. The debate runs on approved personas only.</p>
                 ) : (
-                  <DebateForm projectId={projectId} cohorts={[{ id: cast.id, name: cast.name, approved: people.length }]} runs={[]} hypotheses={briefHypotheses.map((h) => h.statement)} suggested={swarm} returnTo="journey" />
+                  <DebateForm projectId={projectId} cohorts={[{ id: cast.id, name: cast.name, approved: people.length }]} runs={[]} hypotheses={briefHypotheses.map((h) => h.statement)} suggested={editing ?? swarm} editing={Boolean(editing)} returnTo="journey" key={editing ? `edit-${search.edit}` : 'new'} />
                 )}
               </div>
               {approved && modules.has('decisions') && (
@@ -215,6 +219,7 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
                           <span className="line-clamp-2 text-xs text-ink">{d.topic}</span>
                           <span className="mt-0.5 block text-[10.5px] text-ink-subtle">{`${d.status.toLowerCase()} · ${fmtDateTime(d.createdAt)}${d.isMock ? ' · mock' : ''}`}</span>
                         </Link>
+                        {canDebate && <DebateRecordActions projectId={projectId} debateId={d.id} status={d.status} base="personas" />}
                       </li>
                     ))}
                   </ul>

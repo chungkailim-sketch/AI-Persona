@@ -7,6 +7,10 @@
  * language they were written in.
  */
 export const ZH: Record<string, string> = {
+  "Re-run": "重新运行",
+  "Delete this debate and its transcript? This cannot be undone.": "删除此辩论及其记录？此操作无法撤销。",
+  "Editing an earlier debate. Change the set-up and run it; the result is saved as a new debate.": "正在编辑之前的辩论。修改设置后运行，结果将另存为一场新的辩论。",
+  "Wait for the debate to finish before deleting it.": "请等待辩论结束后再删除。",
   "Directional": "方向性参考",
   "Based on survey figures": "基于调研数据",
   "Inferred from related findings": "由相关发现推断",

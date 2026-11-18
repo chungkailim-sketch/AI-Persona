@@ -14,6 +14,7 @@ import { latestPopulationSample } from '@/population/service';
 import { readRecentEvents } from '@/telemetry/read';
 import type { TelemetryEvent } from '@/telemetry/contract';
 import { getDebate, listDebates, listInsights } from '@/debate/service';
+import { DebateRecordActions } from '../../personas/DebateRecordActions';
 import { DebateDetail, DebateForm, type DebateView } from '../../personas/DebatePanel';
 import { DebateInsights, type InsightArtifactView } from '../../personas/DebateInsights';
 import { MarketFilter } from '../../personas/MarketFilter';
@@ -105,6 +106,9 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
   // ── Swarm debate ──
   const debates = await listDebates(user, projectId);
   const requestedDebate = typeof search.debate === 'string' ? search.debate : debates[0]?.id;
+  // "Edit" on a recent debate opens the set-up form pre-filled with that debate, to change and run again.
+  const editRow = typeof search.edit === 'string' ? await getDebate(user, projectId, search.edit) : null;
+  const editing = editRow ? { topic: editRow.topic, hypothesis: editRow.hypothesis ?? '', focusSegments: editRow.focusSegments, rounds: editRow.rounds } : null;
   const debateRow = requestedDebate ? await getDebate(user, projectId, requestedDebate) : null;
   const insightRows = debateRow ? await listInsights(user, projectId, debateRow.id) : [];
   const insights: InsightArtifactView[] = insightRows.map((a) => ({
@@ -418,6 +422,9 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
                   cohorts={debateCohorts}
                   runs={completedRuns.map((r) => ({ id: r.id, label: `Run ${r.id.slice(-8)} · ${r.completedAt ? fmtDate(r.completedAt) : ''}${r.isMock ? ' · mock' : ''}` }))}
                   hypotheses={hypotheses.map((h) => h.statement)}
+                  suggested={editing}
+                  editing={Boolean(editing)}
+                  key={editing ? `edit-${search.edit}` : 'new'}
                 />
               )}
             </div>
@@ -437,6 +444,7 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
                           {d.status.toLowerCase()} · {d.cohort.name} · {fmtDateTime(d.createdAt)}{d.isMock ? ' · mock' : ''}
                         </span>
                       </Link>
+                      {canDebate && <DebateRecordActions projectId={projectId} debateId={d.id} status={d.status} base="advanced/personas" />}
                     </li>
                   ))}
                 </ul>

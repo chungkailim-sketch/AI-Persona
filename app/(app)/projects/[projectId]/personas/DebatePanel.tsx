@@ -129,6 +129,7 @@ export function DebateForm({
   runs,
   hypotheses,
   suggested,
+  editing,
   returnTo,
 }: {
   projectId: string;
@@ -137,13 +138,19 @@ export function DebateForm({
   hypotheses: string[];
   /** The set-up suggested by an uploaded brief: pre-fills the form. */
   suggested?: { topic: string; hypothesis: string; focusSegments: string[]; rounds: number } | null;
+  /** The pre-fill comes from an earlier debate being edited, not from the brief. */
+  editing?: boolean;
   /** "journey" returns to the Personas step after starting; otherwise the Advanced persona tools. */
   returnTo?: 'journey';
 }) {
   const [state, action] = useActionState(startDebateAction, empty);
   return (
     <form action={action} className="flex flex-col gap-3" aria-label="Start a swarm debate">
-      {suggested?.topic && <p className="rounded border border-info/40 bg-info-soft px-3 py-2 text-xs text-ink">Pre-filled from the uploaded brief. Change anything before you run it.</p>}
+      {suggested?.topic && (
+        <p className="rounded border border-info/40 bg-info-soft px-3 py-2 text-xs text-ink">
+          {editing ? 'Editing an earlier debate. Change the set-up and run it; the result is saved as a new debate.' : 'Pre-filled from the uploaded brief. Change anything before you run it.'}
+        </p>
+      )}
       <input type="hidden" name="projectId" value={projectId} />
       {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
       <Field id="debate-topic" label="Topic or motion to debate" required hint="What the persona agents argue about. Phrase it as a question or a claim.">
