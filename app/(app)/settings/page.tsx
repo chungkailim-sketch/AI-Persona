@@ -5,6 +5,7 @@ import { revokeSessionAction } from './actions';
 import { ThemePreferenceControl } from '@/ui/shell/ThemeSwitcher';
 import { THEME_COOKIE, parseThemePreference } from '@/ui/theme/theme';
 import { fmtDateTime, TZ_LABEL } from '@/lib/time';
+import { Collapsible } from '@/ui/Collapsible';
 
 export const metadata = { title: 'Settings · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -55,53 +56,55 @@ export default async function SettingsPage() {
         </div>
       </section>
 
-      <section aria-labelledby="sessions" className="mt-12">
-        <h2 id="sessions" className="text-lg">Active sessions</h2>
-        <p className="mt-2 max-w-prose text-sm text-ink-muted">
-          Revoking a session ends it immediately on the server — a copied cookie stops working at
-          once, rather than when it would have expired.
-        </p>
-        <ul className="mt-4 flex max-w-2xl flex-col gap-2">
-          {sessions.map((s) => (
-            <li
-              key={s.id}
-              className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3"
-            >
-              <div className="text-sm">
-                <p className="text-ink">
-                  {s.id === user.sessionId ? 'This session' : 'Other session'}
-                </p>
-                <p className="mt-0.5 text-xs text-ink-subtle">
-                  Started {when(s.issuedAt)} · last seen {when(s.lastSeenAt)} · expires{' '}
-                  {when(s.absoluteExpiresAt)}
-                </p>
-              </div>
-              {s.id !== user.sessionId && (
-                <form action={revokeSessionAction}>
-                  <input type="hidden" name="sessionId" value={s.id} />
-                  <button
-                    type="submit"
-                    className="rounded border border-line px-3 py-1.5 text-xs text-ink-muted hover:border-danger hover:text-danger"
-                  >
-                    Revoke
-                  </button>
-                </form>
-              )}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <Collapsible title=<>Active sessions</>>
+        <section aria-labelledby="sessions" className="mt-12">
+          <p className="mt-2 max-w-prose text-sm text-ink-muted">
+            Revoking a session ends it immediately on the server — a copied cookie stops working at
+            once, rather than when it would have expired.
+          </p>
+          <ul className="mt-4 flex max-w-2xl flex-col gap-2">
+            {sessions.map((s) => (
+              <li
+                key={s.id}
+                className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3"
+              >
+                <div className="text-sm">
+                  <p className="text-ink">
+                    {s.id === user.sessionId ? 'This session' : 'Other session'}
+                  </p>
+                  <p className="mt-0.5 text-xs text-ink-subtle">
+                    Started {when(s.issuedAt)} · last seen {when(s.lastSeenAt)} · expires{' '}
+                    {when(s.absoluteExpiresAt)}
+                  </p>
+                </div>
+                {s.id !== user.sessionId && (
+                  <form action={revokeSessionAction}>
+                    <input type="hidden" name="sessionId" value={s.id} />
+                    <button
+                      type="submit"
+                      className="rounded border border-line px-3 py-1.5 text-xs text-ink-muted hover:border-danger hover:text-danger"
+                    >
+                      Revoke
+                    </button>
+                  </form>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
+      </Collapsible>
 
-      <section aria-labelledby="notifications" className="mt-12">
-        <h2 id="notifications" className="text-lg">Notifications</h2>
-        <p className="mt-2 max-w-prose border-t border-line px-4 py-4 text-sm text-ink-muted">
-          <span className="mr-2 rounded bg-warn-soft px-2 py-0.5 font-mono text-[10px] uppercase text-warn">
-            Not available in this build
-          </span>
-          Run-completion and failure notifications are delivered by Phase 4, once there are runs to
-          notify about.
-        </p>
-      </section>
+      <Collapsible title=<>Notifications</>>
+        <section aria-labelledby="notifications" className="mt-12">
+          <p className="mt-2 max-w-prose border-t border-line px-4 py-4 text-sm text-ink-muted">
+            <span className="mr-2 rounded bg-warn-soft px-2 py-0.5 font-mono text-[10px] uppercase text-warn">
+              Not available in this build
+            </span>
+            Run-completion and failure notifications are delivered by Phase 4, once there are runs to
+            notify about.
+          </p>
+        </section>
+      </Collapsible>
     </div>
   );
 }

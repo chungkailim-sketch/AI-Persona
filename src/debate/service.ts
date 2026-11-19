@@ -104,6 +104,32 @@ export async function getDebate(user: SessionUser, projectId: string, debateId: 
   });
 }
 
+/** Remove a debate with its transcript, insights and model-call records. Audited. */
+export async function deleteDebate(user: SessionUser, projectId: string, debateId: string): Promise<void> {
+  const ctx = await authContextFor(user, projectId);
+  if (!can(ctx, 'simulation.run', projectId)) throw new AuthorizationError('simulation.run', projectId);
+  const debate = await prisma.debate.findFirst({ where: { id: debateId, projectId }, select: { id: true, status: true, topic: true } });
+  if (!debate) throw new DebateRequestRefused(['That debate is not part of this project.']);
+  if (debate.status === 'QUEUED' || debate.status === 'RUNNING') throw new DebateRequestRefused(['Wait for the debate to finish before deleting it.']);
+  await prisma.debate.delete({ where: { id: debateId } });
+  await recordAudit({
+    action: 'debate.deleted',
+    targetType: 'debate',
+    targetId: debateId,
+    projectId,
+    actorUserId: user.userId,
+    actorEmail: user.email,
+    reason: `Swarm debate deleted: ${debate.topic.slice(0, 120)}`,
+  });
+}
+
+/** Run a debate again with the same set-up, as a new record (a fresh seed). */
+export async function rerunDebate(user: SessionUser, projectId: string, debateId: string): Promise<{ debateId: string }> {
+  const d = await prisma.debate.findFirst({ where: { id: debateId, projectId } });
+  if (!d) throw new DebateRequestRefused(['That debate is not part of this project.']);
+  return requestDebate(user, projectId, { cohortId: d.cohortId, topic: d.topic, hypothesis: d.hypothesis, focusSegments: d.focusSegments, rounds: d.rounds, contextRunId: d.contextRunId });
+}
+
 // ── What is made from a completed debate ──────────────────────────────────────
 
 export interface InsightRequest {

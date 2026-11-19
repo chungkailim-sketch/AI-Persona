@@ -18,6 +18,7 @@ import { LiveAnnouncer } from '@/ui/components/LiveAnnouncer';
 import { ErrorState } from '@/ui/components/States';
 import { Icon } from '@/ui/components/Icon';
 import { retryIngestAction, type FormState } from '../actions';
+import { Collapsible } from '@/ui/Collapsible';
 
 const STATUS_WORD: Record<string, string> = {
   AWAITING_UPLOAD: 'Waiting for files',
@@ -147,31 +148,32 @@ export function IngestionMonitor({
           serverTotal={serverTotal}
           emptyText="No ingestion events recorded for this version."
         />
-        <section className="panel flex flex-col" aria-labelledby="exceptions-title">
-          <div className="panel-head">
-            <h3 id="exceptions-title" className="font-sans text-sm font-medium text-ink">Warnings and exceptions</h3>
-            <span className="font-mono text-[11px] text-ink-subtle">{problems.length + blockers.length}</span>
-          </div>
-          <ul className="flex max-h-[24rem] flex-col gap-1.5 overflow-y-auto p-3 text-[12.5px]">
-            {blockers.map((b) => (
-              <li key={b} className="flex gap-2 rounded border border-warn/40 bg-warn-soft px-2 py-1.5 text-ink">
-                <Icon name="hand" size={14} className="mt-0.5 shrink-0 text-warn" />
-                <span><span className="sr-only">Outstanding before use: </span>{b}</span>
-              </li>
-            ))}
-            {problems.map((e) => (
-              <li key={e.eventId} className="flex gap-2 rounded border border-line px-2 py-1.5 text-ink-muted">
-                <Icon name={e.status === 'failed' || e.status === 'retryable' ? 'cross' : 'alert'} size={14} className={e.status === 'failed' || e.status === 'retryable' ? 'mt-0.5 shrink-0 text-danger' : 'mt-0.5 shrink-0 text-warn'} />
-                <span className="min-w-0">
-                  <span className="font-mono text-[10.5px] uppercase text-ink-subtle">{e.stage.replace(/_/g, ' ')}</span>
-                  <span className="block">{e.message}</span>
-                  {e.correlationId && <span className="font-mono text-[10.5px] text-ink-subtle">correlation {e.correlationId}</span>}
-                </span>
-              </li>
-            ))}
-            {problems.length + blockers.length === 0 && <li className="text-xs text-ink-subtle">Nothing to review.</li>}
-          </ul>
-        </section>
+        <Collapsible title=<>Warnings and exceptions</>>
+          <section className="flex flex-col" aria-labelledby="exceptions-title">
+            <div className="panel-head">
+              <span className="font-mono text-[11px] text-ink-subtle">{problems.length + blockers.length}</span>
+            </div>
+            <ul className="flex max-h-[24rem] flex-col gap-1.5 overflow-y-auto p-3 text-[12.5px]">
+              {blockers.map((b) => (
+                <li key={b} className="flex gap-2 rounded border border-warn/40 bg-warn-soft px-2 py-1.5 text-ink">
+                  <Icon name="hand" size={14} className="mt-0.5 shrink-0 text-warn" />
+                  <span><span className="sr-only">Outstanding before use: </span>{b}</span>
+                </li>
+              ))}
+              {problems.map((e) => (
+                <li key={e.eventId} className="flex gap-2 rounded border border-line px-2 py-1.5 text-ink-muted">
+                  <Icon name={e.status === 'failed' || e.status === 'retryable' ? 'cross' : 'alert'} size={14} className={e.status === 'failed' || e.status === 'retryable' ? 'mt-0.5 shrink-0 text-danger' : 'mt-0.5 shrink-0 text-warn'} />
+                  <span className="min-w-0">
+                    <span className="font-mono text-[10.5px] uppercase text-ink-subtle">{e.stage.replace(/_/g, ' ')}</span>
+                    <span className="block">{e.message}</span>
+                    {e.correlationId && <span className="font-mono text-[10.5px] text-ink-subtle">correlation {e.correlationId}</span>}
+                  </span>
+                </li>
+              ))}
+              {problems.length + blockers.length === 0 && <li className="text-xs text-ink-subtle">Nothing to review.</li>}
+            </ul>
+          </section>
+        </Collapsible>
       </div>
     </section>
   );

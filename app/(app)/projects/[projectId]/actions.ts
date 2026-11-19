@@ -8,6 +8,7 @@
  * can reach it.
  */
 import { revalidatePath } from 'next/cache';
+import type { Route } from 'next';
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { z } from 'zod';
@@ -39,7 +40,7 @@ import { requestForecastAnalysis } from '@/forecast/analysis';
 import { buildPopulationSample, createCohortFromPopulation, PopulationRefused } from '@/population/service';
 import { EvidenceRefused } from '@/model/context';
 import { runAdherenceCheck } from '@/run/adherenceService';
-import { requestDebate, requestInsight, DebateRequestRefused, type InsightRequest } from '@/debate/service';
+import { requestDebate, requestInsight, deleteDebate, rerunDebate, DebateRequestRefused, type InsightRequest } from '@/debate/service';
 
 export interface FormState {
   error?: string;
@@ -500,6 +501,29 @@ export async function startDebateAction(_prev: FormState, formData: FormData): P
   // Outside the try: a redirect is thrown, and must not be caught as a failure.
   if (formData.get('returnTo') === 'journey') redirect(`/projects/${projectId}/personas?debate=${debateId}#debate`);
   redirect(`/projects/${projectId}/advanced/personas?debate=${debateId}#debate`);
+}
+
+/** Delete or re-run one debate from the list of recent debates. */
+export async function manageDebateAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  const debateId = String(formData.get('recordId') ?? formData.get('debateId') ?? '');
+  const op = String(formData.get('op') ?? '');
+  const base = formData.get('returnTo') === 'journey' ? 'personas' : 'advanced/personas';
+  let target: string;
+  try {
+    const user = await requireUserApi();
+    if (!projectId || !debateId) return { error: 'Invalid request.' };
+    if (op === 'delete') {
+      await deleteDebate(user, projectId, debateId);
+      target = `/projects/${projectId}/${base}#debate`;
+    } else if (op === 'rerun') {
+      const r = await rerunDebate(user, projectId, debateId);
+      target = `/projects/${projectId}/${base}?debate=${r.debateId}#debate`;
+    } else return { error: 'Invalid request.' };
+  } catch (e) {
+    return toState(e);
+  }
+  redirect(target as Route);
 }
 
 /**

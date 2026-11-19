@@ -22,6 +22,7 @@ import { autoClearProject } from '@/ingest/autoClear';
 import { UploadForm } from '../../data/DataStep';
 import { RemoveAllData, RemoveDatasetButton } from '../../data/RemoveData';
 import { fmtDateTime, TZ_LABEL } from '@/lib/time';
+import { Collapsible } from '@/ui/Collapsible';
 
 export const metadata = { title: 'Data tools · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -215,106 +216,111 @@ export default async function DataStepPage(props: PageProps<'/projects/[projectI
 
       {/* ── Readiness ────────────────────────────────────────────────────── */}
       {detail && (
-        <section aria-labelledby="readiness" className="">
-          <h2 id="readiness" className="text-lg">Can this be used?</h2>
-          {detail.usability.usable ? (
-            <p className="mt-3 rounded border border-ok bg-ok-soft px-4 py-3 text-sm text-ok">
-              Yes. Every condition is met: ingestion finished, findings are acknowledged, provenance
-              is recorded, the field review is confirmed and model processing is permitted.
-            </p>
-          ) : (
-            <div className="mt-3 rounded border border-warn bg-warn-soft/40 px-4 py-3">
-              <p className="text-sm font-medium text-ink">Not yet. Outstanding:</p>
-              <ul className="mt-2 flex flex-col gap-1.5">
-                {detail.usability.blockers.map((b) => (
-                  <li key={b} className="flex gap-2 text-sm text-ink-muted">
-                    <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-warn" />
-                    <span>{b}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </section>
+        <Collapsible title=<>Can this be used?</>>
+          <section aria-labelledby="readiness" className="">
+            {detail.usability.usable ? (
+              <p className="mt-3 rounded border border-ok bg-ok-soft px-4 py-3 text-sm text-ok">
+                Yes. Every condition is met: ingestion finished, findings are acknowledged, provenance
+                is recorded, the field review is confirmed and model processing is permitted.
+              </p>
+            ) : (
+              <div className="mt-3 rounded border border-warn bg-warn-soft/40 px-4 py-3">
+                <p className="text-sm font-medium text-ink">Not yet. Outstanding:</p>
+                <ul className="mt-2 flex flex-col gap-1.5">
+                  {detail.usability.blockers.map((b) => (
+                    <li key={b} className="flex gap-2 text-sm text-ink-muted">
+                      <span aria-hidden className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-warn" />
+                      <span>{b}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </section>
+        </Collapsible>
       )}
 
       {/* ── Structured data ──────────────────────────────────────────────── */}
       {detail && structured.length > 0 && (
-        <section aria-labelledby="structured" className="">
-          <h2 id="structured" className="text-lg">Structured data</h2>
-          <p className="mt-1 max-w-prose text-xs text-ink-subtle">
-            What the upload contains, as tables ready to use: report layouts such as Mintel databooks flattened into one
-            long table (market × wave × question × response × segment, each with its base), column names turned into
-            identifiers, &ldquo;no data&rdquo; markers blanked and numbers written plainly. Nothing is imputed. Each table has a data
-            dictionary, and downloads leave out any column excluded in the field review.
-          </p>
-          <div className="mt-3">
-            <StructuredPanel projectId={projectId} datasetVersionId={detail.version.id} tables={structured} canDownload={canEdit} />
-          </div>
-        </section>
+        <Collapsible title=<>Structured data</>>
+          <section aria-labelledby="structured" className="">
+            <p className="mt-1 max-w-prose text-xs text-ink-subtle">
+              What the upload contains, as tables ready to use: report layouts such as Mintel databooks flattened into one
+              long table (market × wave × question × response × segment, each with its base), column names turned into
+              identifiers, &ldquo;no data&rdquo; markers blanked and numbers written plainly. Nothing is imputed. Each table has a data
+              dictionary, and downloads leave out any column excluded in the field review.
+            </p>
+            <div className="mt-3">
+              <StructuredPanel projectId={projectId} datasetVersionId={detail.version.id} tables={structured} canDownload={canEdit} />
+            </div>
+          </section>
+        </Collapsible>
       )}
 
       {/* ── Quality ──────────────────────────────────────────────────────── */}
       {detail && detail.version.quality.length > 0 && (
-        <section aria-labelledby="quality" className="">
-          <h2 id="quality" className="text-lg">
-            Quality {detail.version.qualityScore != null && (
-              <span className="font-mono text-base text-ink-muted">
-                {detail.version.qualityScore}/100
-              </span>
-            )}
-          </h2>
-          <p className="mt-1 max-w-prose text-xs text-ink-subtle">{QUALITY_CAVEAT}</p>
-          <ul className="mt-3 grid gap-2 sm:grid-cols-2">
-            {detail.version.quality.map((c) => (
-              <li key={c.id} className="border-t border-line p-3">
-                <div className="flex items-baseline justify-between gap-2">
-                  <span className="text-sm text-ink">{c.label}</span>
-                  <span className="font-mono text-sm text-ink-muted">
-                    {c.score} <span className="text-[10px] text-ink-subtle">×{c.weight}</span>
-                  </span>
-                </div>
-                <p className="mt-1 text-xs text-ink-subtle">{c.explanation}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
+        <Collapsible title="Quality">
+          <section aria-labelledby="quality" className="">
+            <h2 id="quality" className="text-lg">
+              Quality {detail.version.qualityScore != null && (
+                <span className="font-mono text-base text-ink-muted">
+                  {detail.version.qualityScore}/100
+                </span>
+              )}
+            </h2>
+            <p className="mt-1 max-w-prose text-xs text-ink-subtle">{QUALITY_CAVEAT}</p>
+            <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+              {detail.version.quality.map((c) => (
+                <li key={c.id} className="border-t border-line p-3">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-sm text-ink">{c.label}</span>
+                    <span className="font-mono text-sm text-ink-muted">
+                      {c.score} <span className="text-[10px] text-ink-subtle">×{c.weight}</span>
+                    </span>
+                  </div>
+                  <p className="mt-1 text-xs text-ink-subtle">{c.explanation}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </Collapsible>
       )}
 
       {/* ── Trends and forecast gate ──────────────────────────────────────── */}
       {detail && hasLongTable && (
-        <section aria-labelledby="trends" className="border-t border-line pt-6">
-          <h2 id="trends" className="text-lg">Trends across waves</h2>
-          <p className="mt-1 max-w-prose text-xs text-ink-subtle">
-            Which tracked measures have moved, and by more than sampling noise. A forecast is shown only if
-            the ten-question forecast gate passes; when it refuses, trend classification is the answer.
-            Computed in code from the stored table — no language model is involved.
-          </p>
-          <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
-            <div className="panel px-3.5 py-3">
-              {canEdit ? (
-                <TrendRequestForm projectId={projectId} datasetVersionId={detail.version.id} groups={segmentGroups} />
-              ) : (
-                <p className="text-sm text-ink-muted">Running an analysis needs the <span className="font-mono">dataset.upload</span> permission.</p>
-              )}
-              {trendView && (
-                <p className="mt-3 font-mono text-[10.5px] text-ink-subtle">
-                  Last analysis {trendView.completedAt ? fmtDateTime(trendView.completedAt) : 'pending'} {TZ_LABEL} · groups {trendView.groups.join(', ')}
-                </p>
-              )}
+        <Collapsible title=<>Trends across waves</>>
+          <section aria-labelledby="trends" className="border-t border-line pt-6">
+            <p className="mt-1 max-w-prose text-xs text-ink-subtle">
+              Which tracked measures have moved, and by more than sampling noise. A forecast is shown only if
+              the ten-question forecast gate passes; when it refuses, trend classification is the answer.
+              Computed in code from the stored table — no language model is involved.
+            </p>
+            <div className="mt-3 grid gap-4 lg:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
+              <div className="panel px-3.5 py-3">
+                {canEdit ? (
+                  <TrendRequestForm projectId={projectId} datasetVersionId={detail.version.id} groups={segmentGroups} />
+                ) : (
+                  <p className="text-sm text-ink-muted">Running an analysis needs the <span className="font-mono">dataset.upload</span> permission.</p>
+                )}
+                {trendView && (
+                  <p className="mt-3 font-mono text-[10.5px] text-ink-subtle">
+                    Last analysis {trendView.completedAt ? fmtDateTime(trendView.completedAt) : 'pending'} {TZ_LABEL} · groups {trendView.groups.join(', ')}
+                  </p>
+                )}
+              </div>
+              <div className="min-w-0">
+                {trendView ? (
+                  <TrendResults analysis={trendView} />
+                ) : (
+                  <EmptyState title="No trend analysis yet" icon="chart">
+                    Run the analysis to classify every complete series as rising, falling or no detectable change,
+                    and to see whether this history could support a forecast.
+                  </EmptyState>
+                )}
+              </div>
             </div>
-            <div className="min-w-0">
-              {trendView ? (
-                <TrendResults analysis={trendView} />
-              ) : (
-                <EmptyState title="No trend analysis yet" icon="chart">
-                  Run the analysis to classify every complete series as rising, falling or no detectable change,
-                  and to see whether this history could support a forecast.
-                </EmptyState>
-              )}
-            </div>
-          </div>
-        </section>
+          </section>
+        </Collapsible>
       )}
 
     </div>

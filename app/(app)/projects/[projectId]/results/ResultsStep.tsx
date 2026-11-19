@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useActionState } from 'react';
 import { exportReportAction, type ExportFormState } from '../exportActions';
 import { FormMessages, SubmitButton, TextArea } from '@/ui/forms';
+import { Collapsible } from '@/ui/Collapsible';
 
 const empty: ExportFormState = {};
 
@@ -188,49 +189,50 @@ export function ClaimCheckPanel({
   const blocking = checked.flatMap((c) => c.issues.filter((i) => i.severity === 'blocking'));
 
   return (
-    <section aria-labelledby="claimcheck" className="mt-10">
-      <h2 id="claimcheck" className="text-lg">Claim check</h2>
-      <p className="mt-1 max-w-prose text-xs text-ink-subtle">{notice}</p>
+    <Collapsible title=<>Claim check</>>
+      <section aria-labelledby="claimcheck" className="mt-10">
+        <p className="mt-1 max-w-prose text-xs text-ink-subtle">{notice}</p>
 
-      {checked.length === 0 ? (
-        <p className="mt-3 rounded border border-ok bg-ok-soft px-4 py-3 text-sm text-ok">
-          Nothing flagged. Every figure in the text appears in the evidence, and no sentence claims
-          more than a simulation can support.
-        </p>
-      ) : (
-        <>
-          <p className="mt-3 text-sm text-ink-muted">
-            {blocking.length > 0
-              ? `${blocking.length} issue(s) will block an export until resolved or acknowledged.`
-              : 'Nothing blocking. The notes below are carried into any export.'}
+        {checked.length === 0 ? (
+          <p className="mt-3 rounded border border-ok bg-ok-soft px-4 py-3 text-sm text-ok">
+            Nothing flagged. Every figure in the text appears in the evidence, and no sentence claims
+            more than a simulation can support.
           </p>
-          <ul className="mt-3 flex flex-col gap-3">
-            {checked.map((c) => (
-              <li key={c.claim} className="border-t border-line p-4">
-                <p className="text-sm text-ink">&ldquo;{c.claim}&rdquo;</p>
-                <ul className="mt-2 flex flex-col gap-2">
-                  {c.issues.map((i) => (
-                    <li key={`${i.kind}-${i.excerpt}`} className="text-xs">
-                      <span
-                        className={
-                          i.severity === 'blocking'
-                            ? 'rounded bg-danger-soft px-2 py-0.5 font-mono text-[10px] text-danger'
-                            : 'rounded bg-warn-soft px-2 py-0.5 font-mono text-[10px] text-warn'
-                        }
-                      >
-                        {i.kind.replace(/_/g, ' ')}
-                      </span>
-                      <span className="ml-2 text-ink-muted">{i.message}</span>
-                      <span className="mt-1 block text-ink-subtle">{i.suggestion}</span>
-                    </li>
-                  ))}
-                </ul>
-              </li>
-            ))}
-          </ul>
-        </>
-      )}
-    </section>
+        ) : (
+          <>
+            <p className="mt-3 text-sm text-ink-muted">
+              {blocking.length > 0
+                ? `${blocking.length} issue(s) will block an export until resolved or acknowledged.`
+                : 'Nothing blocking. The notes below are carried into any export.'}
+            </p>
+            <ul className="mt-3 flex flex-col gap-3">
+              {checked.map((c) => (
+                <li key={c.claim} className="border-t border-line p-4">
+                  <p className="text-sm text-ink">&ldquo;{c.claim}&rdquo;</p>
+                  <ul className="mt-2 flex flex-col gap-2">
+                    {c.issues.map((i) => (
+                      <li key={`${i.kind}-${i.excerpt}`} className="text-xs">
+                        <span
+                          className={
+                            i.severity === 'blocking'
+                              ? 'rounded bg-danger-soft px-2 py-0.5 font-mono text-[10px] text-danger'
+                              : 'rounded bg-warn-soft px-2 py-0.5 font-mono text-[10px] text-warn'
+                          }
+                        >
+                          {i.kind.replace(/_/g, ' ')}
+                        </span>
+                        <span className="ml-2 text-ink-muted">{i.message}</span>
+                        <span className="mt-1 block text-ink-subtle">{i.suggestion}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          </>
+        )}
+      </section>
+    </Collapsible>
   );
 }
 

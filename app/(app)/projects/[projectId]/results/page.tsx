@@ -12,12 +12,12 @@ import { listCreativeBriefs } from '@/creative/brief';
 import type { CreativeBriefContent } from '@/creative/fields';
 import { CreativeBriefButton } from './CreativeBriefButton';
 import { CreativeBriefActions } from './CreativeBriefActions';
-import { OpenSectionFromHash } from '@/ui/OpenSectionFromHash';
 import { WorkflowNav } from '../WorkflowNav';
 import { DecisionGuidance } from '../DecisionGuidance';
 import { MarketInputsForm } from './MarketInputsForm';
 import { PlannerForm } from './PlannerForm';
 import { PlanView } from './PlanView';
+import { PlanRecordActions } from './PlanRecordActions';
 import { KnowledgeLibrary } from './KnowledgeLibrary';
 import { RefreshWhileImporting } from '../data/RefreshWhileImporting';
 import { projectModules } from '@/modules/project';
@@ -36,6 +36,7 @@ export const dynamic = 'force-dynamic';
  */
 export default async function ReportStepPage(props: PageProps<'/projects/[projectId]/results'>) {
   const { projectId } = await props.params;
+  const search = await props.searchParams;
   const user = await requireUser(`/projects/${projectId}/results`);
   const ctx = await authContextFor(user, projectId);
   if (!can(ctx, 'project.view', projectId)) notFound();
@@ -43,6 +44,10 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
   if (!project) notFound();
 
   const [report, modules, plans, creative] = await Promise.all([loadReport(projectId), projectModules(projectId), listPlans(projectId), listCreativeBriefs(projectId)]);
+  const canPlan = can(ctx, 'simulation.run', projectId);
+  const plan = plans.find((p) => p.id === search.plan) ?? plans[0] ?? null;
+  const editRow = typeof search.editPlan === 'string' ? plans.find((p) => p.id === search.editPlan) : undefined;
+  const editPlan = editRow ? { question: editRow.question, industry: String((editRow.options as { industry?: string } | null)?.industry ?? '') } : null;
   const planning = [...plans, ...creative].some((p) => p.status === 'QUEUED' || p.status === 'RUNNING');
   const sections = [report && { id: 'report', label: 'Report' }, { id: 'creative', label: 'Creative brief (AIGC)' }, modules.has('comms_planner') && { id: 'plans', label: 'Comms & marketing plans' }, modules.has('knowledge') && { id: 'knowledge', label: 'Knowledge library' }].filter(Boolean) as { id: string; label: string }[];
   const rows = report
@@ -56,7 +61,6 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
     <div className="flex flex-col gap-6">
       <WorkflowNav projectId={projectId} projectName={project.name} current="RESULTS" />
       <RefreshWhileImporting active={planning} />
-      <OpenSectionFromHash />
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl">Results</h1>
@@ -154,30 +158,63 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
             <span id="plans-heading">PR, communications and marketing plans</span>{' '}
             <span className="font-normal text-ink-subtle">— ask a question; the plan answers it purely from the survey data, the personas and the roundtable, applying recognised frameworks. Every insight shows the data it rests on.</span>
           </summary>
-          <div className="flex flex-col gap-4 border-t border-line px-4 py-4">
-          {can(ctx, 'simulation.run', projectId) && (
-            <div className="panel max-w-3xl px-5 py-4"><PlannerForm projectId={projectId} industries={INDUSTRIES} /></div>
-          )}
-          {plans.map((p) => {
-            const content = p.content as unknown as (CommsPlan & { frameworks: (CommsPlan['frameworks'][number] & { id?: string })[] }) | null;
-            const sources = (p.sources ?? {}) as { data?: string[] };
-            return (
-              <article key={p.id} className="panel">
-                <div className="panel-head">
-                  <div className="min-w-0">
-                    <h3 className="font-sans text-[15px] font-bold text-ink">{content?.title || p.question}</h3>
-                    <p className="text-xs text-ink-subtle">{`“${p.question}” · ${fmtDateTime(p.createdAt)} ${TZ_LABEL}${p.isMock && p.status === 'COMPLETED' ? ' · mock' : ''}`}</p>
-                  </div>
-                  <span className="shrink-0 text-xs font-semibold text-ink-muted">{p.status === 'COMPLETED' ? '' : p.status === 'FAILED' ? 'Failed' : 'Writing…'}</span>
+          <div className="grid gap-4 border-t border-line px-4 py-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+            <div className="flex flex-col gap-4">
+              {canPlan && (
+                <div className="panel px-3.5 py-3">
+                  <PlannerForm projectId={projectId} industries={INDUSTRIES} initial={editPlan} key={editPlan ? `edit-${String(search.editPlan)}` : 'new'} />
                 </div>
-                <div className="px-4 py-4">
-                  {p.status === 'FAILED' && <p className="rounded border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">{p.failureReason}</p>}
-                  {p.status === 'COMPLETED' && content && <PlanView content={content} dataLines={sources.data ?? []} />}
-                  {(p.status === 'QUEUED' || p.status === 'RUNNING') && <p className="text-sm text-ink-muted">Writing the plan from the data…</p>}
-                </div>
-              </article>
-            );
-          })}
+              )}
+              {plans.length > 0 && (
+                <nav aria-label="Previous plans" className="panel">
+                  <div className="panel-head"><h3 className="font-sans text-sm font-medium text-ink">Previous plans</h3></div>
+                  <ul className="flex flex-col divide-y divide-line">
+                    {plans.map((p) => {
+                      const title = (p.content as { title?: string } | null)?.title || p.question;
+                      return (
+                        <li key={p.id}>
+                          <Link
+                            href={`/projects/${projectId}/results?plan=${p.id}#plans` as Route}
+                            aria-current={p.id === plan?.id ? 'true' : undefined}
+                            className={`block px-3.5 py-2 hover:bg-bg ${p.id === plan?.id ? 'border-l-2 border-brand bg-brand-soft/40' : 'border-l-2 border-transparent'}`}
+                          >
+                            <span className="line-clamp-2 text-xs text-ink">{title}</span>
+                            <span className="mt-0.5 block text-[10.5px] text-ink-subtle">{`${p.status.toLowerCase()} · ${fmtDateTime(p.createdAt)}${p.isMock && p.status === 'COMPLETED' ? ' · mock' : ''}`}</span>
+                          </Link>
+                          <div className="px-3.5 pb-2">
+                            <PlanRecordActions projectId={projectId} planId={p.id} status={p.status} canManage={canPlan} />
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </nav>
+              )}
+            </div>
+            <div className="min-w-0">
+              {!plan ? (
+                <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">No plan yet. Ask a question and write one.</p>
+              ) : (() => {
+                const content = plan.content as unknown as (CommsPlan & { frameworks: (CommsPlan['frameworks'][number] & { id?: string })[] }) | null;
+                const sources = (plan.sources ?? {}) as { data?: string[] };
+                return (
+                  <article className="panel">
+                    <div className="panel-head">
+                      <div className="min-w-0">
+                        <h3 className="font-sans text-[15px] font-bold text-ink">{content?.title || plan.question}</h3>
+                        <p className="text-xs text-ink-subtle">{`“${plan.question}” · ${fmtDateTime(plan.createdAt)} ${TZ_LABEL}${plan.isMock && plan.status === 'COMPLETED' ? ' · mock' : ''}`}</p>
+                      </div>
+                      <span className="shrink-0 text-xs font-semibold text-ink-muted">{plan.status === 'COMPLETED' ? '' : plan.status === 'FAILED' ? 'Failed' : 'Writing…'}</span>
+                    </div>
+                    <div className="px-4 py-4">
+                      {plan.status === 'FAILED' && <p className="rounded border border-danger bg-danger-soft px-3 py-2 text-sm text-danger">{plan.failureReason}</p>}
+                      {plan.status === 'COMPLETED' && content && <PlanView content={content} dataLines={sources.data ?? []} />}
+                      {(plan.status === 'QUEUED' || plan.status === 'RUNNING') && <p className="text-sm text-ink-muted">Writing the plan from the data…</p>}
+                    </div>
+                  </article>
+                );
+              })()}
+            </div>
           </div>
         </details>
       )}

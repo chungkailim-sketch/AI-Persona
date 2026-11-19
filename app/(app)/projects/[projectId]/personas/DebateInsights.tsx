@@ -11,6 +11,7 @@ import { Field, FormMessages, Select, SubmitButton, TextArea, TextInput } from '
 import { PagerControls, usePage } from '@/ui/Pager';
 import { fmtDateTime } from '@/lib/time';
 import { DebateAutoRefresh } from './DebatePanel';
+import { Collapsible } from '@/ui/Collapsible';
 
 export interface InsightArtifactView {
   id: string;
@@ -243,81 +244,82 @@ function PanelResult({ a }: { a: InsightArtifactView }) {
   const answered = answers.filter((x) => x.ok).length;
   const markets = c.tally[0]?.byMarket.map((m) => m.market) ?? [];
   return (
-    <section className="flex flex-col gap-3" aria-label="Panel answers">
-      <h4 className="text-sm font-medium text-ink">{c.question}</h4>
-      {(a.content as { panel?: { source: string; segmentGroups?: string[]; markets?: string[] } }).panel?.source === 'data' && (
-        <p className="font-mono text-[10.5px] text-ink-subtle">
-          {`Panel built from the data · ${((a.content as { panel: { segmentGroups: string[] } }).panel.segmentGroups ?? []).join(', ')}${(a.content as { panel: { markets: string[] } }).panel.markets?.length ? ` · ${(a.content as { panel: { markets: string[] } }).panel.markets.join(', ')}` : ' · all markets'}`}
+    <Collapsible title=<>{c.question}</>>
+      <section className="flex flex-col gap-3" aria-label="Panel answers">
+        {(a.content as { panel?: { source: string; segmentGroups?: string[]; markets?: string[] } }).panel?.source === 'data' && (
+          <p className="font-mono text-[10.5px] text-ink-subtle">
+            {`Panel built from the data · ${((a.content as { panel: { segmentGroups: string[] } }).panel.segmentGroups ?? []).join(', ')}${(a.content as { panel: { markets: string[] } }).panel.markets?.length ? ` · ${(a.content as { panel: { markets: string[] } }).panel.markets.join(', ')}` : ' · all markets'}`}
+          </p>
+        )}
+        <p className="text-xs text-ink-subtle">
+          {answered} of {answers.length} personas answered. &ldquo;Willing&rdquo; counts very likely and likely, as a share of personas that answered.
+          Counted in code from the personas&rsquo; ratings; the personas are simulations of published segments, not respondents.
         </p>
-      )}
-      <p className="text-xs text-ink-subtle">
-        {answered} of {answers.length} personas answered. &ldquo;Willing&rdquo; counts very likely and likely, as a share of personas that answered.
-        Counted in code from the personas&rsquo; ratings; the personas are simulations of published segments, not respondents.
-      </p>
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-xs">
-          <thead className="text-ink-subtle">
-            <tr>
-              <th className="py-1 pr-3 font-normal">Category</th>
-              <th className="py-1 pr-3 font-normal">Willing</th>
-              <th className="py-1 pr-3 font-normal">Very likely</th>
-              <th className="py-1 pr-3 font-normal">Likely</th>
-              <th className="py-1 pr-3 font-normal">Unlikely</th>
-              <th className="py-1 pr-3 font-normal">Would not</th>
-              {markets.map((m) => <th key={m} className="py-1 pr-3 font-normal">{m}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {c.tally.map((t) => (
-              <tr key={t.category} className="border-t border-line">
-                <td className="py-1.5 pr-3 text-ink">{t.category}</td>
-                <td className="py-1.5 pr-3">
-                  <span className="inline-flex items-center gap-2">
-                    <span className="inline-block h-1.5 w-16 rounded bg-line"><span className="block h-1.5 rounded-full bg-brand" style={{ width: `${Math.round(t.willingShare * 100)}%` }} /></span>
-                    <span className="font-mono">{Math.round(t.willingShare * 100)}%</span>
-                  </span>
-                </td>
-                <td className="py-1.5 pr-3 font-mono">{t.counts.very_likely}</td>
-                <td className="py-1.5 pr-3 font-mono">{t.counts.likely}</td>
-                <td className="py-1.5 pr-3 font-mono">{t.counts.unlikely}</td>
-                <td className="py-1.5 pr-3 font-mono">{t.counts.would_not}</td>
-                {t.byMarket.map((m) => <td key={m.market} className="py-1.5 pr-3 font-mono">{`${m.willing}/${m.answered}`}</td>)}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs">
+            <thead className="text-ink-subtle">
+              <tr>
+                <th className="py-1 pr-3 font-normal">Category</th>
+                <th className="py-1 pr-3 font-normal">Willing</th>
+                <th className="py-1 pr-3 font-normal">Very likely</th>
+                <th className="py-1 pr-3 font-normal">Likely</th>
+                <th className="py-1 pr-3 font-normal">Unlikely</th>
+                <th className="py-1 pr-3 font-normal">Would not</th>
+                {markets.map((m) => <th key={m} className="py-1 pr-3 font-normal">{m}</th>)}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <h4 className="mt-2 text-sm font-medium text-ink">What each persona said</h4>
-      <ul className="flex flex-col gap-2">
-        {answers.slice(page.start, page.end).map((x) => (
-          <li key={String(x.agentKey)} className="border-t border-line px-3 py-2">
-            <div className="flex flex-wrap items-baseline gap-2">
-              <span className="font-mono text-[10.5px] text-ink-subtle">{String(x.agentKey)}</span>
-              <span className="text-xs font-medium text-ink">{String(x.name)}</span>
-              {typeof x.confidence === 'number' && <span className="font-mono text-[10px] text-ink-subtle">confidence {x.confidence.toFixed(2)}</span>}
-            </div>
-            {x.ok ? (
-              <>
-                <p className="mt-1 whitespace-pre-wrap text-xs text-ink-muted">{String(x.answer)}</p>
-                <ul className="mt-1 flex flex-wrap gap-1">
-                  {(x.categories as { category: string; likelihood: string; reason: string; evidenceIds: string[] }[]).map((k) => (
-                    <li key={k.category} title={k.reason} className="rounded-sm border border-line px-1.5 py-0.5 text-[11px] text-ink-muted">
-                      {k.category}: {LIKELIHOOD_LABEL[k.likelihood] ?? k.likelihood}
-                      <Ids ids={k.evidenceIds} />
-                    </li>
-                  ))}
-                </ul>
-                {(x.conditions as string[]).length > 0 && <p className="mt-1 text-[11px] text-ink-subtle">Would try if: {(x.conditions as string[]).join('; ')}</p>}
-                {(x.barriers as string[]).length > 0 && <p className="mt-0.5 text-[11px] text-ink-subtle">Barriers: {(x.barriers as string[]).join('; ')}</p>}
-              </>
-            ) : (
-              <p className="mt-1 text-xs text-danger">No answer ({String(x.outcome)}).</p>
-            )}
-          </li>
-        ))}
-      </ul>
-      <PagerControls {...page} total={answers.length} />
-    </section>
+            </thead>
+            <tbody>
+              {c.tally.map((t) => (
+                <tr key={t.category} className="border-t border-line">
+                  <td className="py-1.5 pr-3 text-ink">{t.category}</td>
+                  <td className="py-1.5 pr-3">
+                    <span className="inline-flex items-center gap-2">
+                      <span className="inline-block h-1.5 w-16 rounded bg-line"><span className="block h-1.5 rounded-full bg-brand" style={{ width: `${Math.round(t.willingShare * 100)}%` }} /></span>
+                      <span className="font-mono">{Math.round(t.willingShare * 100)}%</span>
+                    </span>
+                  </td>
+                  <td className="py-1.5 pr-3 font-mono">{t.counts.very_likely}</td>
+                  <td className="py-1.5 pr-3 font-mono">{t.counts.likely}</td>
+                  <td className="py-1.5 pr-3 font-mono">{t.counts.unlikely}</td>
+                  <td className="py-1.5 pr-3 font-mono">{t.counts.would_not}</td>
+                  {t.byMarket.map((m) => <td key={m.market} className="py-1.5 pr-3 font-mono">{`${m.willing}/${m.answered}`}</td>)}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <h4 className="mt-2 text-sm font-medium text-ink">What each persona said</h4>
+        <ul className="flex flex-col gap-2">
+          {answers.slice(page.start, page.end).map((x) => (
+            <li key={String(x.agentKey)} className="border-t border-line px-3 py-2">
+              <div className="flex flex-wrap items-baseline gap-2">
+                <span className="font-mono text-[10.5px] text-ink-subtle">{String(x.agentKey)}</span>
+                <span className="text-xs font-medium text-ink">{String(x.name)}</span>
+                {typeof x.confidence === 'number' && <span className="font-mono text-[10px] text-ink-subtle">confidence {x.confidence.toFixed(2)}</span>}
+              </div>
+              {x.ok ? (
+                <>
+                  <p className="mt-1 whitespace-pre-wrap text-xs text-ink-muted">{String(x.answer)}</p>
+                  <ul className="mt-1 flex flex-wrap gap-1">
+                    {(x.categories as { category: string; likelihood: string; reason: string; evidenceIds: string[] }[]).map((k) => (
+                      <li key={k.category} title={k.reason} className="rounded-sm border border-line px-1.5 py-0.5 text-[11px] text-ink-muted">
+                        {k.category}: {LIKELIHOOD_LABEL[k.likelihood] ?? k.likelihood}
+                        <Ids ids={k.evidenceIds} />
+                      </li>
+                    ))}
+                  </ul>
+                  {(x.conditions as string[]).length > 0 && <p className="mt-1 text-[11px] text-ink-subtle">Would try if: {(x.conditions as string[]).join('; ')}</p>}
+                  {(x.barriers as string[]).length > 0 && <p className="mt-0.5 text-[11px] text-ink-subtle">Barriers: {(x.barriers as string[]).join('; ')}</p>}
+                </>
+              ) : (
+                <p className="mt-1 text-xs text-danger">No answer ({String(x.outcome)}).</p>
+              )}
+            </li>
+          ))}
+        </ul>
+        <PagerControls {...page} total={answers.length} />
+      </section>
+    </Collapsible>
   );
 }
 
@@ -481,34 +483,35 @@ function PersonaTab({
         )}
       </div>
 
-      <section className="panel px-4 py-3" aria-label="Self-introduction">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h4 className="text-sm font-medium text-ink">Self-introduction</h4>
-          {canRun && (
-            <form action={introAction}>
-              <Hidden projectId={projectId} debateId={debateId} kind="SELF_INTRO" />
-              <input type="hidden" name="agentKey" value={agentKey} />
-              <SubmitButton variant="secondary" pendingLabel="Queuing…">{intro ? 'Regenerate' : 'Generate'}</SubmitButton>
-            </form>
-          )}
-        </div>
-        <FormMessages state={introState} />
-        {persona?.segment && <p className="mt-1 font-mono text-[10.5px] text-ink-subtle">{persona.segment}</p>}
-        {!intro ? (
-          <p className="mt-2 text-sm text-ink-muted">Not generated yet.</p>
-        ) : intro.status !== 'COMPLETED' ? (
-          <div className="mt-2"><Status a={intro} /></div>
-        ) : (
-          <div className="mt-2 flex flex-col gap-2 text-sm text-ink-muted">
-            <p className="text-base text-ink">{intro.content.headline}</p>
-            <p className="whitespace-pre-wrap">{intro.content.introduction}<Ids ids={intro.content.evidenceIds} /></p>
-            {intro.content.aboutMe?.length > 0 && (<div><p className="text-xs font-medium text-ink">About me</p><ul className="list-disc pl-5 text-xs">{intro.content.aboutMe.map((x: string) => <li key={x}>{x}</li>)}</ul></div>)}
-            {intro.content.whatIValue?.length > 0 && (<div><p className="text-xs font-medium text-ink">What I value in a brand</p><ul className="list-disc pl-5 text-xs">{intro.content.whatIValue.map((x: string) => <li key={x}>{x}</li>)}</ul></div>)}
-            {intro.content.viewOnTheTopic && (<div><p className="text-xs font-medium text-ink">My view on the topic</p><p className="text-xs">{intro.content.viewOnTheTopic}</p></div>)}
-            {intro.content.howToReachMe?.length > 0 && (<div><p className="text-xs font-medium text-ink">How to reach me</p><ul className="list-disc pl-5 text-xs">{intro.content.howToReachMe.map((x: string) => <li key={x}>{x}</li>)}</ul></div>)}
+      <Collapsible title=<>Self-introduction</>>
+        <section className="px-4 py-3" aria-label="Self-introduction">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            {canRun && (
+              <form action={introAction}>
+                <Hidden projectId={projectId} debateId={debateId} kind="SELF_INTRO" />
+                <input type="hidden" name="agentKey" value={agentKey} />
+                <SubmitButton variant="secondary" pendingLabel="Queuing…">{intro ? 'Regenerate' : 'Generate'}</SubmitButton>
+              </form>
+            )}
           </div>
-        )}
-      </section>
+          <FormMessages state={introState} />
+          {persona?.segment && <p className="mt-1 font-mono text-[10.5px] text-ink-subtle">{persona.segment}</p>}
+          {!intro ? (
+            <p className="mt-2 text-sm text-ink-muted">Not generated yet.</p>
+          ) : intro.status !== 'COMPLETED' ? (
+            <div className="mt-2"><Status a={intro} /></div>
+          ) : (
+            <div className="mt-2 flex flex-col gap-2 text-sm text-ink-muted">
+              <p className="text-base text-ink">{intro.content.headline}</p>
+              <p className="whitespace-pre-wrap">{intro.content.introduction}<Ids ids={intro.content.evidenceIds} /></p>
+              {intro.content.aboutMe?.length > 0 && (<div><p className="text-xs font-medium text-ink">About me</p><ul className="list-disc pl-5 text-xs">{intro.content.aboutMe.map((x: string) => <li key={x}>{x}</li>)}</ul></div>)}
+              {intro.content.whatIValue?.length > 0 && (<div><p className="text-xs font-medium text-ink">What I value in a brand</p><ul className="list-disc pl-5 text-xs">{intro.content.whatIValue.map((x: string) => <li key={x}>{x}</li>)}</ul></div>)}
+              {intro.content.viewOnTheTopic && (<div><p className="text-xs font-medium text-ink">My view on the topic</p><p className="text-xs">{intro.content.viewOnTheTopic}</p></div>)}
+              {intro.content.howToReachMe?.length > 0 && (<div><p className="text-xs font-medium text-ink">How to reach me</p><ul className="list-disc pl-5 text-xs">{intro.content.howToReachMe.map((x: string) => <li key={x}>{x}</li>)}</ul></div>)}
+            </div>
+          )}
+        </section>
+      </Collapsible>
 
       <section className="panel px-4 py-3" aria-label="Interview">
         <h4 className="text-sm font-medium text-ink">Interview</h4>

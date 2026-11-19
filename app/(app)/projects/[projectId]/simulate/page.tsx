@@ -18,6 +18,7 @@ import { RefreshWhileImporting } from '../data/RefreshWhileImporting';
 import type { Selection } from '@/roundtable/selection';
 import { StartRoundtableButton } from './RoundtableControls';
 import { projectModules } from '@/modules/project';
+import { Collapsible } from '@/ui/Collapsible';
 
 export const metadata = { title: 'Roundtable · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -125,7 +126,9 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
       )}
 
       {rt && (
-        <section className="panel max-w-3xl" aria-live="polite">
+        // Open while the personas answer; collapsed once the roundtable has finished.
+        <Collapsible open={running} className="max-w-3xl" title={running ? (rt.phase === 'SUMMARY' ? 'Writing the takeaways…' : 'Personas answering…') : rt.status === 'COMPLETED' ? 'Roundtable complete' : 'Roundtable stopped'} note={`${rt.answers.length} of ${rt.total} answered`}>
+        <section aria-live="polite">
           <div className="panel-head">
             <h2 className="font-sans text-sm font-semibold text-ink">
               {running ? (rt.phase === 'SUMMARY' ? 'Writing the takeaways…' : 'Personas answering…') : rt.status === 'COMPLETED' ? 'Roundtable complete' : 'Roundtable stopped'}
@@ -157,68 +160,70 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
             </ul>
           </div>
         </section>
+        </Collapsible>
       )}
 
       {earlier.length > 0 && (
-        <section aria-labelledby="rt-history" className="flex max-w-3xl flex-col gap-2">
-          <h2 id="rt-history" className="font-sans text-sm font-semibold text-ink">Earlier roundtables</h2>
-          {earlier.map((r) => {
-            const summary = r.summary as unknown as RoundtableSummary | null;
-            const ok = r.answers.filter((a) => a.ok);
-            const avg = ok.length ? Math.round(ok.reduce((t, a) => t + (a.overall ?? 0), 0) / ok.length) : null;
-            const rows = [...r.answers].sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
-            return (
-              <details key={r.id} className="panel">
-                <summary className="flex cursor-pointer flex-col gap-0.5 px-5 py-3">
-                  <span className="text-xs text-ink-subtle">
-                    {fmtDateTime(r.createdAt)} {TZ_LABEL}
-                    {' · '}
-                    {r.status === 'COMPLETED' ? 'Completed' : r.status === 'FAILED' ? 'Failed' : 'Stopped'}
-                    {' · '}
-                    {`${r.answers.length} of ${r.total} answered`}
-                    {avg !== null && <>{' · '}{`Average openness ${avg}`}</>}
-                  </span>
-                  <span className="text-sm font-semibold text-ink">{r.question}</span>
-                  {summary?.consensus && <span className="text-sm text-ink-muted">{summary.consensus}</span>}
-                </summary>
-                <div className="flex flex-col gap-4 border-t border-line px-5 py-4">
-                  <ul className="flex flex-wrap gap-1.5">
-                    {r.categories.map((c) => (
-                      <li key={c} className="rounded-sm border border-line bg-bg px-2 py-0.5 text-xs text-ink-muted">{c}</li>
-                    ))}
-                  </ul>
-                  {summary && summary.takeaways.length > 0 && (
-                    <div>
-                      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Key takeaways</h3>
-                      <ul className="mt-1 list-disc pl-5 text-sm text-ink">
-                        {summary.takeaways.map((t) => <li key={t}>{t}</li>)}
-                      </ul>
-                    </div>
-                  )}
-                  {r.failureReason && <p className="text-sm text-warn">{r.failureReason}</p>}
-                  <ul className="flex flex-col divide-y divide-line">
-                    {rows.map((a) => {
-                      const p = personas.get(a.personaId);
-                      const b = band(a.overall ?? 0);
-                      return (
-                        <li key={a.id} className="flex gap-3 py-2.5">
-                          <PersonaAvatar name={p?.name ?? '?'} profile={p?.profile} size={32} />
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-ink">
-                              {p?.name ?? 'Persona'} <span className="font-normal text-ink-subtle">· {a.market}</span>
-                            </p>
-                            {a.ok ? <p className="text-sm text-ink-muted">“{a.quote}”</p> : <p className="text-sm text-warn">No usable answer.</p>}
-                          </div>
-                          {a.ok && <span className={`h-fit shrink-0 rounded-sm border px-2 py-0.5 text-xs font-medium ${BAND_CLS[b]}`}>{`${Math.round(a.overall ?? 0)} · ${BAND_LABEL[b]}`}</span>}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </div>
-              </details>
-            );
-          })}
-        </section>
+        <Collapsible title=<>Earlier roundtables</>>
+          <section aria-labelledby="rt-history" className="flex max-w-3xl flex-col gap-2">
+            {earlier.map((r) => {
+              const summary = r.summary as unknown as RoundtableSummary | null;
+              const ok = r.answers.filter((a) => a.ok);
+              const avg = ok.length ? Math.round(ok.reduce((t, a) => t + (a.overall ?? 0), 0) / ok.length) : null;
+              const rows = [...r.answers].sort((a, b) => (b.overall ?? 0) - (a.overall ?? 0));
+              return (
+                <details key={r.id} className="panel">
+                  <summary className="flex cursor-pointer flex-col gap-0.5 px-5 py-3">
+                    <span className="text-xs text-ink-subtle">
+                      {fmtDateTime(r.createdAt)} {TZ_LABEL}
+                      {' · '}
+                      {r.status === 'COMPLETED' ? 'Completed' : r.status === 'FAILED' ? 'Failed' : 'Stopped'}
+                      {' · '}
+                      {`${r.answers.length} of ${r.total} answered`}
+                      {avg !== null && <>{' · '}{`Average openness ${avg}`}</>}
+                    </span>
+                    <span className="text-sm font-semibold text-ink">{r.question}</span>
+                    {summary?.consensus && <span className="text-sm text-ink-muted">{summary.consensus}</span>}
+                  </summary>
+                  <div className="flex flex-col gap-4 border-t border-line px-5 py-4">
+                    <ul className="flex flex-wrap gap-1.5">
+                      {r.categories.map((c) => (
+                        <li key={c} className="rounded-sm border border-line bg-bg px-2 py-0.5 text-xs text-ink-muted">{c}</li>
+                      ))}
+                    </ul>
+                    {summary && summary.takeaways.length > 0 && (
+                      <div>
+                        <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Key takeaways</h3>
+                        <ul className="mt-1 list-disc pl-5 text-sm text-ink">
+                          {summary.takeaways.map((t) => <li key={t}>{t}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    {r.failureReason && <p className="text-sm text-warn">{r.failureReason}</p>}
+                    <ul className="flex flex-col divide-y divide-line">
+                      {rows.map((a) => {
+                        const p = personas.get(a.personaId);
+                        const b = band(a.overall ?? 0);
+                        return (
+                          <li key={a.id} className="flex gap-3 py-2.5">
+                            <PersonaAvatar name={p?.name ?? '?'} profile={p?.profile} size={32} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-semibold text-ink">
+                                {p?.name ?? 'Persona'} <span className="font-normal text-ink-subtle">· {a.market}</span>
+                              </p>
+                              {a.ok ? <p className="text-sm text-ink-muted">“{a.quote}”</p> : <p className="text-sm text-warn">No usable answer.</p>}
+                            </div>
+                            {a.ok && <span className={`h-fit shrink-0 rounded-sm border px-2 py-0.5 text-xs font-medium ${BAND_CLS[b]}`}>{`${Math.round(a.overall ?? 0)} · ${BAND_LABEL[b]}`}</span>}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                </details>
+              );
+            })}
+          </section>
+        </Collapsible>
       )}
 
       {rt?.status === 'COMPLETED' && <div className="max-w-3xl"><DecisionGuidance projectId={projectId} checkpoint="ROUNDTABLE" canAsk={can(ctx, 'project.edit', projectId)} /></div>}

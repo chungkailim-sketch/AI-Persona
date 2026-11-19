@@ -15,10 +15,12 @@ import { WorkflowNav } from '../WorkflowNav';
 import { DecisionGuidance } from '../DecisionGuidance';
 import { RefreshWhileImporting } from '../data/RefreshWhileImporting';
 import { ApproveCastButton, BuildPersonasForm, RenamePersona } from './CastControls';
+import { DebateRecordActions } from './DebateRecordActions';
 import { DebateDetail, DebateForm } from './DebatePanel';
 import { toDebateView } from './debateView';
 import { projectModules } from '@/modules/project';
 import { suggestedSwarm } from '@/advice/briefImport';
+import { Collapsible } from '@/ui/Collapsible';
 
 export const metadata = { title: 'Personas · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -73,6 +75,9 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
   // The swarm debate runs on the approved personas.
   const debates = (await listDebates(user, projectId)).filter((d) => d.cohortId === cast?.id).slice(0, 5);
   const requested = typeof search.debate === 'string' ? search.debate : debates[0]?.id;
+  // "Edit" on a recent debate opens the set-up form pre-filled with that debate, to change and run again.
+  const editRow = typeof search.edit === 'string' ? await getDebate(user, projectId, search.edit) : null;
+  const editing = editRow ? { topic: editRow.topic, hypothesis: editRow.hypothesis ?? '', focusSegments: editRow.focusSegments, rounds: editRow.rounds } : null;
   const debateRow = requested ? await getDebate(user, projectId, requested) : null;
   const debate = debateRow ? toDebateView(debateRow) : null;
   const debateRunning = debate?.status === 'QUEUED' || debate?.status === 'RUNNING';
@@ -129,106 +134,109 @@ export default async function PersonasStepPage(props: PageProps<'/projects/[proj
       )}
 
       {cast && !building && people.length > 0 && (
-        <section aria-labelledby="personas-heading" className="flex flex-col gap-3">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 id="personas-heading" className="text-lg">{`${people.length} personas`}</h2>
-            {approved ? (
-              <span className="rounded-sm border border-ok/40 bg-ok-soft px-2 py-1 text-sm font-medium text-ok">Approved</span>
-            ) : canApprove ? (
-              <ApproveCastButton projectId={projectId} cohortId={cast.id} />
-            ) : null}
-            {cast.generationNote && <p className="w-full max-w-prose text-xs text-ink-subtle">{cast.generationNote}</p>}
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[720px] border-separate border-spacing-2">
-              <thead>
-                <tr>
-                  <th scope="col" className="w-36" />
-                  {castMarkets.map((m) => (
-                    <th key={m} scope="col" className="p-0 font-normal"><MarketHeader market={m} /></th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, ri) => (
-                  <tr key={row.key}>
-                    <th scope="row" className="h-px p-0 align-top font-normal">
-                      <TierHeader index={ri} group={row.group} label={row.label} />
-                    </th>
-                    {castMarkets.map((m) => {
-                      const p = people.find((x) => x.profile?.market === m && `${x.profile.group ?? ''}|${x.profile.tier}` === row.key);
-                      return (
-                        <td key={m} className="align-top">
-                          {p?.profile ? (
-                            <div className="flex h-full flex-col gap-1">
-                              <Link href={`/projects/${projectId}/personas/${p.id}` as Route} prefetch={false} className="block h-full rounded outline-offset-2 hover:bg-surface" aria-label={`Open ${p.name}`}>
-                                <PersonaCard name={p.name} profile={p.profile} compact footer={modules.has('interviews') ? <span className="text-xs font-semibold text-link">Open and interview →</span> : undefined} />
-                              </Link>
-                              {canEdit && !approved && <RenamePersona projectId={projectId} personaId={p.id} name={p.name} />}
-                            </div>
-                          ) : (
-                            <p className="rounded border border-dashed border-line p-3 text-xs text-ink-subtle">Not published for this market.</p>
-                          )}
-                        </td>
-                      );
-                    })}
+        <Collapsible title=<>{`${people.length} personas`}</>>
+          <section aria-labelledby="personas-heading" className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {approved ? (
+                <span className="rounded-sm border border-ok/40 bg-ok-soft px-2 py-1 text-sm font-medium text-ok">Approved</span>
+              ) : canApprove ? (
+                <ApproveCastButton projectId={projectId} cohortId={cast.id} />
+              ) : null}
+              {cast.generationNote && <p className="w-full max-w-prose text-xs text-ink-subtle">{cast.generationNote}</p>}
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[720px] border-separate border-spacing-2">
+                <thead>
+                  <tr>
+                    <th scope="col" className="w-36" />
+                    {castMarkets.map((m) => (
+                      <th key={m} scope="col" className="p-0 font-normal"><MarketHeader market={m} /></th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <DecisionGuidance projectId={projectId} checkpoint="CAST" subjectId={cast.id} canAsk={can(ctx, 'project.edit', projectId)} />
-        </section>
+                </thead>
+                <tbody>
+                  {rows.map((row, ri) => (
+                    <tr key={row.key}>
+                      <th scope="row" className="h-px p-0 align-top font-normal">
+                        <TierHeader index={ri} group={row.group} label={row.label} />
+                      </th>
+                      {castMarkets.map((m) => {
+                        const p = people.find((x) => x.profile?.market === m && `${x.profile.group ?? ''}|${x.profile.tier}` === row.key);
+                        return (
+                          <td key={m} className="align-top">
+                            {p?.profile ? (
+                              <div className="flex h-full flex-col gap-1">
+                                <Link href={`/projects/${projectId}/personas/${p.id}` as Route} prefetch={false} className="block h-full rounded outline-offset-2 hover:bg-surface" aria-label={`Open ${p.name}`}>
+                                  <PersonaCard name={p.name} profile={p.profile} compact footer={modules.has('interviews') ? <span className="text-xs font-semibold text-link">Open and interview →</span> : undefined} />
+                                </Link>
+                                {canEdit && !approved && <RenamePersona projectId={projectId} personaId={p.id} name={p.name} />}
+                              </div>
+                            ) : (
+                              <p className="rounded border border-dashed border-line p-3 text-xs text-ink-subtle">Not published for this market.</p>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <DecisionGuidance projectId={projectId} checkpoint="CAST" subjectId={cast.id} canAsk={can(ctx, 'project.edit', projectId)} />
+          </section>
+        </Collapsible>
       )}
 
       {modules.has('debate') && cast && !building && people.length > 0 && (
-        <section aria-labelledby="debate-heading" id="debate" className="scroll-mt-48 border-t border-line pt-6">
-          <h2 id="debate-heading" className="text-lg">Agent swarm debate</h2>
-          <p className="mt-1 max-w-prose text-xs text-ink-subtle">
-            Put a topic or hypothesis to these personas as a crew of agents, with a moderator, an evidence analyst, a devil&rsquo;s advocate and a judge. When it ends, the decision engine weighs the outcome and recommends what to do next.
-          </p>
-          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-            <div className="flex flex-col gap-4">
-              <div className="panel px-3.5 py-3">
-                {!canDebate ? (
-                  <p className="text-sm text-ink-muted">Running a debate needs the simulation.run permission.</p>
-                ) : !approved ? (
-                  <p className="text-sm text-ink-muted">Approve the personas first. The debate runs on approved personas only.</p>
-                ) : (
-                  <DebateForm projectId={projectId} cohorts={[{ id: cast.id, name: cast.name, approved: people.length }]} runs={[]} hypotheses={briefHypotheses.map((h) => h.statement)} suggested={swarm} returnTo="journey" />
+        <Collapsible title=<>Agent swarm debate</>>
+          <section aria-labelledby="debate-heading" id="debate" className="scroll-mt-48 border-t border-line pt-6">
+            <p className="mt-1 max-w-prose text-xs text-ink-subtle">
+              Put a topic or hypothesis to these personas as a crew of agents, with a moderator, an evidence analyst, a devil&rsquo;s advocate and a judge. When it ends, the decision engine weighs the outcome and recommends what to do next.
+            </p>
+            <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+              <div className="flex flex-col gap-4">
+                <div className="panel px-3.5 py-3">
+                  {!canDebate ? (
+                    <p className="text-sm text-ink-muted">Running a debate needs the simulation.run permission.</p>
+                  ) : !approved ? (
+                    <p className="text-sm text-ink-muted">Approve the personas first. The debate runs on approved personas only.</p>
+                  ) : (
+                    <DebateForm projectId={projectId} cohorts={[{ id: cast.id, name: cast.name, approved: people.length }]} runs={[]} hypotheses={briefHypotheses.map((h) => h.statement)} suggested={editing ?? swarm} editing={Boolean(editing)} returnTo="journey" key={editing ? `edit-${search.edit}` : 'new'} />
+                  )}
+                </div>
+                {approved && modules.has('decisions') && (
+                  <DecisionGuidance projectId={projectId} checkpoint="SWARM_SETUP" canAsk={can(ctx, 'project.edit', projectId)} title="Recommended swarm set-up" />
+                )}
+                {debates.length > 0 && (
+                  <nav aria-label="Recent debates" className="panel">
+                    <div className="panel-head"><h3 className="font-sans text-sm font-medium text-ink">Recent debates</h3></div>
+                    <ul className="flex flex-col divide-y divide-line">
+                      {debates.map((d) => (
+                        <li key={d.id}>
+                          <Link
+                            href={`/projects/${projectId}/personas?debate=${d.id}#debate` as Route}
+                            aria-current={d.id === debate?.id ? 'true' : undefined}
+                            className={`block px-3.5 py-2 hover:bg-bg ${d.id === debate?.id ? 'border-l-2 border-brand bg-brand-soft/40' : 'border-l-2 border-transparent'}`}
+                          >
+                            <span className="line-clamp-2 text-xs text-ink">{d.topic}</span>
+                            <span className="mt-0.5 block text-[10.5px] text-ink-subtle">{`${d.status.toLowerCase()} · ${fmtDateTime(d.createdAt)}${d.isMock ? ' · mock' : ''}`}</span>
+                          </Link>
+                          {canDebate && <DebateRecordActions projectId={projectId} debateId={d.id} status={d.status} base="personas" />}
+                        </li>
+                      ))}
+                    </ul>
+                  </nav>
                 )}
               </div>
-              {approved && modules.has('decisions') && (
-                <DecisionGuidance projectId={projectId} checkpoint="SWARM_SETUP" canAsk={can(ctx, 'project.edit', projectId)} title="Recommended swarm set-up" />
-              )}
-              {debates.length > 0 && (
-                <nav aria-label="Recent debates" className="panel">
-                  <div className="panel-head"><h3 className="font-sans text-sm font-medium text-ink">Recent debates</h3></div>
-                  <ul className="flex flex-col divide-y divide-line">
-                    {debates.map((d) => (
-                      <li key={d.id}>
-                        <Link
-                          href={`/projects/${projectId}/personas?debate=${d.id}#debate` as Route}
-                          aria-current={d.id === debate?.id ? 'true' : undefined}
-                          className={`block px-3.5 py-2 hover:bg-bg ${d.id === debate?.id ? 'border-l-2 border-brand bg-brand-soft/40' : 'border-l-2 border-transparent'}`}
-                        >
-                          <span className="line-clamp-2 text-xs text-ink">{d.topic}</span>
-                          <span className="mt-0.5 block text-[10.5px] text-ink-subtle">{`${d.status.toLowerCase()} · ${fmtDateTime(d.createdAt)}${d.isMock ? ' · mock' : ''}`}</span>
-                        </Link>
-                      </li>
-                    ))}
-                  </ul>
-                </nav>
-              )}
+              <div className="flex min-w-0 flex-col gap-4">
+                {debate?.status === 'COMPLETED' && (
+                  <DecisionGuidance projectId={projectId} checkpoint="DEBATE" subjectId={debate.id} canAsk={can(ctx, 'project.edit', projectId)} title="Decision on the debate outcome" />
+                )}
+                {debate ? <DebateDetail debate={debate} /> : <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">No debate yet. Enter a topic and run one.</p>}
+              </div>
             </div>
-            <div className="flex min-w-0 flex-col gap-4">
-              {debate?.status === 'COMPLETED' && (
-                <DecisionGuidance projectId={projectId} checkpoint="DEBATE" subjectId={debate.id} canAsk={can(ctx, 'project.edit', projectId)} title="Decision on the debate outcome" />
-              )}
-              {debate ? <DebateDetail debate={debate} /> : <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">No debate yet. Enter a topic and run one.</p>}
-            </div>
-          </div>
-        </section>
+          </section>
+        </Collapsible>
       )}
 
       {approved && (

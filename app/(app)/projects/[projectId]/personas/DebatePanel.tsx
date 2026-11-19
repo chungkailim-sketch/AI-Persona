@@ -6,6 +6,7 @@ import { startDebateAction, type FormState } from '../actions';
 import { Field, FormMessages, Select, SubmitButton, TextArea, TextInput } from '@/ui/forms';
 import { fmtDateTime, TZ_LABEL } from '@/lib/time';
 import { PagerControls, usePage } from '@/ui/Pager';
+import { Collapsible } from '@/ui/Collapsible';
 
 // ── View model ────────────────────────────────────────────────────────────────
 
@@ -129,6 +130,7 @@ export function DebateForm({
   runs,
   hypotheses,
   suggested,
+  editing,
   returnTo,
 }: {
   projectId: string;
@@ -137,13 +139,19 @@ export function DebateForm({
   hypotheses: string[];
   /** The set-up suggested by an uploaded brief: pre-fills the form. */
   suggested?: { topic: string; hypothesis: string; focusSegments: string[]; rounds: number } | null;
+  /** The pre-fill comes from an earlier debate being edited, not from the brief. */
+  editing?: boolean;
   /** "journey" returns to the Personas step after starting; otherwise the Advanced persona tools. */
   returnTo?: 'journey';
 }) {
   const [state, action] = useActionState(startDebateAction, empty);
   return (
     <form action={action} className="flex flex-col gap-3" aria-label="Start a swarm debate">
-      {suggested?.topic && <p className="rounded border border-info/40 bg-info-soft px-3 py-2 text-xs text-ink">Pre-filled from the uploaded brief. Change anything before you run it.</p>}
+      {suggested?.topic && (
+        <p className="rounded border border-info/40 bg-info-soft px-3 py-2 text-xs text-ink">
+          {editing ? 'Editing an earlier debate. Change the set-up and run it; the result is saved as a new debate.' : 'Pre-filled from the uploaded brief. Change anything before you run it.'}
+        </p>
+      )}
       <input type="hidden" name="projectId" value={projectId} />
       {returnTo && <input type="hidden" name="returnTo" value={returnTo} />}
       <Field id="debate-topic" label="Topic or motion to debate" required hint="What the persona agents argue about. Phrase it as a question or a claim.">
@@ -403,62 +411,63 @@ export function DebateDetail({ debate }: { debate: DebateView }) {
 
       {/* Reference conclusion */}
       {debate.status === 'COMPLETED' && (
-        <section aria-label="Reference conclusion" className="panel px-4 py-3">
-          <div className="flex flex-wrap items-center gap-2">
-            <h4 className="text-sm font-medium text-ink">Reference conclusion</h4>
-            {verdict && (
-              <>
-                <span className={`rounded-sm border px-1.5 font-mono text-[10.5px] uppercase ${ANSWER[verdict.answer]?.tone ?? ''}`}>{ANSWER[verdict.answer]?.label ?? verdict.answer}</span>
-                {verdict.basis && BASIS[verdict.basis] && <span className="font-mono text-[10.5px] text-ink-subtle">{BASIS[verdict.basis]}</span>}
-              </>
+        <Collapsible title=<>Reference conclusion</>>
+          <section aria-label="Reference conclusion" className="px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              {verdict && (
+                <>
+                  <span className={`rounded-sm border px-1.5 font-mono text-[10.5px] uppercase ${ANSWER[verdict.answer]?.tone ?? ''}`}>{ANSWER[verdict.answer]?.label ?? verdict.answer}</span>
+                  {verdict.basis && BASIS[verdict.basis] && <span className="font-mono text-[10.5px] text-ink-subtle">{BASIS[verdict.basis]}</span>}
+                </>
+              )}
+            </div>
+            {verdict ? (
+              <div className="mt-2 flex flex-col gap-3">
+                <p className="text-sm text-ink">{verdict.conclusion}</p>
+                {verdict.segmentFindings.length > 0 && (
+                  <ul className="grid gap-2 md:grid-cols-2">
+                    {verdict.segmentFindings.map((s) => (
+                      <li key={s.segment} className="border-t border-line px-3 py-2">
+                        <p className="text-xs font-medium text-ink">{s.segment}</p>
+                        <p className="mt-0.5 text-xs text-ink-muted">{s.assessment}</p>
+                        <div className="mt-1"><Evidence ids={s.evidenceIds} items={items} /></div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <div className="grid gap-3 md:grid-cols-2">
+                  <List title="Arguments for" items={verdict.argumentsFor} tone="bg-ok" />
+                  <List title="Arguments against" items={verdict.argumentsAgainst} tone="bg-danger" />
+                  <List title="Where the panel agreed" items={verdict.consensus} />
+                  <List title="Recorded dissent" items={verdict.dissent} tone="bg-warn" />
+                  <List title="How the conclusion was inferred" items={verdict.inferences ?? []} />
+                  <List title="What to validate in market next" items={verdict.evidenceGaps} tone="bg-warn" />
+                  <List title="Recommendations" items={verdict.recommendations} tone="bg-brand" />
+                </div>
+              </div>
+            ) : (
+              <p className="mt-2 text-sm text-ink-muted">The judge produced no valid verdict. The data comparison and the transcript below still stand.</p>
             )}
-          </div>
-          {verdict ? (
-            <div className="mt-2 flex flex-col gap-3">
-              <p className="text-sm text-ink">{verdict.conclusion}</p>
-              {verdict.segmentFindings.length > 0 && (
-                <ul className="grid gap-2 md:grid-cols-2">
-                  {verdict.segmentFindings.map((s) => (
-                    <li key={s.segment} className="border-t border-line px-3 py-2">
-                      <p className="text-xs font-medium text-ink">{s.segment}</p>
-                      <p className="mt-0.5 text-xs text-ink-muted">{s.assessment}</p>
-                      <div className="mt-1"><Evidence ids={s.evidenceIds} items={items} /></div>
+            {(debate.conclusion?.research ?? []).length > 0 && (
+              <div className="mt-3">
+                <p className="text-xs font-medium text-ink">External sources (web research)</p>
+                <ul className="mt-1 flex flex-col gap-1">
+                  {debate.conclusion!.research!.map((w) => (
+                    <li key={w.id} className="text-xs text-ink-muted">
+                      <span className="font-mono text-ink-subtle">{w.id}</span> {w.claim}{' '}
+                      <a href={w.url} target="_blank" rel="noopener noreferrer nofollow" className="underline">{w.source || w.url}{w.year ? `, ${w.year}` : ''}</a>
                     </li>
                   ))}
                 </ul>
-              )}
-              <div className="grid gap-3 md:grid-cols-2">
-                <List title="Arguments for" items={verdict.argumentsFor} tone="bg-ok" />
-                <List title="Arguments against" items={verdict.argumentsAgainst} tone="bg-danger" />
-                <List title="Where the panel agreed" items={verdict.consensus} />
-                <List title="Recorded dissent" items={verdict.dissent} tone="bg-warn" />
-                <List title="How the conclusion was inferred" items={verdict.inferences ?? []} />
-                <List title="What to validate in market next" items={verdict.evidenceGaps} tone="bg-warn" />
-                <List title="Recommendations" items={verdict.recommendations} tone="bg-brand" />
               </div>
-            </div>
-          ) : (
-            <p className="mt-2 text-sm text-ink-muted">The judge produced no valid verdict. The data comparison and the transcript below still stand.</p>
-          )}
-          {(debate.conclusion?.research ?? []).length > 0 && (
-            <div className="mt-3">
-              <p className="text-xs font-medium text-ink">External sources (web research)</p>
-              <ul className="mt-1 flex flex-col gap-1">
-                {debate.conclusion!.research!.map((w) => (
-                  <li key={w.id} className="text-xs text-ink-muted">
-                    <span className="font-mono text-ink-subtle">{w.id}</span> {w.claim}{' '}
-                    <a href={w.url} target="_blank" rel="noopener noreferrer nofollow" className="underline">{w.source || w.url}{w.year ? `, ${w.year}` : ''}</a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {(debate.conclusion?.caveats ?? []).length > 0 && (
-            <div className="mt-3 rounded border border-warn/40 bg-warn-soft/40 px-3 py-2">
-              <List title="Read this before quoting the conclusion" items={debate.conclusion!.caveats} tone="bg-warn" />
-            </div>
-          )}
-        </section>
+            )}
+            {(debate.conclusion?.caveats ?? []).length > 0 && (
+              <div className="mt-3 rounded border border-warn/40 bg-warn-soft/40 px-3 py-2">
+                <List title="Read this before quoting the conclusion" items={debate.conclusion!.caveats} tone="bg-warn" />
+              </div>
+            )}
+          </section>
+        </Collapsible>
       )}
 
       {comparison && <Comparison c={comparison} />}
@@ -470,35 +479,36 @@ export function DebateDetail({ debate }: { debate: DebateView }) {
 
       {/* Movement */}
       {m && (
-        <section aria-label="How positions moved">
-          <h4 className="text-sm font-medium text-ink">How positions moved</h4>
-          <p className="text-xs text-ink-subtle">{m.herdingInterpretation}</p>
-          <ul className="mt-2 flex flex-wrap gap-2 font-mono text-[11px]">
-            <li className="rounded-sm border border-line px-2 py-0.5">opening {Object.entries(m.openingStances).map(([k, v]) => `${k} ${v}`).join(' · ')}</li>
-            <li className="rounded-sm border border-line px-2 py-0.5">closing {Object.entries(m.closingStances).map(([k, v]) => `${k} ${v}`).join(' · ')}</li>
-            <li className="rounded-sm border border-line px-2 py-0.5">entropy {m.entropy.toFixed(2)}</li>
-            <li className="rounded-sm border border-line px-2 py-0.5">capitulation {m.capitulationRate.toFixed(2)}</li>
-            <li className="rounded-sm border border-line px-2 py-0.5">concessions {m.concessions}</li>
-            <li className="rounded-sm border border-line px-2 py-0.5">citations valid {m.citationValidity === null ? '—' : `${Math.round(m.citationValidity * 100)}%`}</li>
-            {m.herdingSuspected && <li className="rounded-sm border border-warn/40 bg-warn-soft px-2 py-0.5 text-warn">herding suspected</li>}
-          </ul>
-          <div className="mt-2 overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead className="text-ink-subtle"><tr><th className="py-1 pr-3 font-normal">Agent</th><th className="py-1 pr-3 font-normal">Segment</th><th className="py-1 pr-3 font-normal">Opening</th><th className="py-1 pr-3 font-normal">Closing</th><th className="py-1 font-normal">Confidence</th></tr></thead>
-              <tbody>
-                {m.bySegment.map((s) => (
-                  <tr key={s.key} className="border-t border-line">
-                    <td className="py-1 pr-3 text-ink"><span className="font-mono text-ink-subtle">{s.key}</span> {s.name}</td>
-                    <td className="py-1 pr-3 text-ink-muted">{s.segment ?? '—'}</td>
-                    <td className="py-1 pr-3"><Stance stance={s.opening} /></td>
-                    <td className="py-1 pr-3"><Stance stance={s.closing} />{s.opening !== s.closing && <span className="ml-1 text-[10px] text-ink-subtle">moved</span>}</td>
-                    <td className="py-1 font-mono text-ink-muted">{s.confidence.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
+        <Collapsible title=<>How positions moved</>>
+          <section aria-label="How positions moved">
+            <p className="text-xs text-ink-subtle">{m.herdingInterpretation}</p>
+            <ul className="mt-2 flex flex-wrap gap-2 font-mono text-[11px]">
+              <li className="rounded-sm border border-line px-2 py-0.5">opening {Object.entries(m.openingStances).map(([k, v]) => `${k} ${v}`).join(' · ')}</li>
+              <li className="rounded-sm border border-line px-2 py-0.5">closing {Object.entries(m.closingStances).map(([k, v]) => `${k} ${v}`).join(' · ')}</li>
+              <li className="rounded-sm border border-line px-2 py-0.5">entropy {m.entropy.toFixed(2)}</li>
+              <li className="rounded-sm border border-line px-2 py-0.5">capitulation {m.capitulationRate.toFixed(2)}</li>
+              <li className="rounded-sm border border-line px-2 py-0.5">concessions {m.concessions}</li>
+              <li className="rounded-sm border border-line px-2 py-0.5">citations valid {m.citationValidity === null ? '—' : `${Math.round(m.citationValidity * 100)}%`}</li>
+              {m.herdingSuspected && <li className="rounded-sm border border-warn/40 bg-warn-soft px-2 py-0.5 text-warn">herding suspected</li>}
+            </ul>
+            <div className="mt-2 overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="text-ink-subtle"><tr><th className="py-1 pr-3 font-normal">Agent</th><th className="py-1 pr-3 font-normal">Segment</th><th className="py-1 pr-3 font-normal">Opening</th><th className="py-1 pr-3 font-normal">Closing</th><th className="py-1 font-normal">Confidence</th></tr></thead>
+                <tbody>
+                  {m.bySegment.map((s) => (
+                    <tr key={s.key} className="border-t border-line">
+                      <td className="py-1 pr-3 text-ink"><span className="font-mono text-ink-subtle">{s.key}</span> {s.name}</td>
+                      <td className="py-1 pr-3 text-ink-muted">{s.segment ?? '—'}</td>
+                      <td className="py-1 pr-3"><Stance stance={s.opening} /></td>
+                      <td className="py-1 pr-3"><Stance stance={s.closing} />{s.opening !== s.closing && <span className="ml-1 text-[10px] text-ink-subtle">moved</span>}</td>
+                      <td className="py-1 font-mono text-ink-muted">{s.confidence.toFixed(2)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        </Collapsible>
       )}
 
       {/* The crew */}
@@ -519,45 +529,46 @@ export function DebateDetail({ debate }: { debate: DebateView }) {
 
       {/* Transcript */}
       {groups.length > 0 && (
-        <section aria-label="Debate transcript">
-          <h4 className="text-sm font-medium text-ink">Transcript</h4>
-          <ol className="mt-2 flex flex-col gap-4">
-            {pagedGroups.map((g) => (
-              <li key={g.key}>
-                <h5 className="font-mono text-[10.5px] uppercase tracking-wide text-ink-subtle">{g.label}</h5>
-                <ul className="mt-1.5 flex flex-col gap-2">
-                  {g.turns.map((t) => {
-                    const handoffs = Array.isArray(t.content.handoffs) ? (t.content.handoffs as { agentKey: string; respondTo: string }[]) : [];
-                    return (
-                      <li key={t.seq} className={`rounded border px-3 py-2 ${t.ok ? 'border-line bg-surface' : 'border-danger/30 bg-danger-soft/40'}`} data-phase={t.phase}>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-mono text-[10.5px] text-ink-subtle">{t.agentKey}</span>
-                          <span className="text-xs font-medium text-ink">{t.agentName}</span>
-                          <Stance stance={t.stance} />
-                          {t.confidence !== null && <span className="font-mono text-[10px] text-ink-subtle">{t.confidence.toFixed(2)}</span>}
-                          {t.content.concedes === true && <span className="rounded-sm border border-info/40 bg-info-soft px-1.5 font-mono text-[10px] text-info">concedes</span>}
-                          {t.phase === 'REBUTTAL' && t.addressedTo[0] && <span className="text-[11px] text-ink-subtle">→ answering {t.addressedTo[0]}</span>}
-                          {t.content.changed === true && <span className="rounded-sm border border-warn/40 bg-warn-soft px-1.5 font-mono text-[10px] text-warn">moved</span>}
-                        </div>
-                        <p className="mt-1 whitespace-pre-wrap text-xs text-ink-muted">{turnText(t)}</p>
-                        {handoffs.length > 0 && (
-                          <p className="mt-1 text-[11px] text-ink-subtle">
-                            Floor handed to: {handoffs.map((h) => `${h.agentKey} (answering ${h.respondTo})`).join(', ')}
-                            {t.content.replaced === true && ` — ${String(t.content.reason ?? 'replaced')}`}
-                          </p>
-                        )}
-                        {typeof t.content.reason === 'string' && t.phase === 'CLOSING' && <p className="mt-1 text-[11px] text-ink-subtle">Why: {t.content.reason}</p>}
-                        {typeof t.content.alternativeExplanation === 'string' && <p className="mt-1 text-[11px] text-ink-subtle">Alternative explanation: {t.content.alternativeExplanation}</p>}
-                        <div className="mt-1"><Evidence ids={t.content.evidenceIds ?? t.content.strongestEvidenceIds} items={items} /></div>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </li>
-            ))}
-          </ol>
-          <PagerControls {...turnPage} total={turnCount} />
-        </section>
+        <Collapsible title=<>Transcript</>>
+          <section aria-label="Debate transcript">
+            <ol className="mt-2 flex flex-col gap-4">
+              {pagedGroups.map((g) => (
+                <li key={g.key}>
+                  <h5 className="font-mono text-[10.5px] uppercase tracking-wide text-ink-subtle">{g.label}</h5>
+                  <ul className="mt-1.5 flex flex-col gap-2">
+                    {g.turns.map((t) => {
+                      const handoffs = Array.isArray(t.content.handoffs) ? (t.content.handoffs as { agentKey: string; respondTo: string }[]) : [];
+                      return (
+                        <li key={t.seq} className={`rounded border px-3 py-2 ${t.ok ? 'border-line bg-surface' : 'border-danger/30 bg-danger-soft/40'}`} data-phase={t.phase}>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono text-[10.5px] text-ink-subtle">{t.agentKey}</span>
+                            <span className="text-xs font-medium text-ink">{t.agentName}</span>
+                            <Stance stance={t.stance} />
+                            {t.confidence !== null && <span className="font-mono text-[10px] text-ink-subtle">{t.confidence.toFixed(2)}</span>}
+                            {t.content.concedes === true && <span className="rounded-sm border border-info/40 bg-info-soft px-1.5 font-mono text-[10px] text-info">concedes</span>}
+                            {t.phase === 'REBUTTAL' && t.addressedTo[0] && <span className="text-[11px] text-ink-subtle">→ answering {t.addressedTo[0]}</span>}
+                            {t.content.changed === true && <span className="rounded-sm border border-warn/40 bg-warn-soft px-1.5 font-mono text-[10px] text-warn">moved</span>}
+                          </div>
+                          <p className="mt-1 whitespace-pre-wrap text-xs text-ink-muted">{turnText(t)}</p>
+                          {handoffs.length > 0 && (
+                            <p className="mt-1 text-[11px] text-ink-subtle">
+                              Floor handed to: {handoffs.map((h) => `${h.agentKey} (answering ${h.respondTo})`).join(', ')}
+                              {t.content.replaced === true && ` — ${String(t.content.reason ?? 'replaced')}`}
+                            </p>
+                          )}
+                          {typeof t.content.reason === 'string' && t.phase === 'CLOSING' && <p className="mt-1 text-[11px] text-ink-subtle">Why: {t.content.reason}</p>}
+                          {typeof t.content.alternativeExplanation === 'string' && <p className="mt-1 text-[11px] text-ink-subtle">Alternative explanation: {t.content.alternativeExplanation}</p>}
+                          <div className="mt-1"><Evidence ids={t.content.evidenceIds ?? t.content.strongestEvidenceIds} items={items} /></div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              ))}
+            </ol>
+            <PagerControls {...turnPage} total={turnCount} />
+          </section>
+        </Collapsible>
       )}
 
       {/* Evidence */}
