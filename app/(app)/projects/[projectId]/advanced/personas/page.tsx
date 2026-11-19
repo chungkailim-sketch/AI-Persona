@@ -28,6 +28,7 @@ import {
   type PersonaRow,
 } from '../../personas/PersonaStep';
 import { fmtDate, fmtDateTime, TZ_LABEL } from '@/lib/time';
+import { Collapsible } from '@/ui/Collapsible';
 
 export const metadata = { title: 'Personas · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -245,50 +246,53 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
         measured supports a claim, and one that was generated does not.
       </p>
 
-      <section aria-labelledby="key" className="mt-8">
-        <h2 id="key" className="text-lg">What the labels mean</h2>
-        <OriginKey />
-      </section>
+      <Collapsible title=<>What the labels mean</>>
+        <section aria-labelledby="key" className="mt-8">
+          <OriginKey />
+        </section>
+      </Collapsible>
 
-      <section aria-labelledby="ready" className="mt-8">
-        <h2 id="ready" className="text-lg">
-          Personas ready for simulation{marketFilter ? ` — ${marketFilter}` : ''}{' '}
-          <span className="font-mono text-base text-ink-muted">{readyPersonas.length}</span>
-        </h2>
-        {readyPersonas.length === 0 ? (
-          <p className="mt-2 text-sm text-ink-muted">No approved personas{marketFilter ? ` in ${marketFilter}` : ''} yet. Generate a cohort below and approve it.</p>
-        ) : (
-          <div className="mt-2 overflow-x-auto">
-            <PagedTable
-              className="w-full text-left text-xs"
-              head={
-              <thead className="text-ink-subtle">
-                <tr>
-                  <th className="py-1 pr-3 font-normal">Persona</th>
-                  <th className="py-1 pr-3 font-normal">Market</th>
-                  <th className="py-1 pr-3 font-normal">Segment</th>
-                  <th className="py-1 pr-3 font-normal">Base</th>
-                  <th className="py-1 pr-3 font-normal">Confidence</th>
-                  <th className="py-1 pr-3 font-normal">Grounded attributes</th>
-                  <th className="py-1 font-normal">Cohort</th>
-                </tr>
-              </thead>
-              }
-              rows={readyPersonas.map((p) => (
-                  <tr key={p.id} className="border-t border-line align-top">
-                    <td className="max-w-[28rem] py-1.5 pr-3 text-ink">{p.name}</td>
-                    <td className="py-1.5 pr-3 text-ink-muted">{p.market ?? '—'}</td>
-                    <td className="py-1.5 pr-3 text-ink-muted">{p.segment?.split(' · ').pop() ?? '—'}</td>
-                    <td className="py-1.5 pr-3 font-mono">{p.base ?? '—'}</td>
-                    <td className="py-1.5 pr-3 font-mono">{p.confidence.toLowerCase()}</td>
-                    <td className="py-1.5 pr-3 font-mono">{p.grounded}</td>
-                    <td className="py-1.5 text-ink-muted">{p.cohort}</td>
+      <Collapsible title="Personas ready for simulation">
+        <section aria-labelledby="ready" className="mt-8">
+          <h2 id="ready" className="text-lg">
+            Personas ready for simulation{marketFilter ? ` — ${marketFilter}` : ''}{' '}
+            <span className="font-mono text-base text-ink-muted">{readyPersonas.length}</span>
+          </h2>
+          {readyPersonas.length === 0 ? (
+            <p className="mt-2 text-sm text-ink-muted">No approved personas{marketFilter ? ` in ${marketFilter}` : ''} yet. Generate a cohort below and approve it.</p>
+          ) : (
+            <div className="mt-2 overflow-x-auto">
+              <PagedTable
+                className="w-full text-left text-xs"
+                head={
+                <thead className="text-ink-subtle">
+                  <tr>
+                    <th className="py-1 pr-3 font-normal">Persona</th>
+                    <th className="py-1 pr-3 font-normal">Market</th>
+                    <th className="py-1 pr-3 font-normal">Segment</th>
+                    <th className="py-1 pr-3 font-normal">Base</th>
+                    <th className="py-1 pr-3 font-normal">Confidence</th>
+                    <th className="py-1 pr-3 font-normal">Grounded attributes</th>
+                    <th className="py-1 font-normal">Cohort</th>
                   </tr>
-                ))}
-            />
-          </div>
-        )}
-      </section>
+                </thead>
+                }
+                rows={readyPersonas.map((p) => (
+                    <tr key={p.id} className="border-t border-line align-top">
+                      <td className="max-w-[28rem] py-1.5 pr-3 text-ink">{p.name}</td>
+                      <td className="py-1.5 pr-3 text-ink-muted">{p.market ?? '—'}</td>
+                      <td className="py-1.5 pr-3 text-ink-muted">{p.segment?.split(' · ').pop() ?? '—'}</td>
+                      <td className="py-1.5 pr-3 font-mono">{p.base ?? '—'}</td>
+                      <td className="py-1.5 pr-3 font-mono">{p.confidence.toLowerCase()}</td>
+                      <td className="py-1.5 pr-3 font-mono">{p.grounded}</td>
+                      <td className="py-1.5 text-ink-muted">{p.cohort}</td>
+                    </tr>
+                  ))}
+              />
+            </div>
+          )}
+        </section>
+      </Collapsible>
 
       {shownCohorts.length === 0 ? (
         <p className="panel mt-6 px-4 py-6 text-sm text-ink-muted">
@@ -400,162 +404,164 @@ export default async function PersonaStepPage(props: PageProps<'/projects/[proje
         })
       )}
 
-      <section aria-labelledby="debate-heading" id="debate" className="mt-12 scroll-mt-48 border-t border-line pt-8">
-        <h2 id="debate-heading" className="text-lg">Agent swarm debate</h2>
-        <p className="mt-1 max-w-prose text-xs text-ink-subtle">
-          Put a topic or hypothesis to a crew of agents: one per approved persona, plus a moderator who manages the debate and
-          hands the floor to named agents, an evidence analyst, a devil&rsquo;s advocate and a synthesis judge. Openings are
-          given in isolation, every claim cites the cleared data by id, and the judge&rsquo;s reference conclusion sits beside a
-          segment comparison computed in code. The agents are simulations of published segments; their agreement is not
-          evidence.
-        </p>
-        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-          <div className="flex flex-col gap-4">
-            <div className="panel px-3.5 py-3">
-              {!canDebate ? (
-                <p className="text-sm text-ink-muted">Running a debate needs the <span className="font-mono">simulation.run</span> permission.</p>
-              ) : debateCohorts.length === 0 ? (
-                <p className="text-sm text-ink-muted">Approve a cohort with at least two personas first. The debate runs on approved personas only.</p>
-              ) : (
-                <DebateForm
-                  projectId={projectId}
-                  cohorts={debateCohorts}
-                  runs={completedRuns.map((r) => ({ id: r.id, label: `Run ${r.id.slice(-8)} · ${r.completedAt ? fmtDate(r.completedAt) : ''}${r.isMock ? ' · mock' : ''}` }))}
-                  hypotheses={hypotheses.map((h) => h.statement)}
-                  suggested={editing}
-                  editing={Boolean(editing)}
-                  key={editing ? `edit-${search.edit}` : 'new'}
-                />
-              )}
-            </div>
-            {debates.length > 0 && (
-              <nav aria-label="Recent debates" className="panel">
-                <div className="panel-head"><h3 className="font-sans text-sm font-medium text-ink">Recent debates</h3></div>
-                <ul className="flex flex-col divide-y divide-line">
-                  {debates.map((d) => (
-                    <li key={d.id}>
-                      <Link
-                        href={`/projects/${projectId}/advanced/personas?debate=${d.id}#debate`}
-                        aria-current={d.id === debateView?.id ? 'true' : undefined}
-                        className={`block px-3.5 py-2 hover:bg-bg ${d.id === debateView?.id ? 'border-l-2 border-brand bg-brand-soft/40' : 'border-l-2 border-transparent'}`}
-                      >
-                        <span className="line-clamp-2 text-xs text-ink">{d.topic}</span>
-                        <span className="mt-0.5 block font-mono text-[10px] text-ink-subtle">
-                          {d.status.toLowerCase()} · {d.cohort.name} · {fmtDateTime(d.createdAt)}{d.isMock ? ' · mock' : ''}
-                        </span>
-                      </Link>
-                      {canDebate && <DebateRecordActions projectId={projectId} debateId={d.id} status={d.status} base="advanced/personas" />}
-                    </li>
-                  ))}
-                </ul>
-              </nav>
-            )}
-          </div>
-          <div className="min-w-0">
-            {debateView ? (
-              <DebateDetail debate={debateView} />
-            ) : (
-              <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">No debate yet. Enter a topic and run one.</p>
-            )}
-          </div>
-        </div>
-
-        {debateView && (
-          <div id="insights" className="mt-8 scroll-mt-48">
-            <h3 className="text-base">Use this debate</h3>
-            <p className="mt-1 max-w-prose text-xs text-ink-subtle">
-              Put a consumer question to every persona in the swarm, generate a market-entry PR and communications strategy from the focus
-              group, or meet each persona and interview it as a market strategist would. Answers are grounded in the historical data and in
-              what each persona said in the debate, and cite the evidence by id.
-            </p>
-            <div className="mt-3">
-              <DebateInsights
-                projectId={projectId}
-                debateId={debateView.id}
-                canRun={canDebate}
-                completed={debateView.status === 'COMPLETED'}
-                isMock={debateView.isMock}
-                personas={insightPersonas}
-                artifacts={insights}
-                panelOptions={panelOptions}
-              />
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section aria-labelledby="population" className="mt-12 border-t border-line pt-8">
-        <h2 id="population" className="text-lg">Population sample</h2>
-        <p className="mt-1 max-w-prose text-xs text-ink-subtle">
-          A seeded, quota-controlled population drawn from the cleared data&rsquo;s latest wave: cells sized by
-          largest-remainder quotas on the published bases, impossible combinations removed, and each member&rsquo;s
-          answers drawn from its segment&rsquo;s observed distribution. It shows what the segment shares imply at
-          scale and how closely a sample reproduces them. Every member is simulated; none is a respondent.
-        </p>
-        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
-          <div className="panel px-3.5 py-3">
-            {canCreate ? <PopulationForm projectId={projectId} sources={popSources} /> : <p className="text-sm text-ink-muted">Building a sample needs the <span className="font-mono">persona.create</span> permission.</p>}
-          </div>
-          <div className="min-w-0">
-            {population && popSpec ? (
-              <div className="flex flex-col gap-4">
-                <p className="font-mono text-[11px] text-ink-subtle">
-                  {popSources.find((x) => x.id === population.datasetVersionId)?.label ?? 'Dataset'} · {population.size.toLocaleString()} members · seed {population.seed} · {population.primaryGroup}{population.secondaryGroup ? ` × ${population.secondaryGroup}` : ''} · {popSpec.wave} · built {fmtDateTime(population.createdAt)} {TZ_LABEL} · {popSpec.rejectedDraws ?? 0} redraws
-                </p>
-                {canCreate && (
-                  <CohortFromPopulationForm projectId={projectId} sampleId={population.id} cells={popQuotas.filter((q) => q.members > 0).length} defaultCount={Math.min(12, popQuotas.filter((q) => q.members > 0).length)} />
+      <Collapsible title=<>Agent swarm debate</>>
+        <section aria-labelledby="debate-heading" id="debate" className="mt-12 scroll-mt-48 border-t border-line pt-8">
+          <p className="mt-1 max-w-prose text-xs text-ink-subtle">
+            Put a topic or hypothesis to a crew of agents: one per approved persona, plus a moderator who manages the debate and
+            hands the floor to named agents, an evidence analyst, a devil&rsquo;s advocate and a synthesis judge. Openings are
+            given in isolation, every claim cites the cleared data by id, and the judge&rsquo;s reference conclusion sits beside a
+            segment comparison computed in code. The agents are simulations of published segments; their agreement is not
+            evidence.
+          </p>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+            <div className="flex flex-col gap-4">
+              <div className="panel px-3.5 py-3">
+                {!canDebate ? (
+                  <p className="text-sm text-ink-muted">Running a debate needs the <span className="font-mono">simulation.run</span> permission.</p>
+                ) : debateCohorts.length === 0 ? (
+                  <p className="text-sm text-ink-muted">Approve a cohort with at least two personas first. The debate runs on approved personas only.</p>
+                ) : (
+                  <DebateForm
+                    projectId={projectId}
+                    cohorts={debateCohorts}
+                    runs={completedRuns.map((r) => ({ id: r.id, label: `Run ${r.id.slice(-8)} · ${r.completedAt ? fmtDate(r.completedAt) : ''}${r.isMock ? ' · mock' : ''}` }))}
+                    hypotheses={hypotheses.map((h) => h.statement)}
+                    suggested={editing}
+                    editing={Boolean(editing)}
+                    key={editing ? `edit-${search.edit}` : 'new'}
+                  />
                 )}
-                <div>
-                  <h3 className="text-sm font-medium text-ink">Calibration — sampled against target, worst category per dimension</h3>
-                  <p className="text-xs text-ink-subtle">Sampling error alone is about {Math.round(100 / Math.sqrt(population.size) * 10) / 10} pp at this size; a larger gap would mean the sampler, not chance.</p>
-                  <table className="mt-2 w-full text-left text-xs">
-                    <thead className="text-ink-subtle"><tr><th className="py-1 pr-3 font-normal">Dimension</th><th className="py-1 pr-3 font-normal">Max error (pp)</th><th className="py-1 font-normal">Worst category</th></tr></thead>
-                    <tbody>
-                      {popCal.map((c) => (
-                        <tr key={c.dimension} className="border-t border-line">
-                          <td className="max-w-[28rem] py-1 pr-3 text-ink">{c.dimension}</td>
-                          <td className="py-1 pr-3 font-mono text-ink">{c.maxAbsErrorPp.toFixed(2)}</td>
-                          <td className="py-1 text-ink-muted">{c.worstValue}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <details>
-                  <summary className="cursor-pointer text-xs text-brand">Quotas for {popQuotas.length} cells{(popSpec.removedCells?.length ?? 0) > 0 ? ` (${popSpec.removedCells!.length} removed as impossible)` : ''}</summary>
-                  <table className="mt-2 w-full text-left text-xs">
-                    <thead className="text-ink-subtle"><tr><th className="py-1 pr-3 font-normal">Cell</th><th className="py-1 pr-3 font-normal">Weight</th><th className="py-1 font-normal">Members</th></tr></thead>
-                    <tbody className="font-mono">
-                      {popQuotas.map((q) => (
-                        <tr key={q.cell} className="border-t border-line"><td className="py-1 pr-3 font-sans text-ink">{q.cell}</td><td className="py-1 pr-3 text-ink-muted">{(q.weight * 100).toFixed(2)}%</td><td className="py-1 text-ink">{q.members}</td></tr>
-                      ))}
-                    </tbody>
-                  </table>
-                  {(popSpec.removedCells?.length ?? 0) > 0 && <p className="mt-1 text-[11px] text-ink-subtle">Removed: {popSpec.removedCells!.join('; ')}</p>}
-                </details>
-                <details>
-                  <summary className="cursor-pointer text-xs text-brand">Example members (rendered as a persona prompt would see them)</summary>
-                  <div className="mt-2 grid gap-2 md:grid-cols-2">
-                    {popExamples.map((e) => (
-                      <pre key={e.id} className="overflow-x-auto whitespace-pre-wrap rounded border border-line bg-code p-2 font-mono text-[10.5px] text-ink"><span className="text-simulated">SIMULATED · {e.id}</span>{'\n'}{e.text}</pre>
-                    ))}
-                  </div>
-                </details>
-                <div>
-                  <h3 className="text-sm font-medium text-ink">Assumptions</h3>
-                  <ul className="mt-1 flex flex-col gap-1">
-                    {population.assumptions.map((a) => (
-                      <li key={a} className="flex gap-2 text-xs text-ink-muted"><span aria-hidden className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-warn" /><span>{a}</span></li>
+              </div>
+              {debates.length > 0 && (
+                <nav aria-label="Recent debates" className="panel">
+                  <div className="panel-head"><h3 className="font-sans text-sm font-medium text-ink">Recent debates</h3></div>
+                  <ul className="flex flex-col divide-y divide-line">
+                    {debates.map((d) => (
+                      <li key={d.id}>
+                        <Link
+                          href={`/projects/${projectId}/advanced/personas?debate=${d.id}#debate`}
+                          aria-current={d.id === debateView?.id ? 'true' : undefined}
+                          className={`block px-3.5 py-2 hover:bg-bg ${d.id === debateView?.id ? 'border-l-2 border-brand bg-brand-soft/40' : 'border-l-2 border-transparent'}`}
+                        >
+                          <span className="line-clamp-2 text-xs text-ink">{d.topic}</span>
+                          <span className="mt-0.5 block font-mono text-[10px] text-ink-subtle">
+                            {d.status.toLowerCase()} · {d.cohort.name} · {fmtDateTime(d.createdAt)}{d.isMock ? ' · mock' : ''}
+                          </span>
+                        </Link>
+                        {canDebate && <DebateRecordActions projectId={projectId} debateId={d.id} status={d.status} base="advanced/personas" />}
+                      </li>
                     ))}
                   </ul>
-                </div>
-              </div>
-            ) : (
-              <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">No population sample yet.</p>
-            )}
+                </nav>
+              )}
+            </div>
+            <div className="min-w-0">
+              {debateView ? (
+                <DebateDetail debate={debateView} />
+              ) : (
+                <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">No debate yet. Enter a topic and run one.</p>
+              )}
+            </div>
           </div>
-        </div>
-      </section>
+
+          {debateView && (
+            <div id="insights" className="mt-8 scroll-mt-48">
+              <h3 className="text-base">Use this debate</h3>
+              <p className="mt-1 max-w-prose text-xs text-ink-subtle">
+                Put a consumer question to every persona in the swarm, generate a market-entry PR and communications strategy from the focus
+                group, or meet each persona and interview it as a market strategist would. Answers are grounded in the historical data and in
+                what each persona said in the debate, and cite the evidence by id.
+              </p>
+              <div className="mt-3">
+                <DebateInsights
+                  projectId={projectId}
+                  debateId={debateView.id}
+                  canRun={canDebate}
+                  completed={debateView.status === 'COMPLETED'}
+                  isMock={debateView.isMock}
+                  personas={insightPersonas}
+                  artifacts={insights}
+                  panelOptions={panelOptions}
+                />
+              </div>
+            </div>
+          )}
+        </section>
+      </Collapsible>
+
+      <Collapsible title=<>Population sample</>>
+        <section aria-labelledby="population" className="mt-12 border-t border-line pt-8">
+          <p className="mt-1 max-w-prose text-xs text-ink-subtle">
+            A seeded, quota-controlled population drawn from the cleared data&rsquo;s latest wave: cells sized by
+            largest-remainder quotas on the published bases, impossible combinations removed, and each member&rsquo;s
+            answers drawn from its segment&rsquo;s observed distribution. It shows what the segment shares imply at
+            scale and how closely a sample reproduces them. Every member is simulated; none is a respondent.
+          </p>
+          <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+            <div className="panel px-3.5 py-3">
+              {canCreate ? <PopulationForm projectId={projectId} sources={popSources} /> : <p className="text-sm text-ink-muted">Building a sample needs the <span className="font-mono">persona.create</span> permission.</p>}
+            </div>
+            <div className="min-w-0">
+              {population && popSpec ? (
+                <div className="flex flex-col gap-4">
+                  <p className="font-mono text-[11px] text-ink-subtle">
+                    {popSources.find((x) => x.id === population.datasetVersionId)?.label ?? 'Dataset'} · {population.size.toLocaleString()} members · seed {population.seed} · {population.primaryGroup}{population.secondaryGroup ? ` × ${population.secondaryGroup}` : ''} · {popSpec.wave} · built {fmtDateTime(population.createdAt)} {TZ_LABEL} · {popSpec.rejectedDraws ?? 0} redraws
+                  </p>
+                  {canCreate && (
+                    <CohortFromPopulationForm projectId={projectId} sampleId={population.id} cells={popQuotas.filter((q) => q.members > 0).length} defaultCount={Math.min(12, popQuotas.filter((q) => q.members > 0).length)} />
+                  )}
+                  <div>
+                    <h3 className="text-sm font-medium text-ink">Calibration — sampled against target, worst category per dimension</h3>
+                    <p className="text-xs text-ink-subtle">Sampling error alone is about {Math.round(100 / Math.sqrt(population.size) * 10) / 10} pp at this size; a larger gap would mean the sampler, not chance.</p>
+                    <table className="mt-2 w-full text-left text-xs">
+                      <thead className="text-ink-subtle"><tr><th className="py-1 pr-3 font-normal">Dimension</th><th className="py-1 pr-3 font-normal">Max error (pp)</th><th className="py-1 font-normal">Worst category</th></tr></thead>
+                      <tbody>
+                        {popCal.map((c) => (
+                          <tr key={c.dimension} className="border-t border-line">
+                            <td className="max-w-[28rem] py-1 pr-3 text-ink">{c.dimension}</td>
+                            <td className="py-1 pr-3 font-mono text-ink">{c.maxAbsErrorPp.toFixed(2)}</td>
+                            <td className="py-1 text-ink-muted">{c.worstValue}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  <details>
+                    <summary className="cursor-pointer text-xs text-brand">Quotas for {popQuotas.length} cells{(popSpec.removedCells?.length ?? 0) > 0 ? ` (${popSpec.removedCells!.length} removed as impossible)` : ''}</summary>
+                    <table className="mt-2 w-full text-left text-xs">
+                      <thead className="text-ink-subtle"><tr><th className="py-1 pr-3 font-normal">Cell</th><th className="py-1 pr-3 font-normal">Weight</th><th className="py-1 font-normal">Members</th></tr></thead>
+                      <tbody className="font-mono">
+                        {popQuotas.map((q) => (
+                          <tr key={q.cell} className="border-t border-line"><td className="py-1 pr-3 font-sans text-ink">{q.cell}</td><td className="py-1 pr-3 text-ink-muted">{(q.weight * 100).toFixed(2)}%</td><td className="py-1 text-ink">{q.members}</td></tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    {(popSpec.removedCells?.length ?? 0) > 0 && <p className="mt-1 text-[11px] text-ink-subtle">Removed: {popSpec.removedCells!.join('; ')}</p>}
+                  </details>
+                  <details>
+                    <summary className="cursor-pointer text-xs text-brand">Example members (rendered as a persona prompt would see them)</summary>
+                    <div className="mt-2 grid gap-2 md:grid-cols-2">
+                      {popExamples.map((e) => (
+                        <pre key={e.id} className="overflow-x-auto whitespace-pre-wrap rounded border border-line bg-code p-2 font-mono text-[10.5px] text-ink"><span className="text-simulated">SIMULATED · {e.id}</span>{'\n'}{e.text}</pre>
+                      ))}
+                    </div>
+                  </details>
+                  <div>
+                    <h3 className="text-sm font-medium text-ink">Assumptions</h3>
+                    <ul className="mt-1 flex flex-col gap-1">
+                      {population.assumptions.map((a) => (
+                        <li key={a} className="flex gap-2 text-xs text-ink-muted"><span aria-hidden className="mt-[6px] h-1 w-1 shrink-0 rounded-full bg-warn" /><span>{a}</span></li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              ) : (
+                <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">No population sample yet.</p>
+              )}
+            </div>
+          </div>
+        </section>
+      </Collapsible>
 
       {canCreate && (
         <section aria-labelledby="generate" className="mt-12 border-t border-line pt-8">

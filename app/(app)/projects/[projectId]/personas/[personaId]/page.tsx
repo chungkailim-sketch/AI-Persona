@@ -12,6 +12,7 @@ import { PersonaAvatar } from '@/ui/report/PersonaCard';
 import { WorkflowNav } from '../../WorkflowNav';
 import { InterviewForm } from './InterviewForm';
 import { projectModules } from '@/modules/project';
+import { Collapsible } from '@/ui/Collapsible';
 
 export const metadata = { title: 'Persona · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -57,34 +58,36 @@ export default async function PersonaPage(props: PageProps<'/projects/[projectId
             {id?.oneLiner && <p className="text-sm text-ink">{id.oneLiner}</p>}
           </section>
 
-          <section className="panel px-5 py-4">
-            <h2 className="eyebrow">What the data says</h2>
-            <ul className="mt-2 flex flex-col gap-2 text-sm">
-              {profile.stats.map((s) => (
-                <li key={s.id} className="flex gap-2">
-                  <span className="w-12 shrink-0 text-right font-bold text-brand">{`${Math.round(s.share)}%`}</span>
-                  <span className="text-ink-muted">
-                    {s.statement}{s.response && !/^agree$/i.test(s.response) ? ` — ${s.response}` : ''}
-                    <span className="text-ink-subtle">{` (vs ${Math.round(s.overall)}% of all adults)`}</span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          {said && (
-            <section className="panel px-5 py-4">
-              <h2 className="eyebrow">In the roundtable</h2>
-              <p className="mt-2 text-sm text-ink">“{said.quote}”</p>
-              <ul className="mt-3 flex flex-col gap-1.5">
-                {scores.map((s) => (
-                  <li key={s.category} className="text-xs">
-                    <div className="flex justify-between"><span>{s.category}</span><b>{s.score}</b></div>
-                    <div className="mt-0.5 h-1.5 rounded-full bg-track"><div className={`h-1.5 rounded-full ${band(s.score) === 'willing' ? 'bg-brand' : band(s.score) === 'depends' ? 'bg-[var(--color-highlight)]' : 'bg-pending'}`} style={{ width: `${s.score}%` }} /></div>
+          <Collapsible title=<>What the data says</>>
+            <section className="px-5 py-4">
+              <ul className="mt-2 flex flex-col gap-2 text-sm">
+                {profile.stats.map((s) => (
+                  <li key={s.id} className="flex gap-2">
+                    <span className="w-12 shrink-0 text-right font-bold text-brand">{`${Math.round(s.share)}%`}</span>
+                    <span className="text-ink-muted">
+                      {s.statement}{s.response && !/^agree$/i.test(s.response) ? ` — ${s.response}` : ''}
+                      <span className="text-ink-subtle">{` (vs ${Math.round(s.overall)}% of all adults)`}</span>
+                    </span>
                   </li>
                 ))}
               </ul>
             </section>
+          </Collapsible>
+
+          {said && (
+            <Collapsible title=<>In the roundtable</>>
+              <section className="px-5 py-4">
+                <p className="mt-2 text-sm text-ink">“{said.quote}”</p>
+                <ul className="mt-3 flex flex-col gap-1.5">
+                  {scores.map((s) => (
+                    <li key={s.category} className="text-xs">
+                      <div className="flex justify-between"><span>{s.category}</span><b>{s.score}</b></div>
+                      <div className="mt-0.5 h-1.5 rounded-full bg-track"><div className={`h-1.5 rounded-full ${band(s.score) === 'willing' ? 'bg-brand' : band(s.score) === 'depends' ? 'bg-[var(--color-highlight)]' : 'bg-pending'}`} style={{ width: `${s.score}%` }} /></div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            </Collapsible>
           )}
         </aside>
 

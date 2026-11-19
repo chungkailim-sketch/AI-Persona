@@ -7,6 +7,8 @@
  * whatever component calls it.
  */
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import type { Route } from 'next';
 import { cookies } from 'next/headers';
 import { requireUserApi, AuthorizationError } from '@/auth/guard';
 import { LANG_COOKIE, parseLang } from '@/ui/i18n/translate';
@@ -170,6 +172,28 @@ export async function requestPlanAction(_prev: FormState, formData: FormData): P
   }
   revalidatePath(`/projects/${projectId}/results`);
   return { ok: 'Writing the plan. It appears below in a minute or two.' };
+}
+
+/** Delete or re-run one written plan from the list of plans. */
+export async function managePlanAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  const planId = String(formData.get('recordId') ?? '');
+  const op = String(formData.get('op') ?? '');
+  let target: string;
+  try {
+    const user = await requireUserApi();
+    const planner = await import('@/advice/planner');
+    if (op === 'delete') {
+      await planner.deletePlan(user, projectId, planId);
+      target = `/projects/${projectId}/results#plans`;
+    } else if (op === 'rerun') {
+      const r = await planner.rerunPlan(user, projectId, planId, await lang());
+      target = `/projects/${projectId}/results?plan=${r.adviceId}#plans`;
+    } else return { error: 'Invalid request.' };
+  } catch (e) {
+    return toState(e);
+  }
+  redirect(target as Route);
 }
 
 export async function saveModulesAction(_prev: FormState, formData: FormData): Promise<FormState> {

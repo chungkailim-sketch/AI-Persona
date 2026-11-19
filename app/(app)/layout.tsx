@@ -6,6 +6,7 @@ import { loadEnv } from '@/lib/env';
 import { prisma } from '@/lib/prisma';
 import { listProjectsForUser } from '@/server/projects';
 import { activeRunsFor } from '@/server/activity';
+import { OpenSectionFromHash } from '@/ui/OpenSectionFromHash';
 import { ApplicationShell } from '@/ui/shell/ApplicationShell';
 import { THEME_COOKIE, parseThemePreference } from '@/ui/theme/theme';
 
@@ -55,6 +56,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         themePreference,
       }}
     >
+      <OpenSectionFromHash />
       {children}
     </ApplicationShell>
   );

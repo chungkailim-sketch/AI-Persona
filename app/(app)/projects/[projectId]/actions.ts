@@ -506,7 +506,7 @@ export async function startDebateAction(_prev: FormState, formData: FormData): P
 /** Delete or re-run one debate from the list of recent debates. */
 export async function manageDebateAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const projectId = String(formData.get('projectId') ?? '');
-  const debateId = String(formData.get('debateId') ?? '');
+  const debateId = String(formData.get('recordId') ?? formData.get('debateId') ?? '');
   const op = String(formData.get('op') ?? '');
   const base = formData.get('returnTo') === 'journey' ? 'personas' : 'advanced/personas';
   let target: string;

@@ -3150,4 +3150,12 @@ export const ZH: Record<string, string> = {
   "Consumer segment persona": "消费者细分群体画像",
   "Consumer segment persona: {}": "消费者细分群体画像：{}",
   "({} on 0–{})": "（{}，满分 {}）",
+  "Previous plans": "历史方案",
+  "No plan yet. Ask a question and write one.": "尚无方案。请提出问题并撰写方案。",
+  "Editing an earlier plan. Change the question and write it; the result is saved as a new plan.": "正在编辑之前的方案。修改问题后撰写，结果将另存为一份新方案。",
+  "Delete this plan? This cannot be undone.": "删除此方案？此操作无法撤销。",
+  "Delete this debate? This cannot be undone.": "删除此辩论？此操作无法撤销。",
+  "This plan is still being written. Wait for it to finish.": "此方案仍在撰写中，请等待完成。",
+  "That plan is not part of this project.": "该方案不属于此项目。",
+  "{} of {} answered": "已回答 {} / {}",
 };

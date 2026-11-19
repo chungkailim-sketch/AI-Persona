@@ -2,6 +2,7 @@ import { requireUser } from '@/auth/guard';
 import { authContextFor } from '@/auth/session';
 import { permissionsFor } from '@/auth/permissions';
 import { prisma } from '@/lib/prisma';
+import { Collapsible } from '@/ui/Collapsible';
 
 export const metadata = { title: 'Administration · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -42,50 +43,52 @@ export default async function AdminOverviewPage() {
         ))}
       </dl>
 
-      <section aria-labelledby="controls" className="mt-12">
-        <h2 id="controls" className="text-lg">Safety controls</h2>
-        <p className="mt-2 max-w-prose text-sm text-ink-muted">
-          These cannot be turned off by any role, including yours. They are listed so that their
-          presence is verifiable, not so that they can be changed.
-        </p>
-        <ul className="mt-4 flex max-w-2xl flex-col gap-2">
-          {flags.map((f) => (
-            <li
-              key={f.key}
-              className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3"
-            >
-              <div>
-                <p className="font-mono text-xs text-ink">{f.key}</p>
-                <p className="mt-0.5 text-xs text-ink-subtle">{f.description}</p>
-              </div>
-              <span
-                className={
-                  f.locked
-                    ? 'rounded bg-ok-soft px-2 py-0.5 font-mono text-[10px] text-ok'
-                    : 'rounded bg-bg px-2 py-0.5 font-mono text-[10px] text-ink-subtle'
-                }
+      <Collapsible title=<>Safety controls</>>
+        <section aria-labelledby="controls" className="mt-12">
+          <p className="mt-2 max-w-prose text-sm text-ink-muted">
+            These cannot be turned off by any role, including yours. They are listed so that their
+            presence is verifiable, not so that they can be changed.
+          </p>
+          <ul className="mt-4 flex max-w-2xl flex-col gap-2">
+            {flags.map((f) => (
+              <li
+                key={f.key}
+                className="flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3"
               >
-                {f.locked ? 'on · locked' : f.enabled ? 'on' : 'off'}
-              </span>
-            </li>
-          ))}
-        </ul>
-      </section>
+                <div>
+                  <p className="font-mono text-xs text-ink">{f.key}</p>
+                  <p className="mt-0.5 text-xs text-ink-subtle">{f.description}</p>
+                </div>
+                <span
+                  className={
+                    f.locked
+                      ? 'rounded bg-ok-soft px-2 py-0.5 font-mono text-[10px] text-ok'
+                      : 'rounded bg-bg px-2 py-0.5 font-mono text-[10px] text-ink-subtle'
+                  }
+                >
+                  {f.locked ? 'on · locked' : f.enabled ? 'on' : 'off'}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </Collapsible>
 
-      <section aria-labelledby="your-permissions" className="mt-12">
-        <h2 id="your-permissions" className="text-lg">Permissions you hold</h2>
-        <p className="mt-2 max-w-prose text-sm text-ink-muted">
-          Shown in full rather than implied by which buttons appear, so that what you can do is
-          inspectable. Every one of these is checked again on the server for each request.
-        </p>
-        <ul className="mt-4 flex flex-wrap gap-1.5">
-          {held.map((p) => (
-            <li key={p} className="rounded bg-surface px-2 py-1 font-mono text-[11px] text-ink-muted">
-              {p}
-            </li>
-          ))}
-        </ul>
-      </section>
+      <Collapsible title=<>Permissions you hold</>>
+        <section aria-labelledby="your-permissions" className="mt-12">
+          <p className="mt-2 max-w-prose text-sm text-ink-muted">
+            Shown in full rather than implied by which buttons appear, so that what you can do is
+            inspectable. Every one of these is checked again on the server for each request.
+          </p>
+          <ul className="mt-4 flex flex-wrap gap-1.5">
+            {held.map((p) => (
+              <li key={p} className="rounded bg-surface px-2 py-1 font-mono text-[11px] text-ink-muted">
+                {p}
+              </li>
+            ))}
+          </ul>
+        </section>
+      </Collapsible>
     </>
   );
 }

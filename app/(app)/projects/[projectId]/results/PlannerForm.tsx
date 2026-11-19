@@ -15,13 +15,14 @@ const EXAMPLES = [
   'What should our influencer and earned-media programme look like?',
 ];
 
-export function PlannerForm({ projectId, industries }: { projectId: string; industries: readonly string[] }) {
+export function PlannerForm({ projectId, industries, initial }: { projectId: string; industries: readonly string[]; initial?: { question: string; industry: string } | null }) {
   const [state, action] = useActionState(requestPlanAction, empty);
   return (
     <form action={action} className="flex flex-col gap-3">
+      {initial && <p className="rounded border border-info/40 bg-info-soft px-3 py-2 text-xs text-ink">Editing an earlier plan. Change the question and write it; the result is saved as a new plan.</p>}
       <input type="hidden" name="projectId" value={projectId} />
       <Field id="plan-q" label="Your comms or marketing question" required hint="The plan answers it from the survey data, the personas and the roundtable, using recognised PR, communications and marketing frameworks.">
-        <TextArea id="plan-q" name="question" rows={3} required minLength={10} maxLength={2000} placeholder={EXAMPLES[0]} />
+        <TextArea id="plan-q" name="question" rows={3} required minLength={10} maxLength={2000} placeholder={EXAMPLES[0]} defaultValue={initial?.question} />
       </Field>
       <ul className="flex flex-wrap gap-1.5">
         {EXAMPLES.map((e) => (
@@ -40,7 +41,7 @@ export function PlannerForm({ projectId, industries }: { projectId: string; indu
         ))}
       </ul>
       <Field id="plan-industry" label="Industry">
-        <Select id="plan-industry" name="industry" defaultValue="All industries" className="max-w-xs">
+        <Select id="plan-industry" name="industry" defaultValue={initial?.industry || 'All industries'} className="max-w-xs">
           {industries.map((i) => <option key={i} value={i}>{i}</option>)}
         </Select>
       </Field>

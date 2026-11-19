@@ -14,6 +14,7 @@ import { can } from '@/auth/permissions';
 import { authContextFor, type SessionUser } from '@/auth/session';
 import { AuthorizationError } from '@/auth/guard';
 import { enqueue } from '@/queue/queue';
+import { recordAudit } from '@/lib/audit';
 import { callModel } from '@/model/client';
 import { deriveSeed } from '@/model/provider';
 import { wrapUntrusted } from '@/model/context';
@@ -41,7 +42,30 @@ export async function requestPlan(user: SessionUser, projectId: string, input: {
 }
 
 export async function listPlans(projectId: string) {
-  return prisma.advice.findMany({ where: { projectId, kind: 'COMMS_PLAN' }, orderBy: { createdAt: 'desc' }, take: 10 });
+  return prisma.advice.findMany({ where: { projectId, kind: 'COMMS_PLAN' }, orderBy: { createdAt: 'desc' }, take: 20 });
+}
+
+async function ownPlan(user: SessionUser, projectId: string, planId: string) {
+  const ctx = await authContextFor(user, projectId);
+  if (!can(ctx, 'simulation.run', projectId)) throw new AuthorizationError('simulation.run', projectId);
+  const plan = await prisma.advice.findFirst({ where: { id: planId, projectId, kind: 'COMMS_PLAN' } });
+  if (!plan) throw new JourneyRefused(['That plan is not part of this project.']);
+  return plan;
+}
+
+/** Remove a written plan. Audited. */
+export async function deletePlan(user: SessionUser, projectId: string, planId: string): Promise<void> {
+  const plan = await ownPlan(user, projectId, planId);
+  if (plan.status === 'QUEUED' || plan.status === 'RUNNING') throw new JourneyRefused(['This plan is still being written. Wait for it to finish.']);
+  await prisma.advice.delete({ where: { id: planId } });
+  await recordAudit({ action: 'plan.deleted', targetType: 'project', targetId: projectId, projectId, actorUserId: user.userId, actorEmail: user.email, reason: plan.question.slice(0, 200) });
+}
+
+/** Ask the same question again, from the current state of the study, as a new plan. */
+export async function rerunPlan(user: SessionUser, projectId: string, planId: string, language: Lang): Promise<{ adviceId: string }> {
+  const plan = await ownPlan(user, projectId, planId);
+  const options = (plan.options ?? {}) as { industry?: string };
+  return requestPlan(user, projectId, { question: plan.question, industry: options.industry, language });
 }
 
 /** The study's data as numbered evidence lines. */

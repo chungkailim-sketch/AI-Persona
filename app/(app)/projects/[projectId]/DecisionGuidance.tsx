@@ -7,6 +7,7 @@ import type { DecisionQuestion } from '@/decision/client';
 import { fmtDateTime, TZ_LABEL } from '@/lib/time';
 import { GuidanceButton } from './GuidanceButton';
 import { projectModules } from '@/modules/project';
+import { Collapsible } from '@/ui/Collapsible';
 
 const pct = (p: number) => `${Math.round(p * 100)}%`;
 
@@ -59,10 +60,10 @@ export async function DecisionGuidance({ projectId, checkpoint, subjectId, canAs
   const questions = (g?.questions ?? []) as unknown as DecisionQuestion[];
   const answers = (g?.answers ?? []) as unknown as DecisionAnswer[];
   return (
-    <section aria-label={title} className="panel px-6 py-5" data-checkpoint={checkpoint}>
+    <Collapsible title={title}>
+    <section aria-label={title} data-checkpoint={checkpoint}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="eyebrow">{title}</p>
           <p className="text-xs text-ink-subtle">
             {g ? <>{g.isMock ? 'Local stand-in' : 'Decision engine'}{' · '}{fmtDateTime(g.createdAt)} {TZ_LABEL}</> : 'Ask the decision engine what to do next at this point.'}
           </p>
@@ -77,5 +78,6 @@ export async function DecisionGuidance({ projectId, checkpoint, subjectId, canAs
       )}
       {g?.isMock && g.status === 'COMPLETED' && <p className="mt-2 text-xs text-warn">These answers come from a local stand-in, not the live decision engine. An administrator needs to connect the decision engine in the deployment settings.</p>}
     </section>
+    </Collapsible>
   );
 }
