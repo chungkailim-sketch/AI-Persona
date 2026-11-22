@@ -60,6 +60,11 @@ export function DeckTranslator({ projectId, lang, label, rootId }: { projectId: 
     };
   }, [projectId, lang, rootId]);
 
+  // The export waits for this before it captures the slides.
+  useEffect(() => {
+    document.getElementById(rootId)?.setAttribute('data-translating', pending === 0 ? 'false' : 'true');
+  }, [pending, rootId]);
+
   if (pending === 0) return null;
   return (
     <p role="status" className="no-print mx-auto mt-4 max-w-[1320px] rounded border border-info/40 bg-info-soft px-4 py-2 text-sm text-ink">

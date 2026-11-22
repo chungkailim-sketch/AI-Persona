@@ -64,7 +64,7 @@ export function TierHeader({ index, group, label, className }: { index: number; 
   return (
     <div className={cn('flex h-full flex-col justify-start border-t border-line pt-5', className)}>
       <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-ink-subtle">{`Tier ${index + 1}`}</p>
-      <p className="mt-1.5 text-[15px] font-medium leading-snug text-ink">{label}</p>
+      <p className={cn('mt-1.5 font-medium leading-snug text-ink [overflow-wrap:anywhere]', label.length > 60 ? 'text-[11.5px]' : label.length > 28 ? 'text-[13px]' : 'text-[15px]')}>{label}</p>
       {group && <p className="mt-1 text-[10.5px] text-ink-subtle">{group}</p>}
     </div>
   );

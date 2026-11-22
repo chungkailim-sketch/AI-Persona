@@ -9,7 +9,8 @@ import { authContextFor } from '@/auth/session';
 import { can } from '@/auth/permissions';
 import { loadReport } from '@/roundtable/report';
 import { SlideDeck } from '@/ui/report/Slides';
-import { PrintButton } from '@/ui/components/PrintButton';
+import { DeckExport } from '@/ui/report/DeckExport';
+import { projectBrand } from '@/report/brandService';
 import { projectModules } from '@/modules/project';
 import { LANG_COOKIE, parseLang } from '@/ui/i18n/translate';
 import { DECK_LANGUAGES, isDeckLang, type DeckLang } from '@/roundtable/reportLocale';
@@ -39,6 +40,10 @@ export default async function RoundtableReportPage(props: PageProps<'/projects/[
   const asked = Array.isArray(search.lang) ? search.lang[0] : search.lang;
   const lang: DeckLang = isDeckLang(asked) ? asked : parseLang((await cookies()).get(LANG_COOKIE)?.value) === 'zh' ? 'zh' : 'en';
 
+  const brand = await projectBrand(projectId);
+  const exportAs = search.export === 'pptx' || search.export === 'pdf' ? search.export : null;
+  const fileName = `${report.projectName.replace(/[^\p{L}\p{N} _-]/gu, '').trim().replace(/\s+/g, '-') || 'report'}-${lang}`;
+
   return (
     <div className="min-h-dvh bg-bg">
       <div className="no-print sticky top-0 z-10 border-b border-line bg-elevated/95 backdrop-blur">
@@ -57,7 +62,7 @@ export default async function RoundtableReportPage(props: PageProps<'/projects/[
               </Link>
             ))}
           </nav>
-          <PrintButton />
+          <DeckExport rootId="deck" fileName={fileName} auto={exportAs} />
         </div>
       </div>
       <DeckTranslator key={lang} projectId={projectId} lang={lang} label={DECK_LANGUAGES[lang].label} rootId="deck" />
@@ -69,7 +74,7 @@ export default async function RoundtableReportPage(props: PageProps<'/projects/[
         style={lang === 'th' ? { fontFamily: "var(--font-sans), 'Noto Sans Thai', sans-serif" } : undefined}
       >
         <div id="deck">
-          <SlideDeck r={report} modules={await projectModules(projectId)} />
+          <SlideDeck r={report} modules={await projectModules(projectId)} brand={brand} />
         </div>
       </main>
     </div>

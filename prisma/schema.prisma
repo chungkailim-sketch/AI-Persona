@@ -148,6 +148,9 @@ model Project {
   /// Communication preferences and creative treatment from the Brief step (src/creative/prefs.ts),
   /// which, with the roundtable's key messaging, drive the AIGC creative brief.
   creative    Json?
+  /// A client brand template for the report deck (src/report/brandTheme.ts): colours and fonts read
+  /// from an uploaded PowerPoint template, and an optional logo.
+  brandTheme  Json?
 
   members      ProjectMember[]
   datasetLinks ProjectDataset[]

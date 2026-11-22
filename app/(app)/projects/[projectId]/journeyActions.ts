@@ -196,6 +196,52 @@ export async function managePlanAction(_prev: FormState, formData: FormData): Pr
   redirect(target as Route);
 }
 
+/** Upload (or replace) the client brand template for the report deck, with an optional logo. */
+export async function saveBrandTemplateAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  try {
+    const user = await requireUserApi();
+    const { saveBrandTemplate } = await import('@/report/brandService');
+    const { BrandTemplateRefused } = await import('@/report/brandTheme');
+    const file = (k: string) => {
+      const f = formData.get(k);
+      return f instanceof File && f.size > 0 ? f : null;
+    };
+    const t = file('template');
+    const l = file('logo');
+    try {
+      const saved = await saveBrandTemplate(
+        user,
+        projectId,
+        t ? { name: t.name, bytes: Buffer.from(await t.arrayBuffer()) } : null,
+        l ? { name: l.name, bytes: Buffer.from(await l.arrayBuffer()) } : null,
+      );
+      revalidatePath(`/projects/${projectId}/results`);
+      revalidatePath(`/projects/${projectId}/report`);
+      return { ok: `Brand template applied: ${saved.name}.` };
+    } catch (e) {
+      if (e instanceof BrandTemplateRefused) return { problems: [e.message] };
+      throw e;
+    }
+  } catch (e) {
+    return toState(e);
+  }
+}
+
+export async function clearBrandTemplateAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  try {
+    const user = await requireUserApi();
+    const { clearBrandTemplate } = await import('@/report/brandService');
+    await clearBrandTemplate(user, projectId);
+  } catch (e) {
+    return toState(e);
+  }
+  revalidatePath(`/projects/${projectId}/results`);
+  revalidatePath(`/projects/${projectId}/report`);
+  return { ok: 'Back to the Ruder Finn design.' };
+}
+
 export async function saveModulesAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const projectId = String(formData.get('projectId') ?? '');
   try {
