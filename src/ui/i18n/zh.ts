@@ -2652,7 +2652,7 @@ export const ZH: Record<string, string> = {
   "— Written for you from the whole study — every persona, the roundtable results and key messaging, the report’s market indices, the latest plan and debate, into the AIGC Creative Brief.": "—— 根据整个研究为您撰写——所有画像、圆桌讨论结果与核心信息、报告中的市场指数、最新方案与辩论，形成 AIGC 创意简报。",
   "Download it as Word or Markdown for Runway, Figma Weave or another AIGC tool. Rows the study does not cover are inferred and listed at the end. Prompts are written in English, which video models follow best.": "可下载为 Word 或 Markdown，用于 Runway、Figma Weave 或其他 AIGC 工具。研究未涉及的栏目会被推断，并在文末列出。提示词以英文撰写，视频模型对英文的遵循效果最好。",
   "— ask a question; the plan answers it purely from the survey data, the personas and the roundtable, applying recognised frameworks. Every insight shows the data it rests on.": "—— 提出问题；方案完全基于调研数据、画像和圆桌讨论作答，并运用公认框架。每条洞察都注明所依据的数据。",
-  "— recognised PR, communications and marketing frameworks and market-entry knowledge, each linked to its original source. The planner draws on these.": "—— 公认的公关、传播与营销框架及市场进入知识，均附原始来源链接。方案撰写以此为依据。",
+  "— Ruder Finn and CBGA’s own PR, communications and marketing frameworks and market-entry knowledge. The planner draws on these.": "—— 罗德传播与 CBGA 出海自有公关、传播与营销框架及市场进入知识。方案撰写以此为依据。",
   "Edit": "编辑",
   "Download .md": "下载 .md",
   "Delete": "删除",

@@ -245,7 +245,7 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
         <details id="knowledge" className="panel scroll-mt-48">
           <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">
             <span id="knowledge-heading">Knowledge library</span>{' '}
-            <span className="font-normal text-ink-subtle">— recognised PR, communications and marketing frameworks and market-entry knowledge, each linked to its original source. The planner draws on these.</span>
+            <span className="font-normal text-ink-subtle">— Ruder Finn and CBGA’s own PR, communications and marketing frameworks and market-entry knowledge. The planner draws on these.</span>
           </summary>
           <div className="border-t border-line px-4 py-4">
             <KnowledgeLibrary entries={KNOWLEDGE} industries={INDUSTRIES} />
