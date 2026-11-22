@@ -19,6 +19,8 @@ import { MarketHeader, PersonaAvatar, PersonaCard, TierHeader, keyStats } from '
 import { FitBox, ScaledSlide } from './ScaledSlide';
 import { BrandProvider } from './BrandContext';
 import { brandStyle, type BrandTheme } from '@/report/brandTheme';
+import type { ReportExtra } from '@/report/reportExtras';
+import { BRIEF_FIELDS } from '@/creative/fields';
 
 const TIER_LABEL = Object.fromEntries(TIERS.map((t) => [t.key, t.label])) as Record<TierKey, string>;
 const BAND_TEXT = { willing: 'Willing', depends: 'Depends', unlikely: 'Not keen' } as const;
@@ -515,6 +517,100 @@ function Comms({ r, page }: { r: Report; page: number }) {
   );
 }
 
+// ── 9b Added plans and creative briefs ─────────────────────────────────────────
+
+const PLAN_SOURCE = 'Source: RF AI Persona plan written from the survey data, the personas and the roundtable, applying recognised frameworks.';
+const BRIEF_SOURCE = 'Source: RF AI Persona AIGC creative brief written from the whole study. Audience insight comes from simulated personas: treat it as a hypothesis.';
+
+function Panel({ title, children, accent = false }: { title: string; children: ReactNode; accent?: boolean }) {
+  return (
+    <div className={cn('rounded-md p-3', accent ? 'bg-brand-deep text-brand-deep-ink' : 'border border-line')}>
+      <p className={cn('text-[12px] font-bold uppercase tracking-wide', accent ? 'text-[var(--color-highlight)]' : 'text-brand')}>{title}</p>
+      <div className="mt-1 text-[12.5px] leading-snug">{children}</div>
+    </div>
+  );
+}
+
+const Bullets = ({ items }: { items: string[] }) => <ul className="flex list-disc flex-col gap-1 pl-4">{items.map((x, i) => <li key={i}>{x}</li>)}</ul>;
+
+function PlanSlides({ x, start }: { x: Extract<ReportExtra, { kind: 'COMMS_PLAN' }>; start: number }) {
+  const c = x.content;
+  return (
+    <>
+      <Slide section="PR, communications and marketing plan" title={c.title || x.question} page={start} source={PLAN_SOURCE}>
+        <div className="grid h-full grid-cols-[1.25fr_1fr] gap-5">
+          <div className="flex flex-col gap-3">
+            <p className="text-[13px] italic text-ink-muted">“{x.question}”</p>
+            <p className="text-[15px] leading-snug">{c.answer}</p>
+            {c.positioning && <Panel title="Positioning" accent><p>{c.positioning}</p></Panel>}
+          </div>
+          <div className="flex flex-col gap-3">
+            {c.objectives.length > 0 && <Panel title="Objectives"><Bullets items={c.objectives.slice(0, 5)} /></Panel>}
+            {c.keyMessages.length > 0 && (
+              <Panel title="Key messages">
+                <ul className="flex flex-col gap-1.5">{c.keyMessages.slice(0, 5).map((m, i) => <li key={i}><b>{m.message}</b> <span className="text-ink-subtle">— {m.audience}</span></li>)}</ul>
+              </Panel>
+            )}
+          </div>
+        </div>
+      </Slide>
+      <Slide section="PR, communications and marketing plan" title="Channels, phasing and measurement" page={start + 1} source={PLAN_SOURCE}>
+        <div className="grid h-full grid-cols-[1.1fr_1fr] gap-5">
+          <div className="flex flex-col gap-3">
+            {c.channels.length > 0 && (
+              <table className="w-full text-[12px]">
+                <thead><tr className="bg-brand-deep text-left text-brand-deep-ink"><th className="px-2 py-1">Type</th><th className="px-2 py-1">Channel</th><th className="px-2 py-1">Role</th></tr></thead>
+                <tbody>{c.channels.slice(0, 9).map((ch, i) => <tr key={i} className="border-b border-line align-top"><td className="px-2 py-1 capitalize">{ch.type}</td><td className="px-2 py-1 font-semibold">{ch.channel}</td><td className="px-2 py-1 text-ink-muted">{ch.role}</td></tr>)}</tbody>
+              </table>
+            )}
+            {c.kpis.length > 0 && <Panel title="KPIs"><Bullets items={c.kpis.slice(0, 6).map((k) => `${k.kpi}${k.target ? ` — ${k.target}` : ''}`)} /></Panel>}
+          </div>
+          <div className="flex flex-col gap-3">
+            {c.phasedPlan.length > 0 && (
+              <Panel title="Phased plan">
+                <ol className="flex flex-col gap-1.5">{c.phasedPlan.slice(0, 4).map((ph, i) => <li key={i}><b>{ph.phase}</b>{ph.timing ? <span className="text-ink-subtle"> ({ph.timing})</span> : null}<Bullets items={ph.activities.slice(0, 3)} /></li>)}</ol>
+              </Panel>
+            )}
+            {c.risks.length > 0 && <Panel title="Risks" accent><Bullets items={c.risks.slice(0, 4).map((r) => `${r.risk} → ${r.mitigation}`)} /></Panel>}
+          </div>
+        </div>
+      </Slide>
+    </>
+  );
+}
+
+const BRIEF_ROWS = ['brand', 'objective', 'audience', 'platform', 'concept', 'keyMessage', 'mood', 'narrative', 'subject', 'environment', 'style', 'palette'];
+
+function BriefSlides({ x, start }: { x: Extract<ReportExtra, { kind: 'CREATIVE_BRIEF' }>; start: number }) {
+  const f = x.content.fields;
+  const label = (k: string) => BRIEF_FIELDS.find((b) => b.key === k)?.label ?? k;
+  const rows = BRIEF_ROWS.filter((k) => f[k]?.trim());
+  return (
+    <>
+      <Slide section="AIGC creative brief" title={f.concept || f.projectTitle || x.question} page={start} source={BRIEF_SOURCE}>
+        <dl className="grid h-full grid-cols-2 content-start gap-x-6 gap-y-2">
+          {rows.map((k) => (
+            <div key={k} className="border-t border-line pt-1.5">
+              <dt className="text-[11px] font-bold uppercase tracking-wide text-brand">{label(k)}</dt>
+              <dd className="text-[13px] leading-snug">{f[k]}</dd>
+            </div>
+          ))}
+        </dl>
+      </Slide>
+      <Slide section="AIGC creative brief" title="Shot prompts" page={start + 1} source={BRIEF_SOURCE}>
+        <ol className="grid h-full content-start gap-3" style={{ gridTemplateColumns: `repeat(${Math.min(3, Math.max(1, x.content.shots.length))}, minmax(0, 1fr))` }}>
+          {x.content.shots.slice(0, 6).map((sh, i) => (
+            <li key={i} className="rounded-md border border-line p-3">
+              <p className="text-[12px] font-bold uppercase tracking-wide text-brand">{`Shot ${i + 1}`}{sh.title ? ` — ${sh.title}` : ''}</p>
+              <p className="mt-1 text-[12.5px] leading-snug">{sh.prompt}</p>
+            </li>
+          ))}
+        </ol>
+      </Slide>
+    </>
+  );
+}
+
 // ── 10 Method ─────────────────────────────────────────────────────────────────
 
 function Method({ r, page }: { r: Report; page: number }) {
@@ -538,7 +634,7 @@ function Method({ r, page }: { r: Report; page: number }) {
 }
 
 /** The whole deck. Page numbers are worked out first, since the personas and heatmap may run to several slides. */
-export function SlideDeck({ r, modules, brand }: { r: Report; modules?: Set<string>; brand?: BrandTheme | null }) {
+export function SlideDeck({ r, modules, brand, extras = [] }: { r: Report; modules?: Set<string>; brand?: BrandTheme | null; extras?: ReportExtra[] }) {
   const on = (m: string) => !modules || modules.has(m);
   const profiled = on('persona_profiles') ? r.cast.filter((p) => p.answer) : [];
   let page = 1;
@@ -551,6 +647,8 @@ export function SlideDeck({ r, modules, brand }: { r: Report; modules?: Set<stri
   const heatStart = at(chunk(r.cast.filter((p) => p.answer), 15).length);
   const profileStart = at(profiled.length);
   const commsPage = at(1);
+  // Plans and creative briefs added from the Results step: two slides each, after Communications.
+  const extraStarts = extras.map(() => at(2));
   const methodPage = at(1);
   return (
     <BrandProvider logo={brand?.logo ?? null} name={brand?.name ?? null}>
@@ -565,6 +663,7 @@ export function SlideDeck({ r, modules, brand }: { r: Report; modules?: Set<stri
       <Heatmaps r={r} start={heatStart} />
       {profiled.map((p, i) => <Profile key={p.id} p={p} r={r} page={profileStart + i} />)}
       <Comms r={r} page={commsPage} />
+      {extras.map((x, i) => (x.kind === 'COMMS_PLAN' ? <PlanSlides key={x.id} x={x} start={extraStarts[i]!} /> : <BriefSlides key={x.id} x={x} start={extraStarts[i]!} />))}
       <Method r={r} page={methodPage} />
     </div>
     </BrandProvider>

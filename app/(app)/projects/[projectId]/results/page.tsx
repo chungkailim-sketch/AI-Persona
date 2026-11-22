@@ -19,9 +19,11 @@ import { PlanView } from './PlanView';
 import { ReportExportBar } from './ReportExportBar';
 import { FloatingCollapse } from '@/ui/FloatingCollapse';
 import { projectBrand } from '@/report/brandService';
+import { reportExtras } from '@/report/reportExtras';
 import { cookies } from 'next/headers';
 import { LANG_COOKIE, parseLang } from '@/ui/i18n/translate';
 import { PlanRecordActions } from './PlanRecordActions';
+import { AddToReportButton } from './AddToReportButton';
 import { KnowledgeLibrary } from './KnowledgeLibrary';
 import { RefreshWhileImporting } from '../data/RefreshWhileImporting';
 import { projectModules } from '@/modules/project';
@@ -50,6 +52,8 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
   const [report, modules, plans, creative] = await Promise.all([loadReport(projectId), projectModules(projectId), listPlans(projectId), listCreativeBriefs(projectId)]);
   const canPlan = can(ctx, 'simulation.run', projectId);
   const brand = await projectBrand(projectId);
+  const inReport = (a: { options: unknown }) => Boolean((a.options as { inReport?: boolean } | null)?.inReport);
+  const extras = await reportExtras(projectId);
   const uiLang = parseLang((await cookies()).get(LANG_COOKIE)?.value) === 'zh' ? 'zh' : 'en';
   const plan = plans.find((p) => p.id === search.plan) ?? plans[0] ?? null;
   const editRow = typeof search.editPlan === 'string' ? plans.find((p) => p.id === search.editPlan) : undefined;
@@ -118,7 +122,7 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
                 canEdit={can(ctx, 'project.edit', projectId)}
                 brand={brand ? { name: brand.name, fileName: brand.fileName, colors: [brand.colors.dark2, ...brand.colors.accents].slice(0, 7), fonts: [brand.fonts.heading, brand.fonts.body].filter((f): f is string => Boolean(f)), hasLogo: Boolean(brand.logo) } : null}
               />
-              <SlideDeck r={report} modules={modules} brand={brand} />
+              <SlideDeck r={report} modules={modules} brand={brand} extras={extras} />
             </div>
           </details>
           <FloatingCollapse targetId="report-preview" label="Collapse the report preview" />
@@ -155,7 +159,10 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
                       <span className="text-xs font-semibold text-ink-muted">Writing…</span>
                     )}
                   </div>
-                  <CreativeBriefActions projectId={projectId} briefId={c.id} status={c.status} canManage={can(ctx, 'simulation.run', projectId)} />
+                  <div className="flex flex-wrap items-start justify-end gap-x-3">
+                    {c.status === 'COMPLETED' && can(ctx, 'project.edit', projectId) && <AddToReportButton projectId={projectId} adviceId={c.id} inReport={inReport(c)} />}
+                    <CreativeBriefActions projectId={projectId} briefId={c.id} status={c.status} canManage={can(ctx, 'simulation.run', projectId)} />
+                  </div>
                 </li>
               );
             })}
@@ -194,7 +201,10 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
                             <span className="mt-0.5 block text-[10.5px] text-ink-subtle">{`${p.status.toLowerCase()} · ${fmtDateTime(p.createdAt)}${p.isMock && p.status === 'COMPLETED' ? ' · mock' : ''}`}</span>
                           </Link>
                           <div className="px-3.5 pb-2">
-                            <PlanRecordActions projectId={projectId} planId={p.id} status={p.status} canManage={canPlan} />
+                            <div className="flex flex-wrap items-start justify-end gap-x-3">
+                              {p.status === 'COMPLETED' && can(ctx, 'project.edit', projectId) && <AddToReportButton projectId={projectId} adviceId={p.id} inReport={inReport(p)} />}
+                              <PlanRecordActions projectId={projectId} planId={p.id} status={p.status} canManage={canPlan} />
+                            </div>
                           </div>
                         </li>
                       );

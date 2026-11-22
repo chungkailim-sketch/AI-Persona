@@ -11,6 +11,7 @@ import { loadReport } from '@/roundtable/report';
 import { SlideDeck } from '@/ui/report/Slides';
 import { DeckExport } from '@/ui/report/DeckExport';
 import { projectBrand } from '@/report/brandService';
+import { reportExtras } from '@/report/reportExtras';
 import { projectModules } from '@/modules/project';
 import { LANG_COOKIE, parseLang } from '@/ui/i18n/translate';
 import { DECK_LANGUAGES, isDeckLang, type DeckLang } from '@/roundtable/reportLocale';
@@ -74,7 +75,7 @@ export default async function RoundtableReportPage(props: PageProps<'/projects/[
         style={lang === 'th' ? { fontFamily: "var(--font-sans), 'Noto Sans Thai', sans-serif" } : undefined}
       >
         <div id="deck">
-          <SlideDeck r={report} modules={await projectModules(projectId)} brand={brand} />
+          <SlideDeck r={report} modules={await projectModules(projectId)} brand={brand} extras={await reportExtras(projectId)} />
         </div>
       </main>
     </div>
