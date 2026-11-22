@@ -13,7 +13,6 @@ import type { CreativeBriefContent } from '@/creative/fields';
 import { CreativeBriefButton } from './CreativeBriefButton';
 import { CreativeBriefActions } from './CreativeBriefActions';
 import { WorkflowNav } from '../WorkflowNav';
-import { DecisionGuidance } from '../DecisionGuidance';
 import { MarketInputsForm } from './MarketInputsForm';
 import { PlannerForm } from './PlannerForm';
 import { PlanView } from './PlanView';
@@ -107,7 +106,6 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
               <MarketInputsForm projectId={projectId} rows={rows} canEdit={can(ctx, 'project.edit', projectId)} />
             </div>
           </details>
-          <DecisionGuidance projectId={projectId} checkpoint="REPORT" canAsk={can(ctx, 'project.edit', projectId)} />
           {/* The slides are long; collapsed by default so every section of the page is in reach. */}
           <details id="report-preview" className="panel scroll-mt-48">
             <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">
