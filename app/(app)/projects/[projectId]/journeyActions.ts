@@ -196,6 +196,22 @@ export async function managePlanAction(_prev: FormState, formData: FormData): Pr
   redirect(target as Route);
 }
 
+/** Add a written plan or creative brief to the report deck, or take it out. */
+export async function toggleInReportAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  const on = formData.get('on') === '1';
+  try {
+    const user = await requireUserApi();
+    const { setInReport } = await import('@/report/reportExtras');
+    await setInReport(user, projectId, String(formData.get('adviceId') ?? ''), on);
+  } catch (e) {
+    return toState(e);
+  }
+  revalidatePath(`/projects/${projectId}/results`);
+  revalidatePath(`/projects/${projectId}/report`);
+  return { ok: on ? 'Added to the report preview.' : 'Removed from the report preview.' };
+}
+
 /** Upload (or replace) the client brand template for the report deck, with an optional logo. */
 export async function saveBrandTemplateAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const projectId = String(formData.get('projectId') ?? '');

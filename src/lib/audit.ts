@@ -60,6 +60,7 @@ export const AUDIT_ACTIONS = [
   'creative_brief.deleted',
   'plan.deleted',
   'project.brand.saved',
+  'report.content.changed',
   'creative_brief.edited',
   'project.creative.saved',
   'market_inputs.saved',
