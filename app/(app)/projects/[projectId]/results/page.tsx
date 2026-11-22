@@ -17,6 +17,11 @@ import { DecisionGuidance } from '../DecisionGuidance';
 import { MarketInputsForm } from './MarketInputsForm';
 import { PlannerForm } from './PlannerForm';
 import { PlanView } from './PlanView';
+import { ReportExportBar } from './ReportExportBar';
+import { FloatingCollapse } from '@/ui/FloatingCollapse';
+import { projectBrand } from '@/report/brandService';
+import { cookies } from 'next/headers';
+import { LANG_COOKIE, parseLang } from '@/ui/i18n/translate';
 import { PlanRecordActions } from './PlanRecordActions';
 import { KnowledgeLibrary } from './KnowledgeLibrary';
 import { RefreshWhileImporting } from '../data/RefreshWhileImporting';
@@ -45,6 +50,8 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
 
   const [report, modules, plans, creative] = await Promise.all([loadReport(projectId), projectModules(projectId), listPlans(projectId), listCreativeBriefs(projectId)]);
   const canPlan = can(ctx, 'simulation.run', projectId);
+  const brand = await projectBrand(projectId);
+  const uiLang = parseLang((await cookies()).get(LANG_COOKIE)?.value) === 'zh' ? 'zh' : 'en';
   const plan = plans.find((p) => p.id === search.plan) ?? plans[0] ?? null;
   const editRow = typeof search.editPlan === 'string' ? plans.find((p) => p.id === search.editPlan) : undefined;
   const editPlan = editRow ? { question: editRow.question, industry: String((editRow.options as { industry?: string } | null)?.industry ?? '') } : null;
@@ -102,14 +109,21 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
           </details>
           <DecisionGuidance projectId={projectId} checkpoint="REPORT" canAsk={can(ctx, 'project.edit', projectId)} />
           {/* The slides are long; collapsed by default so every section of the page is in reach. */}
-          <details className="panel">
+          <details id="report-preview" className="panel scroll-mt-48">
             <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-ink">
               Report preview <span className="font-normal text-ink-subtle">— the slides as they print to PDF; open to read them here</span>
             </summary>
-            <div className="border-t border-line px-4 py-4">
-              <SlideDeck r={report} modules={modules} />
+            <div className="flex flex-col gap-4 border-t border-line px-4 py-4">
+              <ReportExportBar
+                projectId={projectId}
+                lang={uiLang}
+                canEdit={can(ctx, 'project.edit', projectId)}
+                brand={brand ? { name: brand.name, fileName: brand.fileName, colors: [brand.colors.dark2, ...brand.colors.accents].slice(0, 7), fonts: [brand.fonts.heading, brand.fonts.body].filter((f): f is string => Boolean(f)), hasLogo: Boolean(brand.logo) } : null}
+              />
+              <SlideDeck r={report} modules={modules} brand={brand} />
             </div>
           </details>
+          <FloatingCollapse targetId="report-preview" label="Collapse the report preview" />
         </section>
       )}
 

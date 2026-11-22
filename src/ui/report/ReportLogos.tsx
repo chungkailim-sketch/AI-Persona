@@ -1,3 +1,7 @@
+'use client';
+
+import { useBrandLogo } from './BrandContext';
+
 /**
  * Ruder Finn and rf.AI Persona side by side, for the report deck (slides and the printed PDF).
  *
@@ -5,6 +9,15 @@
  * paper (`.slide-deck` in globals.css), so the original colours are the right ones in either theme.
  */
 export function ReportLogos({ height = 20, className = '' }: { height?: number; className?: string }) {
+  // A client brand template with a logo replaces both marks.
+  const brand = useBrandLogo();
+  if (brand.logo) {
+    return (
+      <span className={`inline-flex items-center ${className}`}>
+        <img src={brand.logo} alt={brand.name ?? 'Logo'} style={{ height: Math.round(height * 1.5), width: 'auto', maxWidth: height * 12 }} />
+      </span>
+    );
+  }
   // The Ruder Finn wordmark is a little taller than the rf.AI Persona one at the same visual weight.
   const rf = Math.round(height * 1.15);
   return (

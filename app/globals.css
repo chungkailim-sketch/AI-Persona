@@ -285,8 +285,10 @@
 .slide {
   width: 1280px; height: 720px; position: relative; overflow: hidden;
   background: var(--slide-paper); color: var(--color-ink); transform-origin: top left;
-  font-family: var(--font-sans);
+  font-family: var(--brand-font-body, var(--font-sans));
 }
+/* A client brand template's heading font, where one was uploaded. */
+.slide h1, .slide h2 { font-family: var(--brand-font-heading, inherit); }
 @media print {
   @page { size: 13.333in 7.5in; margin: 0; }
   .slide-frame { height: auto !important; overflow: visible; }

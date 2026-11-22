@@ -16,7 +16,9 @@ import { band, ENTRY_WEIGHTS, GEO_GATE, PILLAR_LABEL, PILLAR_SHORT, POTENTIAL_WE
 import type { Report, ReportPersona } from '@/roundtable/report';
 import { MarketMap, TIER_FILL } from './MarketMap';
 import { MarketHeader, PersonaAvatar, PersonaCard, TierHeader, keyStats } from './PersonaCard';
-import { ScaledSlide } from './ScaledSlide';
+import { FitBox, ScaledSlide } from './ScaledSlide';
+import { BrandProvider } from './BrandContext';
+import { brandStyle, type BrandTheme } from '@/report/brandTheme';
 
 const TIER_LABEL = Object.fromEntries(TIERS.map((t) => [t.key, t.label])) as Record<TierKey, string>;
 const BAND_TEXT = { willing: 'Willing', depends: 'Depends', unlikely: 'Not keen' } as const;
@@ -46,7 +48,7 @@ function Slide({ section, title, source = SOURCE, page, children, className }: {
           </div>
           <ReportLogos height={18} className="mt-1 shrink-0" />
         </header>
-        <div className={cn('mt-5 min-h-0 flex-1', className)}>{children}</div>
+        <FitBox className={cn('mt-5 min-h-0 flex-1', className)}>{children}</FitBox>
         <footer className="mt-3 flex items-end justify-between gap-6 border-t border-line pt-2 text-[10.5px] text-ink-subtle">
           <span>{source}</span>
           <span className="shrink-0">Ruder Finn · {page}</span>
@@ -130,7 +132,7 @@ function About({ page }: { page: number }) {
             <p className="text-[13px] font-bold uppercase tracking-wide text-brand">Benefits</p>
             <ul className="mt-2 flex flex-col gap-2">
               {BENEFITS.map((b) => (
-                <li key={b.title} className="rounded-full bg-brand-deep px-4 py-3 text-brand-deep-ink">
+                <li key={b.title} className="rounded-md bg-brand-deep px-4 py-3 text-brand-deep-ink">
                   <p className="text-[16px] font-bold">{b.title}</p>
                   <p className="text-[12.5px] opacity-90">{b.body}</p>
                 </li>
@@ -139,7 +141,7 @@ function About({ page }: { page: number }) {
           </div>
           <div>
             <p className="text-[13px] font-bold uppercase tracking-wide text-brand">Who it is for</p>
-            <ul className="mt-2 flex flex-wrap gap-2">{USERS.map((u) => <li key={u} className="rounded-full border border-brand px-3 py-1 text-[13px] font-semibold text-brand">{u}</li>)}</ul>
+            <ul className="mt-2 flex flex-wrap gap-2">{USERS.map((u) => <li key={u} className="rounded-md border border-brand px-3 py-1 text-[13px] font-semibold text-brand">{u}</li>)}</ul>
           </div>
         </div>
       </div>
@@ -188,7 +190,7 @@ function Potential({ r, page }: { r: Report; page: number }) {
             </tbody>
           </table>
           {r.potential.some((p) => p.gated) && <p className="text-[11px] text-ink-subtle">* Capped by the policy gate.</p>}
-          <div className="rounded-full bg-brand-soft p-3">
+          <div className="rounded-md bg-brand-soft p-3">
             <p className="text-[12px] font-bold uppercase tracking-wide text-brand">Reading the data</p>
             <ul className="mt-1 flex flex-col gap-1 text-[12.5px] leading-snug text-ink">{(r.summary?.marketReading.potential ?? []).slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
           </div>
@@ -247,11 +249,11 @@ function Entry({ r, page }: { r: Report; page: number }) {
           <p className="mt-2 text-[10.5px] text-ink-subtle">† From the roundtable (not entered). Underlined: lead category. – : not entered or not in the cast.</p>
         </div>
         <div className="flex flex-col gap-3">
-          <div className="rounded-full bg-brand-soft p-3">
+          <div className="rounded-md bg-brand-soft p-3">
             <p className="text-[12px] font-bold uppercase tracking-wide text-brand">Interpretation</p>
             <ul className="mt-1 flex flex-col gap-1 text-[12px] leading-snug">{(r.summary?.marketReading.entry ?? []).slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
           </div>
-          <div className="rounded-full bg-brand-deep p-3 text-brand-deep-ink">
+          <div className="rounded-md bg-brand-deep p-3 text-brand-deep-ink">
             <p className="text-[12px] font-bold uppercase tracking-wide text-[var(--color-highlight)]">Entry strategy</p>
             <ul className="mt-1 flex flex-col gap-1 text-[12px] leading-snug">{(r.summary?.marketReading.strategy ?? []).slice(0, 3).map((x, i) => <li key={i}>{x}</li>)}</ul>
           </div>
@@ -286,7 +288,7 @@ function CastSlides({ r, start }: { r: Report; start: number }) {
       {castPages(r).map(({ markets, rows }, i) => (
         <Slide key={i} section="The personas" title={`${r.cast.length} personas across ${r.castMarkets.length} markets`} page={start + i}
           source={`Identities are illustrative; statistics are each segment's published shares against all adults in the market. ${SOURCE}`}>
-          <div className="grid h-full gap-2" style={{ gridTemplateColumns: `120px repeat(${markets.length}, minmax(0, 1fr))`, gridTemplateRows: `auto repeat(${rows.length}, minmax(0, 1fr))` }}>
+          <div className="grid h-full gap-2" style={{ gridTemplateColumns: `150px repeat(${markets.length}, minmax(0, 1fr))`, gridTemplateRows: `auto repeat(${rows.length}, minmax(0, 1fr))` }}>
             <span />
             {markets.map((m) => <MarketHeader key={m} market={m} />)}
             {rows.map((row, ri) => (
@@ -302,13 +304,13 @@ function CastSlides({ r, start }: { r: Report; start: number }) {
 function Row({ row, index, markets, r }: { row: CastRow; index: number; markets: string[]; r: Report }) {
   return (
     <>
-      <TierHeader index={index} group={row.group} label={row.label} />
+      <FitBox className="min-h-0"><TierHeader index={index} group={row.group} label={row.label} /></FitBox>
       {markets.map((m) => {
         const p = r.cast.find((x) => x.profile.market === m && `${x.profile.group ?? ''}|${x.profile.tier}` === row.key);
         return (
-          <div key={m} className="min-h-0 overflow-hidden text-[12px]">
+          <FitBox key={m} className="min-h-0 text-[12px]">
             {p ? <PersonaCard name={p.name} profile={p.profile} compact /> : <span className="text-ink-subtle">—</span>}
-          </div>
+          </FitBox>
         );
       })}
     </>
@@ -344,7 +346,7 @@ function Roundtable({ r, page }: { r: Report; page: number }) {
             );
           })}
         </ul>
-        <div className="grid grid-cols-[1fr_auto] items-center gap-6 rounded-full bg-brand-deep px-5 py-3 text-brand-deep-ink">
+        <div className="grid grid-cols-[1fr_auto] items-center gap-6 rounded-md bg-brand-deep px-5 py-3 text-brand-deep-ink">
           <p className="text-[16px] font-semibold leading-snug"><span className="mr-2 text-[12px] font-bold uppercase tracking-wide text-[var(--color-highlight)]">Consensus</span>{r.summary?.consensus ?? '—'}</p>
           <p className="text-[12px] opacity-90">{`${r.view.bands.willing} willing · ${r.view.bands.depends} depends · ${r.view.bands.unlikely} not keen`}</p>
         </div>
@@ -403,7 +405,7 @@ function Heatmaps({ r, start }: { r: Report; start: number }) {
                 <li className="flex items-center gap-2"><span className="inline-block h-3 w-5 rounded-sm bg-[var(--heat-mid)]" /> 40–59 depends</li>
                 <li className="flex items-center gap-2"><span className="inline-block h-3 w-5 rounded-sm bg-[var(--heat-low)]" /> &lt;40 not keen</li>
               </ul>
-              <div className="rounded-full bg-brand-soft p-3">
+              <div className="rounded-md bg-brand-soft p-3">
                 <p className="text-[12px] font-bold uppercase tracking-wide text-brand">Key takeaways</p>
                 <ol className="mt-1 flex list-decimal flex-col gap-1.5 pl-4 text-[12.5px] leading-snug">{(r.summary?.takeaways ?? []).slice(0, 5).map((t, k) => <li key={k}>{t}</li>)}</ol>
               </div>
@@ -434,7 +436,7 @@ function Profile({ p, r, page }: { p: ReportPersona; r: Report; page: number }) 
               {id?.decisionLogic?.length ? <p className="mt-1 font-bold text-brand">{id.decisionLogic.join(' > ')}</p> : null}
             </div>
           </div>
-          <blockquote className="rounded-full bg-brand-deep p-4 text-[16px] font-semibold leading-snug text-brand-deep-ink">“{a.quote}”</blockquote>
+          <blockquote className="rounded-md bg-brand-deep p-4 text-[16px] font-semibold leading-snug text-brand-deep-ink">“{a.quote}”</blockquote>
           <div>
             <p className="text-[12px] font-bold uppercase tracking-wide text-brand">Mindset</p>
             <dl className="mt-1 grid grid-cols-2 gap-x-3 gap-y-1 text-[12.5px]">
@@ -536,7 +538,7 @@ function Method({ r, page }: { r: Report; page: number }) {
 }
 
 /** The whole deck. Page numbers are worked out first, since the personas and heatmap may run to several slides. */
-export function SlideDeck({ r, modules }: { r: Report; modules?: Set<string> }) {
+export function SlideDeck({ r, modules, brand }: { r: Report; modules?: Set<string>; brand?: BrandTheme | null }) {
   const on = (m: string) => !modules || modules.has(m);
   const profiled = on('persona_profiles') ? r.cast.filter((p) => p.answer) : [];
   let page = 1;
@@ -551,7 +553,8 @@ export function SlideDeck({ r, modules }: { r: Report; modules?: Set<string> }) 
   const commsPage = at(1);
   const methodPage = at(1);
   return (
-    <div className="slide-deck flex flex-col gap-6">
+    <BrandProvider logo={brand?.logo ?? null} name={brand?.name ?? null}>
+    <div className="slide-deck flex flex-col gap-6" style={brand ? (brandStyle(brand) as React.CSSProperties) : undefined} data-brand={brand ? brand.name : undefined}>
       <MockBanner show={r.roundtable.isMock} />
       <Cover r={r} />
       {about > 0 && <About page={about} />}
@@ -564,5 +567,6 @@ export function SlideDeck({ r, modules }: { r: Report; modules?: Set<string> }) 
       <Comms r={r} page={commsPage} />
       <Method r={r} page={methodPage} />
     </div>
+    </BrandProvider>
   );
 }
