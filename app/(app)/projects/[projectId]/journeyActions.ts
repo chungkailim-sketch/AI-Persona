@@ -286,6 +286,39 @@ export async function importBriefAction(_prev: FormState, formData: FormData): P
   return { ok: 'Reading the brief. The form below fills in when it is done, usually within a minute.' };
 }
 
+export async function importGeoAuditAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  const file = formData.get('file');
+  if (!(file instanceof File) || file.size === 0) return { error: 'Choose a file to upload.' };
+  try {
+    const user = await requireUserApi();
+    const { requestGeoAudit } = await import('@/geo/audit');
+    await requestGeoAudit(user, projectId, { name: file.name, type: file.type, bytes: Buffer.from(await file.arrayBuffer()) }, await lang());
+  } catch (e) {
+    return toState(e);
+  }
+  revalidatePath(`/projects/${projectId}/brief`);
+  return { ok: 'Reading the GEO audit. Its findings and strategy appear below in a minute or two.' };
+}
+
+export async function manageGeoAuditAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  const auditId = String(formData.get('auditId') ?? '');
+  const op = String(formData.get('op') ?? '');
+  try {
+    const user = await requireUserApi();
+    const geo = await import('@/geo/audit');
+    if (op === 'delete') await geo.deleteGeoAudit(user, projectId, auditId);
+    else if (op === 'reread') await geo.rereadGeoAudit(user, projectId, auditId, await lang());
+    else return { error: 'Invalid request.' };
+  } catch (e) {
+    return toState(e);
+  }
+  revalidatePath(`/projects/${projectId}/brief`);
+  revalidatePath(`/projects/${projectId}/results`);
+  return { ok: op === 'delete' ? 'GEO audit deleted.' : 'Reading the GEO audit again.' };
+}
+
 export async function requestCreativeBriefAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const projectId = String(formData.get('projectId') ?? '');
   try {

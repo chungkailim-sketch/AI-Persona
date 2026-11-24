@@ -129,12 +129,6 @@ export default async function RoundtableStepPage(props: PageProps<'/projects/[pr
         // Open while the personas answer; collapsed once the roundtable has finished.
         <Collapsible open={running} className="max-w-3xl" title={running ? (rt.phase === 'SUMMARY' ? 'Writing the takeaways…' : 'Personas answering…') : rt.status === 'COMPLETED' ? 'Roundtable complete' : 'Roundtable stopped'} note={`${rt.answers.length} of ${rt.total} answered`}>
         <section aria-live="polite">
-          <div className="panel-head">
-            <h2 className="font-sans text-sm font-semibold text-ink">
-              {running ? (rt.phase === 'SUMMARY' ? 'Writing the takeaways…' : 'Personas answering…') : rt.status === 'COMPLETED' ? 'Roundtable complete' : 'Roundtable stopped'}
-            </h2>
-            <span className="text-xs text-ink-subtle">{`${rt.answers.length} of ${rt.total} answered`}</span>
-          </div>
           <div className="px-4 py-3">
             <div className="h-1.5 overflow-hidden rounded-full bg-track">
               <div className="motion-progress h-full bg-brand-mark" style={{ width: `${rt.total ? Math.round((rt.answers.length / rt.total) * 100) : 0}%` }} />

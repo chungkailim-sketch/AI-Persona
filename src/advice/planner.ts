@@ -89,6 +89,9 @@ async function dataEvidence(projectId: string): Promise<{ lines: string[]; marke
   const debate = await prisma.debate.findFirst({ where: { projectId, status: 'COMPLETED' }, orderBy: { completedAt: 'desc' } });
   const verdict = ((debate?.conclusion ?? {}) as { verdict?: { answer?: string; conclusion?: string } }).verdict;
   if (debate && verdict) add(`Agent-swarm debate on "${debate.topic}": ${verdict.answer} — ${String(verdict.conclusion ?? '').slice(0, 600)}`);
+  // GEO audits: how AI answer engines see the brand in each audited market, and the GEO strategy.
+  const { completedGeoAudits, geoEvidenceLines } = await import('@/geo/audit');
+  for (const g of await completedGeoAudits(projectId)) for (const l of geoEvidenceLines(g)) add(l);
   const markets = [...new Set((cast?.personas ?? []).map((p) => (p.versions[0]?.profile as unknown as CastProfile | null)?.market).filter((m): m is string => Boolean(m)))];
   return { lines, markets };
 }
@@ -118,6 +121,9 @@ export async function executePlan(adviceId: string): Promise<{ adviceId: string;
         '3. Where the data cannot answer something the question needs, list it under "dataGaps" — do not invent it.',
         '4. The roundtable is simulated: treat it as a hypothesis to test, and say so where it matters.',
         '5. Be specific: name markets, audiences, channels, messages and phases. Channel "type" is paid, earned, shared or owned.',
+        '   Where GEO audit lines are given (how AI answer engines name and cite the brand in a market), use them for that market:',
+        '   choose channels and media targets from the most-cited sources, content formats from what gets cited, and include GEO',
+        '   actions (owned citable content, review and media programmes, retail listings) with their D-ids.',
         `6. ${opts.language === 'zh' ? 'Write every text value in Simplified Chinese.' : 'Write every text value in English.'}`,
         '7. Reply with a single JSON object in the shape you are given. No prose outside it.',
       ].join('\n'),
@@ -132,7 +138,7 @@ export async function executePlan(adviceId: string): Promise<{ adviceId: string;
             '',
             '## Study data',
             data.lines.length ? data.lines.join('\n') : '(no data — say so in dataGaps)',
-            `DATA IDS: ${data.lines.map((_, i) => `D${i + 1}`).slice(0, 40).join(' | ')}`,
+            `DATA IDS: ${data.lines.map((_, i) => `D${i + 1}`).slice(0, 80).join(' | ')}`,
             '',
             '## Frameworks and knowledge',
             kb.text,

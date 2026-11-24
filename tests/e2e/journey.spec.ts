@@ -27,6 +27,11 @@ function csv(): string {
   return lines.join('\n');
 }
 
+/** Long sections start collapsed; open them all, as a reader would, before looking inside. */
+async function openAll(page: Page) {
+  await page.evaluate(() => document.querySelectorAll('details').forEach((d) => (d.open = true)));
+}
+
 async function shot(page: Page, name: string) {
   if (process.env.SHOT_DIR) await page.screenshot({ path: `${process.env.SHOT_DIR}/${name}.png`, fullPage: true });
 }
@@ -46,6 +51,7 @@ test('from upload to a slide report in five steps', async ({ page }) => {
   await expect(page.getByRole('region', { name: 'Your files' }).getByText('Ready', { exact: true })).toBeVisible({ timeout: 90_000 });
   await shot(page, '1-data');
   // Decision guidance at the data checkpoint (local stand-in without an OpenAI key).
+  await openAll(page);
   await page.getByRole('button', { name: 'Get decision guidance' }).click();
   await expect(page.getByText('The data is ready to build personas')).toBeVisible();
 
@@ -54,11 +60,13 @@ test('from upload to a slide report in five steps', async ({ page }) => {
   await expect(page.getByLabel('Roundtable question')).toHaveValue(/Chinese brand/);
   for (const m of Object.keys(BANDS)) await page.getByLabel(m).check();
   await page.getByRole('button', { name: 'Save brief' }).click();
-  await expect(page.getByText('Brief saved.')).toBeVisible();
+  // The form remounts on the saved version, so the saved brief shows as the way on to Personas.
+  await expect(page.getByRole('link', { name: /Next: Personas/ })).toBeVisible();
   await shot(page, '2-brief');
 
   // 3 Personas: every uploaded file is the source; the parameters are proposed from the data.
   await goAndHydrate(page, `/projects/${id}/personas`);
+  await openAll(page);
   await expect(page.getByText('Source: all 1 file(s) uploaded in step 1.')).toBeVisible();
   await expect(page.getByLabel(/Monthly household income/)).toBeChecked();
   await expect(page.getByText('Personas ready for simulation')).toHaveCount(0);
@@ -66,12 +74,14 @@ test('from upload to a slide report in five steps', async ({ page }) => {
   await expect(page.getByText('Population sample')).toHaveCount(0);
   await page.getByRole('button', { name: 'Build personas' }).click();
   await expect(page.locator('[data-persona-card]')).toHaveCount(9, { timeout: 60_000 });
+  await openAll(page);
   await expect(page.getByRole('columnheader', { name: 'Indonesia' })).toBeVisible();
   await expect(page.getByText('Premium Pioneers').first()).toBeVisible();
   await shot(page, '3-personas');
   await page.getByRole('button', { name: 'Approve personas' }).click();
+  await openAll(page);
   await expect(page.getByText('Approved', { exact: true })).toBeVisible();
-  await expect(page.getByRole('heading', { name: 'Agent swarm debate' })).toBeVisible();
+  await expect(page.getByText('Agent swarm debate', { exact: true }).first()).toBeVisible();
 
   // Open a persona and interview it.
   await page.locator('[data-persona-card]').first().click();
@@ -85,11 +95,12 @@ test('from upload to a slide report in five steps', async ({ page }) => {
   await goAndHydrate(page, `/projects/${id}/simulate`);
   await page.getByRole('button', { name: 'Start the roundtable' }).click();
   await expect(page.getByText('Roundtable complete')).toBeVisible({ timeout: 90_000 });
-  await expect(page.getByText('9 of 9 answered')).toBeVisible();
+  await expect(page.getByText('9 of 9 answered').first()).toBeVisible();
   await shot(page, '4-roundtable');
 
   // 5 Report
   await goAndHydrate(page, `/projects/${id}/results`);
+  await openAll(page);
   await expect(page.getByText('AI Persona Roundtable', { exact: true })).toBeVisible();
   await expect(page.getByText('rf.AI Persona — how the engine works')).toBeVisible();
   await expect(page.getByText('Where Chinese brands have the most room to grow')).toBeVisible();
@@ -98,7 +109,6 @@ test('from upload to a slide report in five steps', async ({ page }) => {
   await expect(page.getByText('Key takeaways')).toBeVisible();
 
   // Market inputs feed the indices.
-  await page.locator('summary', { hasText: 'Market inputs' }).click();
   await page.getByLabel('Indonesia: Geopolitics & trade').fill('25');
   await page.getByLabel('Indonesia: source').fill('Team estimate');
   await page.getByRole('button', { name: 'Save market inputs' }).click();
@@ -109,13 +119,14 @@ test('from upload to a slide report in five steps', async ({ page }) => {
   await page.getByLabel('Your comms or marketing question').fill('How should we launch in the priority market in the first six months?');
   await page.getByRole('button', { name: 'Write the plan' }).click();
   await expect(page.getByText('Frameworks applied')).toBeVisible({ timeout: 60_000 });
-  await expect(page.getByRole('heading', { name: 'Knowledge library' })).toBeVisible();
+  await expect(page.getByText('Knowledge library', { exact: true }).first()).toBeVisible();
   await page.getByRole('tab', { name: 'Market entry knowledge' }).click();
   await expect(page.getByText('CAGE distance framework')).toBeVisible();
   await shot(page, '5b-plans');
 
   await goAndHydrate(page, `/projects/${id}/report`);
-  await expect(page.getByRole('button', { name: /Print or save as PDF/ })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download PDF' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Download PowerPoint' })).toBeVisible();
   await expect(page.getByText('Persona profile', { exact: false }).first()).toBeVisible();
   await page.emulateMedia({ media: 'print' });
   if (process.env.SHOT_DIR) await page.pdf({ path: `${process.env.SHOT_DIR}/report.pdf`, width: '13.333in', height: '7.5in', printBackground: true });

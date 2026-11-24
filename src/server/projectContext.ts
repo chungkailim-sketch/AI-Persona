@@ -141,5 +141,13 @@ export async function projectContext(projectId: string): Promise<string | null> 
     if (c.title) out.push(`Title: ${c.title}`);
     if (c.answer) out.push('', c.answer.slice(0, 2000));
   }
+
+  // GEO audits uploaded on the Brief step: AI visibility in each audited market, and the GEO strategy.
+  const { completedGeoAudits, geoEvidenceLines } = await import('@/geo/audit');
+  const geo = await completedGeoAudits(projectId);
+  if (geo.length) {
+    out.push('', '## GEO (AI visibility) audits');
+    for (const g of geo) out.push(...geoEvidenceLines(g).map((l) => `- ${l}`));
+  }
   return out.join('\n');
 }

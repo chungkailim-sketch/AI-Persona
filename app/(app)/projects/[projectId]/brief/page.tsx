@@ -17,6 +17,9 @@ import { latestBriefImport, type ImportContent } from '@/advice/briefImport';
 import { Markdown } from '@/ui/Markdown';
 import { RefreshWhileImporting } from '../data/RefreshWhileImporting';
 import { BriefUpload } from './BriefUpload';
+import { GeoAuditActions, GeoAuditUpload } from './GeoAuditUpload';
+import { listGeoAudits } from '@/geo/audit';
+import { fmtDateTime } from '@/lib/time';
 
 export const metadata = { title: 'Brief · RF AI Persona Intelligence' };
 export const dynamic = 'force-dynamic';
@@ -32,6 +35,8 @@ export default async function BriefStepPage(props: PageProps<'/projects/[project
 
   const lang = parseLang((await cookies()).get(LANG_COOKIE)?.value);
   const [brief, available, setup, imported] = await Promise.all([latestBrief(projectId), availableMarkets(projectId), prisma.project.findUnique({ where: { id: projectId }, select: { useCase: true, modules: true } }), latestBriefImport(projectId)]);
+  const geo = await listGeoAudits(projectId);
+  const geoBusy = geo.some((g) => g.status === 'QUEUED' || g.status === 'RUNNING');
   const reading = imported?.status === 'QUEUED' || imported?.status === 'RUNNING';
   const read = imported?.status === 'COMPLETED' ? (imported.content as unknown as ImportContent) : null;
   const hypothesisCount = brief ? await prisma.hypothesis.count({ where: { briefId: brief.id } }) : 0;
@@ -65,7 +70,7 @@ export default async function BriefStepPage(props: PageProps<'/projects/[project
           <ModulesForm projectId={projectId} useCase={setup?.useCase ?? 'market_entry'} active={[...activeModules(setup ?? { useCase: 'market_entry', modules: [] })]} canEdit={can(ctx, 'project.edit', projectId)} />
         </div>
       </details>
-      <RefreshWhileImporting active={reading} />
+      <RefreshWhileImporting active={reading || geoBusy} />
       {canEdit && (
         <section className="panel max-w-3xl px-5 py-5">
           <BriefUpload projectId={projectId} />
@@ -108,6 +113,65 @@ export default async function BriefStepPage(props: PageProps<'/projects/[project
           </div>
         </details>
       )}
+      {/* GEO audit: read, analysed and folded into the plans and the report (src/geo/audit.ts). */}
+      <section aria-labelledby="geo-heading" className="panel max-w-3xl px-5 py-5">
+        <h2 id="geo-heading" className="sr-only">GEO audit</h2>
+        {canEdit ? <GeoAuditUpload projectId={projectId} /> : <p className="text-sm font-semibold text-ink">GEO audits</p>}
+        {geo.length > 0 && (
+          <ul className="mt-4 flex flex-col gap-2">
+            {geo.map((g) => {
+              const c = g.content;
+              const h = c?.metrics.headline;
+              return (
+                <li key={g.id} className="rounded-md border border-line">
+                  <details>
+                    <summary className="cursor-pointer px-3 py-2">
+                      <span className="text-sm font-semibold text-ink">{c ? `${c.metrics.brand} · ${c.metrics.market || '—'}` : g.fileName}</span>
+                      <span className="block text-xs text-ink-muted">
+                        <span data-no-translate>{g.fileName}</span>{' · '}{fmtDateTime(g.createdAt)}
+                        {c && h?.visibility != null && <>{' · '}<span>{`AI visibility ${h.visibility}%${h.rank != null ? `, rank #${h.rank}` : ''}`}</span></>}
+                        {g.status === 'FAILED' && <>{' · '}<span className="text-danger">Failed</span></>}
+                        {(g.status === 'QUEUED' || g.status === 'RUNNING') && <>{' · '}<span>Reading…</span></>}
+                        {g.isMock && g.status === 'COMPLETED' && ' · mock'}
+                      </span>
+                    </summary>
+                    <div className="flex flex-col gap-3 border-t border-line px-3 py-3 text-sm">
+                      {g.status === 'FAILED' && <p role="alert" className="text-danger">{g.failureReason}</p>}
+                      {c && (
+                        <>
+                          <p className="text-xs text-ink-muted">
+                            {c.metrics.marketBasis === 'inferred' ? <><span>Market inferred from the report:</span> {c.metrics.marketEvidence}</> : <span>Market stated in the report.</span>}{' '}
+                            {c.matchedMarket ? <span>{`Matched to the study market ${c.matchedMarket}.`}</span> : <span>This market is not among the study markets; the GEO findings still go into the plans and the report.</span>}
+                          </p>
+                          <div>
+                            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">What the figures say</h3>
+                            <ul className="mt-1 list-disc pl-5 text-ink">{c.analysis.facts.map((f) => <li key={f}>{f}</li>)}</ul>
+                          </div>
+                          {c.strategy.headline && (
+                            <div>
+                              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">GEO strategy</h3>
+                              <p className="mt-1 font-semibold text-ink">{c.strategy.headline}</p>
+                              <p className="text-ink-muted">{c.strategy.summary}</p>
+                            </div>
+                          )}
+                          {c.strategy.investment.length > 0 && (
+                            <div>
+                              <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-muted">Where to invest</h3>
+                              <ul className="mt-1 list-disc pl-5">{c.strategy.investment.map((i) => <li key={i.area}><b>{i.area}</b>{i.share != null ? ` — ${i.share}%` : ''} <span className="text-ink-subtle">({i.priority})</span>: {i.rationale}</li>)}</ul>
+                            </div>
+                          )}
+                          <p className="text-xs text-ink-subtle">The full GEO section is in the report (Results → Report preview), and the plans cite these findings.</p>
+                        </>
+                      )}
+                      {canEdit && <GeoAuditActions projectId={projectId} auditId={g.id} busy={g.status === 'QUEUED' || g.status === 'RUNNING'} />}
+                    </div>
+                  </details>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
       {brief && missing.length > 0 && (
         <p role="status" className="max-w-3xl rounded-lg border border-line bg-surface px-4 py-3 text-sm text-ink-muted">
           Not complete yet: {missing.join(' ')} The suggested values below are not saved until you press Save.

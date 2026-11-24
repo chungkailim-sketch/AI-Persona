@@ -109,6 +109,45 @@ function body(schemaName: string, rng: () => number, personaKey: string, request
       };
     }
 
+    case 'geo_metrics':
+      return {
+        brand: '[MOCK] Brand', reportTitle: '[MOCK] AI Visibility Audit', period: '[MOCK] September 2026',
+        market: listed(request, 'MARKETS IN THE STUDY')[0] ?? 'United Kingdom', marketBasis: 'inferred', marketEvidence: '[MOCK] Placeholder: inferred from retailers and domains.',
+        engines: 5, topics: 4,
+        headline: { visibility: 28.3, mentions: 26.4, citationShare: 6.2, avgRank: 2.8, rank: 2, brandsTracked: 4, marketShare: 20.5, brandedVisibility: 96 },
+        competitors: [
+          { name: 'Leader Co', mentions: 41.5 }, { name: '[MOCK] Brand', mentions: 26.4 }, { name: 'Rival A', mentions: 22.8 }, { name: 'Rival B', mentions: 19.8 },
+        ],
+        topicScores: [
+          { topic: 'Topic A', brand: 49.8, leader: 'Leader Co', leaderScore: 51.9 }, { topic: 'Topic B', brand: 43.9, leader: 'Leader Co', leaderScore: 55.5 },
+          { topic: 'Topic C', brand: 7, leader: 'Leader Co', leaderScore: 52.3 }, { topic: 'Topic D', brand: 4.5, leader: 'Leader Co', leaderScore: 40.6 },
+        ],
+        engineScores: [{ engine: 'Gemini', mentions: 32.2 }, { engine: 'OpenAI', mentions: 29.4 }, { engine: 'Google AI Mode', mentions: 23.8 }, { engine: 'Perplexity', mentions: 21.4 }],
+        sourceTypes: [{ type: 'Review & tech media', share: 59 }, { type: 'Retail & price comparison', share: 13 }, { type: 'Brand websites', share: 9 }, { type: 'Video & social', share: 8 }, { type: 'Forums', share: 5 }],
+        industrySources: [{ domain: 'reviewsite.example', share: 4.7, citations: '2.4K' }, { domain: 'techmedia.example', share: 3.4, citations: '1.8K' }, { domain: 'video.example', share: 3.2, citations: '1.6K' }],
+        brandedSources: [{ domain: 'brand.example', share: 13.3 }],
+        ownedDomains: [{ brand: 'Leader Co', domain: 'leader.example', share: 2.23, rank: 5 }, { brand: '[MOCK] Brand', domain: 'brand.example', share: 1.06, rank: 9 }],
+        topPages: [{ page: 'leader.example/guide', brand: 'Leader Co', note: '[MOCK] explainer' }],
+        battlegrounds: [{ name: '[MOCK] Close battleground', topics: 'Topic A, Topic B', position: '2–12pp behind', keyDomains: ['reviewsite.example'] }],
+        trend: '[MOCK] Placeholder trend.',
+        recommendations: [{ title: '[MOCK] Win the best-of lists', area: 'PR', detail: '[MOCK] Placeholder.', priority: 'high' }],
+        keyReads: ['[MOCK] Placeholder read.'],
+      };
+
+    case 'geo_strategy':
+      return {
+        headline: '[MOCK] Placeholder GEO strategy headline.', summary: '[MOCK] Placeholder summary produced by the mock provider.',
+        contentStrategy: [{ pillar: '[MOCK] Citable explainers', detail: '[MOCK] Placeholder.', evidence: '[MOCK] 26.4% mentions vs 6.2% citations' }],
+        gtmTactics: [{ tactic: '[MOCK] Review programme', detail: '[MOCK] Placeholder.', timing: '0–30 days', evidence: '[MOCK] review media 59%' }],
+        contentFormats: [{ format: '[MOCK] Comparison guide', purpose: '[MOCK] Placeholder.', where: 'brand site', evidence: '[MOCK]' }],
+        channels: [{ channel: '[MOCK] Review and tech media', type: 'earned', role: '[MOCK] Placeholder.', priority: 'high', evidence: '[MOCK] 59% of citations' }, { channel: '[MOCK] Retail listings', type: 'retail', role: '[MOCK] Placeholder.', priority: 'medium', evidence: '[MOCK] 13%' }],
+        mediaRelations: [{ target: 'reviewsite.example', angle: '[MOCK] Placeholder angle.', asset: '[MOCK] review units', evidence: '[MOCK] #1 source' }],
+        investment: [{ area: '[MOCK] Earned media', priority: 'high', share: 40, rationale: '[MOCK]' }, { area: '[MOCK] Owned content', priority: 'high', share: 35, rationale: '[MOCK]' }, { area: '[MOCK] Retail', priority: 'medium', share: 25, rationale: '[MOCK]' }],
+        kpis: [{ metric: '[MOCK] Citation share', baseline: '6.2%', target: '12%', timeframe: '6 months' }],
+        roadmap: [{ phase: '[MOCK] First 30 days', timing: '0–30 days', actions: ['[MOCK] Placeholder action.'] }],
+        personaLinks: ['[MOCK] Placeholder persona link.'],
+      };
+
     case 'report_translation': {
       const text = (request?.messages ?? []).map((m) => m.content).join('\n');
       const items = [...text.matchAll(/^(T\d+): (.*)$/gm)].map((m) => {
