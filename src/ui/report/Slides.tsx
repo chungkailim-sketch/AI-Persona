@@ -18,6 +18,7 @@ import { MarketMap, TIER_FILL } from './MarketMap';
 import { MarketHeader, PersonaAvatar, PersonaCard, TierHeader, keyStats } from './PersonaCard';
 import { FitBox, ScaledSlide } from './ScaledSlide';
 import { BrandProvider } from './BrandContext';
+import { SlideGroup } from './SlideGroup';
 import { brandStyle, type BrandTheme } from '@/report/brandTheme';
 import type { ReportExtra } from '@/report/reportExtras';
 import type { GeoContent } from '@/geo/audit';
@@ -796,7 +797,12 @@ function Method({ r, page }: { r: Report; page: number }) {
 }
 
 /** The whole deck. Page numbers are worked out first, since the personas and heatmap may run to several slides. */
-export function SlideDeck({ r, modules, brand, extras = [], geo = [] }: { r: Report; modules?: Set<string>; brand?: BrandTheme | null; extras?: ReportExtra[]; geo?: GeoDeckItem[] }) {
+/**
+ * `foldProfiles`: in the report preview on the Results step, the persona profile slides are one
+ * collapsible group (src/ui/report/SlideGroup.tsx). The full report page, the PDF and the
+ * PowerPoint always show every slide.
+ */
+export function SlideDeck({ r, modules, brand, extras = [], geo = [], foldProfiles = false }: { r: Report; modules?: Set<string>; brand?: BrandTheme | null; extras?: ReportExtra[]; geo?: GeoDeckItem[]; foldProfiles?: boolean }) {
   const on = (m: string) => !modules || modules.has(m);
   const profiled = on('persona_profiles') ? r.cast.filter((p) => p.answer) : [];
   let page = 1;
@@ -825,7 +831,21 @@ export function SlideDeck({ r, modules, brand, extras = [], geo = [] }: { r: Rep
       <CastSlides r={r} start={castStart} />
       <Roundtable r={r} page={roundtablePage} />
       <Heatmaps r={r} start={heatStart} />
-      {profiled.map((p, i) => <Profile key={p.id} p={p} r={r} page={profileStart + i} />)}
+      {foldProfiles && profiled.length > 1 ? (
+        <SlideGroup
+          id="persona-profiles"
+          title="Persona profiles"
+          count={profiled.length}
+          chips={profiled.map((p) => ({
+            id: `profile-${p.id}`,
+            label: <><PersonaAvatar name={p.name} profile={p.profile} size={22} /><span>{p.name}</span><span className="text-ink-subtle">{`${p.profile.market} · ${p.profile.tierLabel}`}</span></>,
+          }))}
+        >
+          {profiled.map((p, i) => <div key={p.id} id={`profile-${p.id}`} className="scroll-mt-32"><Profile p={p} r={r} page={profileStart + i} /></div>)}
+        </SlideGroup>
+      ) : (
+        profiled.map((p, i) => <Profile key={p.id} p={p} r={r} page={profileStart + i} />)
+      )}
       <Comms r={r} page={commsPage} />
       {geo.map((g, i) => <GeoSlides key={g.id} g={g} start={geoStarts[i]!} />)}
       {extras.map((x, i) => (x.kind === 'COMMS_PLAN' ? <PlanSlides key={x.id} x={x} start={extraStarts[i]!} /> : <BriefSlides key={x.id} x={x} start={extraStarts[i]!} />))}

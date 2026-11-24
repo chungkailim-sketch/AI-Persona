@@ -123,7 +123,7 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
                 canEdit={can(ctx, 'project.edit', projectId)}
                 brand={brand ? { name: brand.name, fileName: brand.fileName, colors: [brand.colors.dark2, ...brand.colors.accents].slice(0, 7), fonts: [brand.fonts.heading, brand.fonts.body].filter((f): f is string => Boolean(f)), hasLogo: Boolean(brand.logo) } : null}
               />
-              <SlideDeck r={report} modules={modules} brand={brand} extras={extras} geo={await completedGeoAudits(projectId)} />
+              <SlideDeck r={report} modules={modules} brand={brand} extras={extras} geo={await completedGeoAudits(projectId)} foldProfiles />
             </div>
           </details>
           <FloatingCollapse targetId="report-preview" label="Collapse the report preview" />

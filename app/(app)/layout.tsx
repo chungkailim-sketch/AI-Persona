@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { listProjectsForUser } from '@/server/projects';
 import { activeRunsFor } from '@/server/activity';
 import { OpenSectionFromHash } from '@/ui/OpenSectionFromHash';
+import { RememberSections } from '@/ui/RememberSections';
 import { ApplicationShell } from '@/ui/shell/ApplicationShell';
 import { THEME_COOKIE, parseThemePreference } from '@/ui/theme/theme';
 
@@ -57,6 +58,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       }}
     >
       <OpenSectionFromHash />
+      <RememberSections />
       {children}
     </ApplicationShell>
   );
