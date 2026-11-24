@@ -3298,4 +3298,8 @@ export const ZH: Record<string, string> = {
   "AI answers cite: {}.": "AI 答案引用的来源：{}。",
   "Most-cited industry sources: {}.": "被引用最多的行业来源：{}。",
   "{} earns {}× the citations of {} ({}% vs {}%).": "{1} 获得的引用是 {3} 的 {2} 倍（{4}% 对比 {5}%）。",
+  "Persona profiles": "画像档案",
+  "{} slides, folded to keep the report short. Open one, or view them all.": "共 {} 页，已折叠以保持报告简洁。可打开其中一页，或查看全部。",
+  "View all {}": "查看全部 {} 页",
+  "Collapse persona profiles": "收起画像档案",
 };
