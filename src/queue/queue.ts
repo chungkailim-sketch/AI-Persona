@@ -22,7 +22,7 @@ export const QUEUE_CONFIG = {
   backoffMaxMs: 5 * 60_000,
 } as const;
 
-export type JobKind = 'ingest' | 'simulate' | 'export' | 'demo_provision' | 'trend_analysis' | 'debate' | 'debate_insight' | 'cast' | 'roundtable' | 'advice' | 'headshots' | 'brief_import' | 'report_translate' | 'creative_brief';
+export type JobKind = 'ingest' | 'simulate' | 'export' | 'demo_provision' | 'trend_analysis' | 'debate' | 'debate_insight' | 'cast' | 'roundtable' | 'advice' | 'headshots' | 'brief_import' | 'report_translate' | 'creative_brief' | 'geo_audit';
 
 export interface ClaimedJob {
   id: string;

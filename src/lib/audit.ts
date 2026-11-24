@@ -55,6 +55,8 @@ export const AUDIT_ACTIONS = [
   'persona.cast.requested',
   'roundtable.requested',
   'brief.imported',
+  'geo.audit.uploaded',
+  'geo.audit.deleted',
   'project.context.read',
   'creative_brief.requested',
   'creative_brief.deleted',

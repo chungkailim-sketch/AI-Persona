@@ -39,6 +39,7 @@ import { enqueue } from './src/queue/queue';
 import { executeCast, executeRoundtable, type CastJobInput } from './src/roundtable/engine';
 import { executePlan } from './src/advice/planner';
 import { executeBriefImport } from './src/advice/briefImport';
+import { executeGeoAudit } from './src/geo/audit';
 import { executeCreativeBrief } from './src/creative/brief';
 import { executeReportTranslation } from './src/roundtable/reportLocale';
 
@@ -137,6 +138,12 @@ async function handle(job: ClaimedJob): Promise<Record<string, unknown>> {
       const input = job.input as { adviceId?: string };
       if (!input.adviceId) throw new Error('Job input does not name a brief import.');
       const outcome = await executeBriefImport(input.adviceId);
+      return outcome as unknown as Record<string, unknown>;
+    }
+    case 'geo_audit': {
+      const input = job.input as { adviceId?: string };
+      if (!input.adviceId) throw new Error('Job input does not name a GEO audit.');
+      const outcome = await executeGeoAudit(input.adviceId);
       return outcome as unknown as Record<string, unknown>;
     }
     case 'report_translate': {
@@ -282,7 +289,7 @@ async function loop(): Promise<void> {
     }
     let job: ClaimedJob | null = null;
     try {
-      job = await claimNext(WORKER_ID, ['ingest', 'simulate', 'export', 'demo_provision', 'trend_analysis', 'debate', 'debate_insight', 'cast', 'roundtable', 'advice', 'headshots', 'brief_import', 'report_translate', 'creative_brief']);
+      job = await claimNext(WORKER_ID, ['ingest', 'simulate', 'export', 'demo_provision', 'trend_analysis', 'debate', 'debate_insight', 'cast', 'roundtable', 'advice', 'headshots', 'brief_import', 'report_translate', 'creative_brief', 'geo_audit']);
     } catch (e) {
       log('could not reach the queue', { error: e instanceof Error ? e.message : String(e) });
       await new Promise((r) => setTimeout(r, 5_000));

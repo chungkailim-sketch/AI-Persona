@@ -20,6 +20,7 @@ import { ReportExportBar } from './ReportExportBar';
 import { FloatingCollapse } from '@/ui/FloatingCollapse';
 import { projectBrand } from '@/report/brandService';
 import { reportExtras } from '@/report/reportExtras';
+import { completedGeoAudits } from '@/geo/audit';
 import { cookies } from 'next/headers';
 import { LANG_COOKIE, parseLang } from '@/ui/i18n/translate';
 import { PlanRecordActions } from './PlanRecordActions';
@@ -122,7 +123,7 @@ export default async function ReportStepPage(props: PageProps<'/projects/[projec
                 canEdit={can(ctx, 'project.edit', projectId)}
                 brand={brand ? { name: brand.name, fileName: brand.fileName, colors: [brand.colors.dark2, ...brand.colors.accents].slice(0, 7), fonts: [brand.fonts.heading, brand.fonts.body].filter((f): f is string => Boolean(f)), hasLogo: Boolean(brand.logo) } : null}
               />
-              <SlideDeck r={report} modules={modules} brand={brand} extras={extras} />
+              <SlideDeck r={report} modules={modules} brand={brand} extras={extras} geo={await completedGeoAudits(projectId)} />
             </div>
           </details>
           <FloatingCollapse targetId="report-preview" label="Collapse the report preview" />

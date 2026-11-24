@@ -27,7 +27,9 @@ describe('interface translation', () => {
   it('has a translation with matching placeholders for every entry', () => {
     for (const [en, zh] of Object.entries(ZH)) {
       expect(zh.trim().length, en).toBeGreaterThan(0);
-      expect(zh.split('#').length, en).toBe(en.split('#').length);
+      // Text-slot keys ({}) may carry a literal "#" ("rank #{}"); their slots must match instead.
+      if (en.includes('{}')) expect((zh.match(/\{\d?\}/g) ?? []).length, en).toBe(en.split('{}').length - 1);
+      else expect(zh.split('#').length, en).toBe(en.split('#').length);
     }
   });
 

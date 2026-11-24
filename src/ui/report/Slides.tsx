@@ -20,6 +20,7 @@ import { FitBox, ScaledSlide } from './ScaledSlide';
 import { BrandProvider } from './BrandContext';
 import { brandStyle, type BrandTheme } from '@/report/brandTheme';
 import type { ReportExtra } from '@/report/reportExtras';
+import type { GeoContent } from '@/geo/audit';
 import { BRIEF_FIELDS } from '@/creative/fields';
 
 const TIER_LABEL = Object.fromEntries(TIERS.map((t) => [t.key, t.label])) as Record<TierKey, string>;
@@ -517,6 +518,167 @@ function Comms({ r, page }: { r: Report; page: number }) {
   );
 }
 
+// ── 9a GEO: AI visibility and the GEO strategy, one section per uploaded audit ──
+
+type GeoDeckItem = GeoContent & { id: string; isMock: boolean };
+const GEO_SOURCE = 'Source: client GEO (AI visibility) audit; gaps computed in code; strategy written by RF AI Persona from the audit and the consumer study.';
+const STANDING: Record<string, { label: string; cls: string }> = {
+  lead: { label: 'Leads', cls: 'bg-[var(--heat-high)] text-[var(--heat-high-ink)]' },
+  close: { label: 'Within reach', cls: 'bg-[var(--heat-mid)] text-[var(--heat-mid-ink)]' },
+  behind: { label: 'Behind', cls: 'bg-[var(--heat-low)] text-[var(--heat-low-ink)]' },
+  absent: { label: 'Absent', cls: 'border border-line text-ink-subtle' },
+};
+const pct = (n: number | null | undefined, d = 1) => (n === null || n === undefined ? '–' : `${Number(n.toFixed(d))}%`);
+
+function Tile({ label, value, note }: { label: string; value: string; note?: string }) {
+  return (
+    <div className="rounded-md border border-line px-3 py-2">
+      <p className="text-[10.5px] font-bold uppercase tracking-wide text-ink-subtle">{label}</p>
+      <p className="text-[26px] font-extrabold leading-tight text-ink">{value}</p>
+      {note && <p className="text-[11px] leading-snug text-ink-muted">{note}</p>}
+    </div>
+  );
+}
+
+function Bars({ rows, highlight, max }: { rows: { label: string; value: number | null }[]; highlight?: string; max?: number }) {
+  const top = max ?? Math.max(1, ...rows.map((r) => r.value ?? 0));
+  return (
+    <ul className="flex flex-col gap-1.5 text-[12px]">
+      {rows.map((r) => {
+        const own = highlight && r.label.trim().toLowerCase() === highlight.trim().toLowerCase();
+        return (
+          <li key={r.label}>
+            <div className="flex justify-between gap-2"><span className={cn('truncate', own && 'font-bold text-brand')}>{r.label}</span><b>{pct(r.value)}</b></div>
+            <div className="mt-0.5 h-2 rounded-sm bg-track"><div className={cn('h-2 rounded-sm', own ? 'bg-brand-mark' : 'bg-[var(--tier-watch)]')} style={{ width: `${Math.max(1, ((r.value ?? 0) / top) * 100)}%` }} /></div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function GeoSlides({ g, start }: { g: GeoDeckItem; start: number }) {
+  const m = g.metrics;
+  const a = g.analysis;
+  const st = g.strategy;
+  const h = m.headline;
+  const market = m.market || g.matchedMarket || '—';
+  const section = `GEO · AI visibility · ${market}`;
+  const mix = a.sourceMix.slice(0, 6);
+  const MIX = ['var(--color-brand-mark)', 'var(--color-brand-deep)', 'var(--color-highlight)', 'var(--color-ink)', 'var(--tier-row-3)', 'var(--tier-watch)'];
+  return (
+    <>
+      <Slide section={section} title={`How AI answer engines see ${m.brand} in ${market}`} page={start} source={GEO_SOURCE}>
+        <div className="grid h-full grid-cols-[250px_1fr_1.3fr] gap-5">
+          <div className="flex flex-col gap-2">
+            <Tile label="AI visibility" value={pct(h.visibility)} note={h.rank != null ? `Rank #${h.rank}${h.brandsTracked ? ` of ${h.brandsTracked}` : ''} on non-branded prompts` : undefined} />
+            <Tile label="Mentions" value={pct(h.mentions)} note={a.mentionsGap !== null && a.leader ? (a.mentionsGap > 0 ? `${a.mentionsGap}pp behind ${a.leader.name}` : `${Math.abs(a.mentionsGap)}pp ahead of the next brand`) : undefined} />
+            <Tile label="Citation share" value={pct(h.citationShare)} note={a.citationGap !== null ? `Named but not cited: ${a.citationGap}pp gap` : undefined} />
+            <Tile label="Branded visibility" value={pct(h.brandedVisibility)} note={a.brandedGap !== null ? `${a.brandedGap}pp above non-branded` : undefined} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <p className="text-[12px] font-bold uppercase tracking-wide text-brand">Mentions by brand</p>
+            <Bars rows={m.competitors.map((c) => ({ label: c.name, value: c.mentions }))} highlight={m.brand} />
+            {m.marketBasis === 'inferred' && <p className="mt-auto text-[10.5px] text-ink-subtle">{`Market inferred: ${m.marketEvidence}`}</p>}
+          </div>
+          <div className="flex flex-col gap-2">
+            <p className="text-[12px] font-bold uppercase tracking-wide text-brand">By topic: brand vs leader</p>
+            <table className="w-full text-[11.5px]">
+              <thead><tr className="bg-brand-deep text-left text-brand-deep-ink"><th className="px-2 py-1">Topic</th><th className="px-2 py-1 text-right">{m.brand}</th><th className="px-2 py-1">Leader</th><th className="px-2 py-1 text-right">Gap</th><th className="px-2 py-1" /></tr></thead>
+              <tbody>
+                {a.topics.slice(0, 10).map((t) => (
+                  <tr key={t.topic} className="border-b border-line">
+                    <td className="px-2 py-1">{t.topic}</td>
+                    <td className="px-2 py-1 text-right font-bold">{pct(t.brand)}</td>
+                    <td className="px-2 py-1 text-ink-muted">{`${t.leader} ${pct(t.leaderScore)}`}</td>
+                    <td className="px-2 py-1 text-right">{t.gap === null ? '–' : `${t.gap}pp`}</td>
+                    <td className="px-2 py-1"><span className={cn('rounded-sm px-1.5 py-0.5 text-[10.5px] font-semibold', STANDING[t.standing]!.cls)}>{STANDING[t.standing]!.label}</span></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Slide>
+      <Slide section={section} title="Where AI answers come from" page={start + 1} source={GEO_SOURCE}>
+        <div className="grid h-full grid-cols-[1fr_1.2fr_1fr] gap-5">
+          <div className="flex flex-col gap-2">
+            <p className="text-[12px] font-bold uppercase tracking-wide text-brand">Mentions by AI engine</p>
+            <Bars rows={a.engines.map((e) => ({ label: e.engine, value: e.mentions }))} />
+            {a.engineSpread !== null && <p className="text-[11.5px] text-ink-muted">{`Spread between strongest and weakest engine: ${a.engineSpread}pp.`}{a.weakEngines.length ? ` ${`Lagging: ${a.weakEngines.join(', ')}.`}` : ''}</p>}
+          </div>
+          <div className="flex flex-col gap-2">
+            <p className="text-[12px] font-bold uppercase tracking-wide text-brand">What AI answers cite, by source type</p>
+            {mix.length > 0 && (
+              <>
+                <div className="flex h-4 overflow-hidden rounded-sm">{mix.map((x, i) => <span key={x.type} style={{ width: `${x.share}%`, background: MIX[i % MIX.length] }} />)}</div>
+                <ul className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-[11.5px]">{mix.map((x, i) => <li key={x.type} className="flex items-center gap-1.5"><span className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: MIX[i % MIX.length] }} />{x.type} <b>{pct(x.share, 0)}</b></li>)}</ul>
+              </>
+            )}
+            <p className="mt-2 text-[12px] font-bold uppercase tracking-wide text-brand">Most-cited industry sources</p>
+            <ol className="flex list-decimal flex-col gap-0.5 pl-5 text-[12px]">{m.industrySources.slice(0, 8).map((x) => <li key={x.domain}><span className="font-semibold">{x.domain}</span> <span className="text-ink-subtle">{pct(x.share)}</span></li>)}</ol>
+          </div>
+          <div className="flex flex-col gap-3">
+            {m.ownedDomains.length > 0 && (
+              <div>
+                <p className="text-[12px] font-bold uppercase tracking-wide text-brand">Brand-owned domains cited</p>
+                <Bars rows={m.ownedDomains.slice(0, 6).map((d) => ({ label: d.domain, value: d.share }))} highlight={m.ownedDomains.find((d) => d.brand.toLowerCase() === m.brand.toLowerCase())?.domain} />
+              </div>
+            )}
+            <Panel title="What this means" accent>
+              <Bullets items={a.facts.filter((f) => /cited|cite|engine|×/i.test(f)).slice(0, 4)} />
+            </Panel>
+          </div>
+        </div>
+      </Slide>
+      <Slide section={section} title={st.headline || 'GEO strategy'} page={start + 2} source={GEO_SOURCE}>
+        <div className="grid h-full grid-cols-3 gap-4">
+          <Panel title="Content strategy">
+            <ul className="flex flex-col gap-1.5">{st.contentStrategy.map((x) => <li key={x.pillar}><b>{x.pillar}</b> — {x.detail}{x.evidence && <span className="block text-[11px] text-ink-subtle">{x.evidence}</span>}</li>)}</ul>
+          </Panel>
+          <Panel title="Go-to-market tactics">
+            <ul className="flex flex-col gap-1.5">{st.gtmTactics.map((x) => <li key={x.tactic}><b>{x.tactic}</b>{x.timing ? <span className="text-ink-subtle"> ({x.timing})</span> : null} — {x.detail}</li>)}</ul>
+          </Panel>
+          <Panel title="Content formats">
+            <ul className="flex flex-col gap-1.5">{st.contentFormats.map((x) => <li key={x.format}><b>{x.format}</b> — {x.purpose}{x.where && <span className="block text-[11px] text-ink-subtle">{`Where: ${x.where}`}</span>}</li>)}</ul>
+          </Panel>
+        </div>
+      </Slide>
+      <Slide section={section} title="Where to invest, which channels, how to measure" page={start + 3} source={GEO_SOURCE}>
+        <div className="grid h-full grid-cols-[1fr_1.15fr_1fr] gap-4">
+          <div className="flex flex-col gap-3">
+            <Panel title="Where to invest" accent>
+              <ul className="flex flex-col gap-1.5">{st.investment.map((x) => <li key={x.area}><b>{x.area}</b>{x.share !== null ? ` · ${pct(x.share, 0)}` : ''} <span className="opacity-80">({x.priority})</span><span className="block text-[11px] opacity-90">{x.rationale}</span></li>)}</ul>
+            </Panel>
+            {st.kpis.length > 0 && (
+              <Panel title="KPIs">
+                <ul className="flex flex-col gap-1">{st.kpis.map((k) => <li key={k.metric}><b>{k.metric}</b>: {k.baseline} → {k.target}{k.timeframe ? ` (${k.timeframe})` : ''}</li>)}</ul>
+              </Panel>
+            )}
+          </div>
+          <div className="flex flex-col gap-3">
+            <table className="w-full text-[11.5px]">
+              <thead><tr className="bg-brand-deep text-left text-brand-deep-ink"><th className="px-2 py-1">Channel</th><th className="px-2 py-1">Type</th><th className="px-2 py-1">Role</th></tr></thead>
+              <tbody>{st.channels.map((c) => <tr key={c.channel} className="border-b border-line align-top"><td className="px-2 py-1 font-semibold">{c.channel}{c.priority === 'high' ? ' ●' : ''}</td><td className="px-2 py-1 capitalize">{c.type}</td><td className="px-2 py-1 text-ink-muted">{c.role}</td></tr>)}</tbody>
+            </table>
+            <p className="text-[10.5px] text-ink-subtle">● high priority</p>
+          </div>
+          <div className="flex flex-col gap-3">
+            <Panel title="Media relations">
+              <ul className="flex flex-col gap-1.5">{st.mediaRelations.map((x) => <li key={x.target}><b>{x.target}</b> — {x.angle}{x.asset && <span className="block text-[11px] text-ink-subtle">{`Offer: ${x.asset}`}</span>}</li>)}</ul>
+            </Panel>
+            {st.roadmap.length > 0 && (
+              <Panel title="Roadmap">
+                <ul className="flex flex-col gap-1">{st.roadmap.map((r) => <li key={r.phase}><b>{r.phase}</b>{r.timing ? ` (${r.timing})` : ''}: {r.actions.join('; ')}</li>)}</ul>
+              </Panel>
+            )}
+          </div>
+        </div>
+      </Slide>
+    </>
+  );
+}
+
 // ── 9b Added plans and creative briefs ─────────────────────────────────────────
 
 const PLAN_SOURCE = 'Source: RF AI Persona plan written from the survey data, the personas and the roundtable, applying recognised frameworks.';
@@ -634,7 +796,7 @@ function Method({ r, page }: { r: Report; page: number }) {
 }
 
 /** The whole deck. Page numbers are worked out first, since the personas and heatmap may run to several slides. */
-export function SlideDeck({ r, modules, brand, extras = [] }: { r: Report; modules?: Set<string>; brand?: BrandTheme | null; extras?: ReportExtra[] }) {
+export function SlideDeck({ r, modules, brand, extras = [], geo = [] }: { r: Report; modules?: Set<string>; brand?: BrandTheme | null; extras?: ReportExtra[]; geo?: GeoDeckItem[] }) {
   const on = (m: string) => !modules || modules.has(m);
   const profiled = on('persona_profiles') ? r.cast.filter((p) => p.answer) : [];
   let page = 1;
@@ -647,6 +809,8 @@ export function SlideDeck({ r, modules, brand, extras = [] }: { r: Report; modul
   const heatStart = at(chunk(r.cast.filter((p) => p.answer), 15).length);
   const profileStart = at(profiled.length);
   const commsPage = at(1);
+  // GEO: four slides per uploaded audit, then plans and creative briefs added from the Results step.
+  const geoStarts = geo.map(() => at(4));
   // Plans and creative briefs added from the Results step: two slides each, after Communications.
   const extraStarts = extras.map(() => at(2));
   const methodPage = at(1);
@@ -663,6 +827,7 @@ export function SlideDeck({ r, modules, brand, extras = [] }: { r: Report; modul
       <Heatmaps r={r} start={heatStart} />
       {profiled.map((p, i) => <Profile key={p.id} p={p} r={r} page={profileStart + i} />)}
       <Comms r={r} page={commsPage} />
+      {geo.map((g, i) => <GeoSlides key={g.id} g={g} start={geoStarts[i]!} />)}
       {extras.map((x, i) => (x.kind === 'COMMS_PLAN' ? <PlanSlides key={x.id} x={x} start={extraStarts[i]!} /> : <BriefSlides key={x.id} x={x} start={extraStarts[i]!} />))}
       <Method r={r} page={methodPage} />
     </div>
